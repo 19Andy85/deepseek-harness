@@ -9253,6 +9253,9 @@ importers:
       '@deepseek-ai/dsh-client-ui-slots':
         specifier: workspace:*
         version: link:../../client/ui-slots
+      '@deepseek-ai/dsh-client-ui-user-questions':
+        specifier: workspace:*
+        version: link:../../client/ui-user-questions
       '@deepseek-ai/dsh-client-ui-workspace':
         specifier: workspace:*
         version: link:../../client/ui-workspace

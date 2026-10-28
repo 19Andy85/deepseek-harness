@@ -37,6 +37,7 @@ Mount the page in a Web composition that also mounts a Host controller serving t
 - Reply inside a row: choose **Reply in this session**, then **Queue** to append a turn or **Interrupt and send** to replace the running one through the same `session/prompt` Remote.
 - Stop a running row with **Interrupt**, which calls the shipped `session/cancel` Remote.
 - A row with a pending tool approval shows **Approval needed** with the tool name and **Allow once** / **Reject**; the decision resolves the same pending approval the Conversation would show.
+- A row with a pending question or plan review shows the first question; a single-select question and a plan review answer from their option buttons (**Open to answer** when the shape needs the Conversation, such as multi-select, free text, or several questions).
 - Re-read automatically after a session status or activity event, coalescing bursts into one read; **Refresh** reads on demand.
 - A failed read keeps the last rows visible and shows a compact retry notice; the full error state appears only when no rows were ever read.
 
@@ -87,7 +88,7 @@ These limits define when this package is a poor fit or needs special operational
 
 - **Live sessions only** — sessions without a live Agent in this Host never appear, even when persisted jobs or schedules would report activity for them.
 - **Requires the Host Remote** — the page has no data path of its own; a composition without the controller shows the failure notice.
-- **Tool approvals only** — plan-review and question interactions are not surfaced here; replies and cancellation only cover prompts and active turns.
+- **Simple question shapes only** — approvals, single-select questions, and plan reviews are answerable inline; multi-select, free-text, and multi-question requests open the Conversation instead.
 - **Dispatch only starts a session** — the header form always creates a new session; replies go to one existing row, and dispatch opens the new Conversation after the prompt is accepted.
 - **No console-side stream** — focused progress is the shipped Conversation view; the console itself only refreshes its summary rows.
 - **Entry points are the sidebar and the Workspace row menu** — enabling the bundle is the deferred one-step path; without the page plugin the Workspace menu slot renders no extra row.

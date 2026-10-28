@@ -14,6 +14,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type {} from '@deepseek-ai/dsh-client-ui-approval/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-user-questions/client'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import sessionTasksRemote from '@deepseek-ai/dsh-experimental-api-session-tasks/remote'
 import { ProjectConsoleMenuItem, type ProjectConsoleMenuInjected } from './ProjectConsoleMenu.tsx'
@@ -77,6 +78,13 @@ function registerUi(ctx: Context): void {
     cancelSession: async (sessionId) => {
       ctx.remote.session.cancel({ sessionId: brandString<SessionId>(sessionId) })
     },
+    answerQuestion: async (sessionId, answer) => {
+      const pending = ctx.uiSession.sessionStatus.getSnapshot().get(brandString<SessionId>(sessionId))?.pendingInteraction
+      if (pending === undefined || (pending.kind !== 'question' && pending.kind !== 'plan-review')) {
+        throw new Error('no pending question')
+      }
+      await pending.answer(answer)
+    },
     respondApproval: async (sessionId, decision) => {
       const pending = ctx.uiSession.sessionStatus.getSnapshot().get(brandString<SessionId>(sessionId))?.pendingInteraction
       if (pending === undefined || pending.kind !== 'approval') throw new Error('no pending approval')
@@ -108,6 +116,7 @@ function registerUi(ctx: Context): void {
       sendToSession: (sessionId, prompt, mode) => store.sendToSession(sessionId, prompt, mode),
       cancelSession: sessionId => store.cancelSession(sessionId),
       answerApproval: (sessionId, decision) => store.answerApproval(sessionId, decision),
+      answerQuestion: (sessionId, answer) => store.answerQuestion(sessionId, answer),
       hooks: { sessionStatus: ctx.uiSession.sessionStatus },
     }),
   }, ProjectConsolePage)), 'project-console: page')

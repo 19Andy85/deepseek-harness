@@ -1,5 +1,6 @@
 /** Live project console state: workspace selection, one session snapshot, and refresh scheduling. */
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
+import type { QuestionAnswer } from '@deepseek-ai/dsh-client-ui-user-questions/client'
 import type { SessionTaskView, SessionTasksSnapshot } from '@deepseek-ai/dsh-experimental-api-session-tasks/types'
 
 /** One selectable Workspace row. */
@@ -50,6 +51,8 @@ export interface ProjectConsoleHost {
   cancelSession(sessionId: string): Promise<void>
   /** Answer one Session's pending approval with the user's decision. */
   respondApproval(sessionId: string, decision: 'allowed-once' | 'rejected'): Promise<void>
+  /** Submit one complete answer batch to a pending question or plan review. */
+  answerQuestion(sessionId: string, answer: QuestionAnswer): Promise<void>
 }
 
 /** Default coalescing window before an event-triggered re-read. */
@@ -196,6 +199,29 @@ export class ProjectConsoleStore {
     this.emit()
     try {
       await this.host.respondApproval(sessionId, decision)
+      this.state = { ...this.state, busySessionId: undefined, actionFailed: undefined }
+      this.emit()
+      this.scheduleRefresh()
+      return true
+    } catch {
+      this.state = { ...this.state, busySessionId: undefined, actionFailed: true }
+      this.emit()
+      return false
+    }
+  }
+
+  /**
+   * Answer one Session's pending question or plan review.
+   * @param sessionId - target row.
+   * @param answer - complete structured answer batch.
+   * @returns whether the answer was submitted.
+   */
+  async answerQuestion(sessionId: string, answer: QuestionAnswer): Promise<boolean> {
+    if (this.disposed) return false
+    this.state = { ...this.state, busySessionId: sessionId, actionFailed: undefined }
+    this.emit()
+    try {
+      await this.host.answerQuestion(sessionId, answer)
       this.state = { ...this.state, busySessionId: undefined, actionFailed: undefined }
       this.emit()
       this.scheduleRefresh()

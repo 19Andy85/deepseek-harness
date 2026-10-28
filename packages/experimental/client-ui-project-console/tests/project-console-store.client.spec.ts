@@ -1,6 +1,7 @@
 /** Workspace selection, refresh supersession, failure retention, and coalescing of the console store. */
 
 import { RemoteError, type RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
+import type { QuestionAnswer } from '@deepseek-ai/dsh-client-ui-user-questions/client'
 import type { SessionTaskView, SessionTasksSnapshot } from '@deepseek-ai/dsh-experimental-api-session-tasks/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ProjectConsoleStore, type ConsoleWorkspace, type ProjectConsoleHost } from '../src/client/ProjectConsoleStore.ts'
@@ -23,10 +24,12 @@ function hostOf(
   readonly prompted: [string, string, 'queue' | 'steer'][]
   readonly cancelled: string[]
   readonly responses: [string, 'allowed-once' | 'rejected'][]
+  readonly answered: [string, QuestionAnswer][]
   failCreate: boolean
   failPrompt: boolean
   failCancel: boolean
   failRespond: boolean
+  failAnswer: boolean
 } {
   const reads: (string | undefined)[] = []
   const opened: string[] = []
@@ -34,6 +37,7 @@ function hostOf(
   const prompted: [string, string, 'queue' | 'steer'][] = []
   const cancelled: string[] = []
   const responses: [string, 'allowed-once' | 'rejected'][] = []
+  const answered: [string, QuestionAnswer][] = []
   let listener: (() => void) | undefined
   const host = {
     reads,
@@ -45,7 +49,9 @@ function hostOf(
     failPrompt: false,
     failCancel: false,
     failRespond: false,
+    failAnswer: false,
     responses,
+    answered,
     listWorkspaces: () => workspaces,
     subscribeWorkspaces: (next: () => void) => { listener = next; return () => { listener = undefined } },
     snapshot: async (workspaceId?: string) => {
@@ -70,6 +76,10 @@ function hostOf(
     respondApproval: async (sessionId: string, decision: 'allowed-once' | 'rejected') => {
       if (host.failRespond) throw new Error('approval refused')
       responses.push([sessionId, decision])
+    },
+    answerQuestion: async (sessionId: string, answer: QuestionAnswer) => {
+      if (host.failAnswer) throw new Error('question refused')
+      answered.push([sessionId, answer])
     },
   }
   return host
@@ -246,6 +256,27 @@ describe('ProjectConsoleStore', () => {
     await store.refresh()
     host.failRespond = true
     expect(await store.answerApproval('one', 'rejected')).toBe(false)
+    expect(store.getSnapshot()).toMatchObject({ busySessionId: undefined, actionFailed: true })
+    store.dispose()
+  })
+
+  it('submits a complete answer batch to a pending question', async () => {
+    const host = hostOf([alpha], async id => snapshot(id ?? '', [row('one')]))
+    const store = new ProjectConsoleStore(host)
+    await store.refresh()
+    const answer = { answers: [{ id: 'q1', selected: ['Approval work'] }] }
+    expect(await store.answerQuestion('one', answer)).toBe(true)
+    expect(host.answered).toEqual([['one', answer]])
+    expect(store.getSnapshot()).toMatchObject({ busySessionId: undefined, actionFailed: undefined })
+    store.dispose()
+  })
+
+  it('reports a question answer failure', async () => {
+    const host = hostOf([alpha], async id => snapshot(id ?? '', [row('one')]))
+    const store = new ProjectConsoleStore(host)
+    await store.refresh()
+    host.failAnswer = true
+    expect(await store.answerQuestion('one', { answers: [{ id: 'q1', selected: [] }] })).toBe(false)
     expect(store.getSnapshot()).toMatchObject({ busySessionId: undefined, actionFailed: true })
     store.dispose()
   })

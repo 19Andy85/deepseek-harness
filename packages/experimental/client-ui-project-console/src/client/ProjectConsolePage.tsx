@@ -2,6 +2,8 @@
 import { useState, useSyncExternalStore } from 'react'
 import type { HostObservable, InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
+import type {} from '@deepseek-ai/dsh-client-ui-user-questions/client'
+import type { QuestionAnswer } from '@deepseek-ai/dsh-client-ui-user-questions/client'
 import type { ConsoleState, ConsoleWorkspace } from './ProjectConsoleStore.ts'
 import type { ProjectConsoleKey } from './locales.ts'
 import css from './ProjectConsolePage.module.css'
@@ -38,6 +40,8 @@ export interface ProjectConsoleInjected {
   readonly cancelSession: (sessionId: string) => Promise<boolean>
   /** Answer one Session's pending approval. */
   readonly answerApproval: (sessionId: string, decision: 'allowed-once' | 'rejected') => Promise<boolean>
+  /** Submit one complete answer batch to a pending question or plan review. */
+  readonly answerQuestion: (sessionId: string, answer: QuestionAnswer) => Promise<boolean>
   /** Live pending-interaction state per Session. */
   readonly hooks: { readonly sessionStatus: HostObservable<SessionStatusSnapshot> }
 }
@@ -66,7 +70,7 @@ function activityLabel(entry: ConsoleState['sessions'][number]['activity'][numbe
  */
 export function ProjectConsolePage({
   t, store, workspaceOptions, selectedWorkspaceId, selectWorkspace, refresh, openSession, dispatch,
-  sendToSession, cancelSession, answerApproval, useSessionStatus,
+  sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus,
 }: ProjectConsolePageProps) {
   const [prompt, setPrompt] = useState('')
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
@@ -140,8 +144,16 @@ export function ProjectConsolePage({
           ? <div className={css.empty}>{t('empty')}</div>
           : null}
         {state.sessions.map((session) => {
-          const pendingApproval = [...statuses].find(([sessionId]) => sessionId === session.sessionId)?.[1].pendingInteraction
-          const approval = pendingApproval?.kind === 'approval' ? pendingApproval : undefined
+          const pending = [...statuses].find(([sessionId]) => sessionId === session.sessionId)?.[1].pendingInteraction
+          const approval = pending?.kind === 'approval' ? pending : undefined
+          const question = pending?.kind === 'question' || pending?.kind === 'plan-review' ? pending : undefined
+          const firstQuestion = question?.questions[0]
+          const simpleOptions = firstQuestion !== undefined
+            && firstQuestion.multiSelect !== true
+            && firstQuestion.options !== undefined
+            && firstQuestion.options.length > 0
+            ? firstQuestion.options
+            : undefined
           return (
             <article key={session.sessionId} className={css.row}>
               <button
@@ -216,6 +228,38 @@ export function ProjectConsolePage({
                     >
                       {t('rejectApproval')}
                     </button>
+                  </div>
+                )}
+              {question === undefined || firstQuestion === undefined
+                ? null
+                : (
+                  <div className={css.rowActions}>
+                    <span className={css.chip}>
+                      {question.kind === 'plan-review' ? t('planReviewPending') : t('questionPending')}
+                      {' · '}
+                      {firstQuestion.question}
+                    </span>
+                    {simpleOptions === undefined
+                      ? (
+                        <button type="button" className={css.select} onClick={() => { openSession(session.sessionId) }}>
+                          {t('goToConversation')}
+                        </button>
+                      )
+                      : simpleOptions.map(option => (
+                        <button
+                          key={option.label}
+                          type="button"
+                          className={css.select}
+                          disabled={state.busySessionId === session.sessionId}
+                          onClick={() => {
+                            void answerQuestion(session.sessionId, {
+                              answers: [{ id: firstQuestion.id, selected: [option.label] }],
+                            })
+                          }}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
                   </div>
                 )}
               {replyingTo === session.sessionId
