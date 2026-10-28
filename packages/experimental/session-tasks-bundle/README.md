@@ -75,7 +75,7 @@ These limits define when this bundle is a poor fit or needs special operational 
 
 - **Experimental** — not part of any release bundle; mount it explicitly in a profile.
 - **Live sessions only** — sessions without a live Agent in this Host never appear.
-- **Read-only** — dispatch, interruption, and approvals are deferred.
+- **Dispatch starts new sessions only** — interruption, sending into an existing session, and approvals are deferred.
 - **Bundled tool scope** — the tool defaults to `same-cwd`; the controller row itself has no configuration.
 - **No bundle artwork yet** — the plugin row uses the default glyph until designer-approved artwork lands.
 

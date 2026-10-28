@@ -1,5 +1,5 @@
 ---
-description: "Workspace console page: the read-only live session task overview of one project, fed by the sessionTasks Remote."
+description: "Workspace console page: the live session task overview of one project, with click-through and first-prompt dispatch, fed by the sessionTasks Remote."
 kind: "package-reference"
 ---
 
@@ -32,6 +32,8 @@ Mount the page in a Web composition that also mounts a Host controller serving t
 - Contribute the `project-console` main panel and its sidebar entry, with copy for the eight shipped Client languages.
 - Pick one Workspace, then read its live sessions, each row showing the Session title (falling back to *Untitled session*), its `running` or `idle` state, the relative time of its latest human prompt, its working directory, and the activity families still running for it; the header summarizes visible sessions and how many run.
 - Open the console from the sidebar entry, or from a Workspace row's "…" menu: that row's Workspace becomes the selected scope.
+- Select any session row to open its Conversation, where the shipped view streams the session's progress.
+- Write a first prompt and choose **Start session and send**: the console starts a session in the selected Workspace and hands the prompt to it through the shipped workspace navigation path, then shows that session's Conversation.
 - Re-read automatically after a session status or activity event, coalescing bursts into one read; **Refresh** reads on demand.
 - A failed read keeps the last rows visible and shows a compact retry notice; the full error state appears only when no rows were ever read.
 
@@ -70,7 +72,7 @@ The client plugin registers its dictionaries, creates the store, and registers t
 
 ## Model Experience
 
-None, as the page reads a Host Remote and renders browser UI without contributing model context or Session events.
+None, as the page reads a Host Remote and starts sessions only on an explicit user action; it contributes no model context or Session events.
 
 #### KV Cache effect
 
@@ -82,7 +84,8 @@ These limits define when this package is a poor fit or needs special operational
 
 - **Live sessions only** — sessions without a live Agent in this Host never appear, even when persisted jobs or schedules would report activity for them.
 - **Requires the Host Remote** — the page has no data path of its own; a composition without the controller shows the failure notice.
-- **No controls** — dispatch, interruption, and approvals belong to a later phase.
+- **Dispatch only starts a session** — the form always creates a new session; sending into an existing session, interruption, and approvals are deferred, and dispatch leaves the console for the new Conversation.
+- **No console-side stream** — focused progress is the shipped Conversation view; the console itself only refreshes its summary rows.
 - **Entry points are the sidebar and the Workspace row menu** — enabling the bundle is the deferred one-step path; without the page plugin the Workspace menu slot renders no extra row.
 - **Not in a bundle yet** — the package is experimental and must be mounted explicitly until an experimental bundle exists.
 

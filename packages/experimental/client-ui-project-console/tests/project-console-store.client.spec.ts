@@ -16,19 +16,35 @@ function snapshot(workspaceId: string, sessions: readonly SessionTaskView[]): Re
 function hostOf(
   workspaces: readonly ConsoleWorkspace[],
   read: (workspaceId?: string) => Promise<RemoteResult<SessionTasksSnapshot>>,
-): ProjectConsoleHost & { readonly reads: (string | undefined)[] } {
+): ProjectConsoleHost & {
+  readonly reads: (string | undefined)[]
+  readonly opened: string[]
+  readonly started: [string, string][]
+  failStart: boolean
+} {
   const reads: (string | undefined)[] = []
+  const opened: string[] = []
+  const started: [string, string][] = []
   let listener: (() => void) | undefined
-  return {
+  const host = {
     reads,
+    opened,
+    started,
+    failStart: false,
     listWorkspaces: () => workspaces,
-    subscribeWorkspaces: (next) => { listener = next; return () => { listener = undefined } },
-    snapshot: async (workspaceId) => {
+    subscribeWorkspaces: (next: () => void) => { listener = next; return () => { listener = undefined } },
+    snapshot: async (workspaceId?: string) => {
       reads.push(workspaceId)
       listener?.()
       return read(workspaceId)
     },
+    openSession: (sessionId: string) => { opened.push(sessionId) },
+    startSession: (workspaceId: string, prompt: string) => {
+      if (host.failStart) throw new Error('start refused')
+      started.push([workspaceId, prompt])
+    },
   }
+  return host
 }
 
 const alpha: ConsoleWorkspace = { id: 'alpha', title: 'Alpha', path: '/alpha' }
@@ -92,6 +108,43 @@ describe('ProjectConsoleStore', () => {
     store.scheduleRefresh()
     await vi.advanceTimersByTimeAsync(200)
     expect(host.reads).toEqual(['alpha'])
+    store.dispose()
+  })
+
+  it('opens a session in its Conversation through the host port', async () => {
+    const host = hostOf([alpha], async id => snapshot(id ?? '', [row('one')]))
+    const store = new ProjectConsoleStore(host)
+    store.openSession('one')
+    expect(host.opened).toEqual(['one'])
+    store.dispose()
+  })
+
+  it('dispatches a trimmed prompt into the selected Workspace', async () => {
+    const host = hostOf([alpha, beta], async id => snapshot(id ?? '', [row('one')]))
+    const store = new ProjectConsoleStore(host)
+    await store.refresh()
+    expect(store.dispatch('  fix the build  ')).toBe(true)
+    expect(host.started).toEqual([['alpha', 'fix the build']])
+    expect(store.getSnapshot()).toMatchObject({ dispatch: 'idle' })
+    store.dispose()
+  })
+
+  it('refuses an empty prompt or a missing Workspace without calling the host', async () => {
+    const host = hostOf([], async () => ({ ok: true, value: { sessions: [] } }))
+    const store = new ProjectConsoleStore(host)
+    expect(store.dispatch('   ')).toBe(false)
+    expect(store.dispatch('fix the build')).toBe(false)
+    expect(host.started).toEqual([])
+    store.dispose()
+  })
+
+  it('reports a dispatch failure and returns to the idle form state', async () => {
+    const host = hostOf([alpha], async id => snapshot(id ?? '', []))
+    const store = new ProjectConsoleStore(host)
+    await store.refresh()
+    host.failStart = true
+    expect(store.dispatch('fix the build')).toBe(false)
+    expect(store.getSnapshot()).toMatchObject({ dispatch: 'idle', dispatchFailed: true })
     store.dispose()
   })
 

@@ -1,5 +1,5 @@
 /** Workspace console page: live sessions and their running activity families. */
-import { useSyncExternalStore } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import type { HostObservable, InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ConsoleState, ConsoleWorkspace } from './ProjectConsoleStore.ts'
 import type { ProjectConsoleKey } from './locales.ts'
@@ -27,6 +27,10 @@ export interface ProjectConsoleInjected {
   readonly selectWorkspace: (workspaceId?: string) => void
   /** Re-read the selected Workspace overview. */
   readonly refresh: () => void
+  /** Show one Session's Conversation. */
+  readonly openSession: (sessionId: string) => void
+  /** Start a new Session with its first prompt; returns whether the call was made. */
+  readonly dispatch: (prompt: string) => boolean
 }
 
 /** Framework props of the workspace console page. */
@@ -51,7 +55,10 @@ function activityLabel(entry: ConsoleState['sessions'][number]['activity'][numbe
  * @param props - framework props, the page dictionary, and injected state/actions.
  * @returns the page body.
  */
-export function ProjectConsolePage({ t, store, workspaceOptions, selectedWorkspaceId, selectWorkspace, refresh }: ProjectConsolePageProps) {
+export function ProjectConsolePage({
+  t, store, workspaceOptions, selectedWorkspaceId, selectWorkspace, refresh, openSession, dispatch,
+}: ProjectConsolePageProps) {
+  const [prompt, setPrompt] = useState('')
   const state = useSyncExternalStore(
     listener => store.subscribe(listener),
     () => store.getSnapshot(),
@@ -81,6 +88,24 @@ export function ProjectConsolePage({ t, store, workspaceOptions, selectedWorkspa
           </select>
           <button type="button" className={css.select} onClick={() => { refresh() }}>{t('refresh')}</button>
         </div>
+        <form className={css.compose} onSubmit={(event) => {
+          event.preventDefault()
+          if (dispatch(prompt)) setPrompt('')
+        }}>
+          <textarea
+            className={css.prompt}
+            value={prompt}
+            rows={2}
+            placeholder={t('newSessionPrompt')}
+            onChange={(event) => { setPrompt(event.currentTarget.value) }}
+          />
+          <button type="submit" className={css.select} disabled={state.dispatch === 'sending' || prompt.trim() === ''}>
+            {state.dispatch === 'sending' ? t('newSessionSending') : t('newSessionSend')}
+          </button>
+        </form>
+        {state.dispatchFailed === true
+          ? <div className={css.notice} role="alert"><span className={css.noticeText}>{t('newSessionFailed')}</span></div>
+          : null}
       </header>
       <div className={css.body}>
         {state.status === 'error' && !hasRows
@@ -99,7 +124,13 @@ export function ProjectConsolePage({ t, store, workspaceOptions, selectedWorkspa
           ? <div className={css.empty}>{t('empty')}</div>
           : null}
         {state.sessions.map(session => (
-          <article key={session.sessionId} className={css.row}>
+          <button
+            key={session.sessionId}
+            type="button"
+            className={css.row}
+            aria-label={t('openSession')}
+            onClick={() => { openSession(session.sessionId) }}
+          >
             <div className={css.rowHead}>
               <span className={css.sessionId} title={session.sessionId}>{session.title ?? t('untitled')}</span>
               <span className={css.meta}>{session.status === 'running' ? t('running') : t('idle')}</span>
@@ -120,7 +151,7 @@ export function ProjectConsolePage({ t, store, workspaceOptions, selectedWorkspa
                   </span>
                 ))}
             </div>
-          </article>
+          </button>
         ))}
       </div>
     </section>

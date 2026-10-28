@@ -5,9 +5,12 @@ import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
+import { brandString } from '@deepseek-ai/dsh-brand'
+import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
+import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import sessionTasksRemote from '@deepseek-ai/dsh-experimental-api-session-tasks/remote'
 import { ProjectConsoleMenuItem, type ProjectConsoleMenuInjected } from './ProjectConsoleMenu.tsx'
 import { ProjectConsolePage, type ProjectConsoleInjected } from './ProjectConsolePage.tsx'
@@ -22,7 +25,7 @@ export const NS = 'projectConsole'
 export const PANEL_ID = 'project-console' as MainPanelId
 
 /** Client capabilities the page contributes through. */
-export const inject = ['slots', 'locale', 'remote', 'workspaces', 'layout']
+export const inject = ['slots', 'locale', 'remote', 'workspaces', 'layout', 'uiWorkspace']
 
 /**
  * Mount the overview Remote, then contribute the console entry, the page it
@@ -52,6 +55,10 @@ function registerUi(ctx: Context): void {
     snapshot: async workspaceId => workspaceId === undefined
       ? ctx.remote.sessionTasks.snapshot({})
       : ctx.remote.sessionTasks.snapshot({ workspaceId }),
+    openSession: (sessionId) => { ctx.uiWorkspace.openSession(brandString<SessionId>(sessionId)) },
+    startSession: (workspaceId, prompt) => {
+      ctx.uiWorkspace.startSession(brandString<WorkspaceId>(workspaceId), { prompt, clearPreviousDraft: true })
+    },
   })
   ctx.effect(() => () => { store.dispose() }, 'project-console: store')
   void store.refresh()
@@ -71,6 +78,8 @@ function registerUi(ctx: Context): void {
       selectedWorkspaceId: () => store.selectedWorkspaceId(),
       selectWorkspace: (workspaceId) => { void store.selectWorkspace(workspaceId) },
       refresh: () => { void store.refresh() },
+      openSession: (sessionId) => { store.openSession(sessionId) },
+      dispatch: prompt => store.dispatch(prompt),
     }),
   }, ProjectConsolePage)), 'project-console: page')
   ctx.effect(() => ctx.slots.inject('sidebar.workspaces.workspace.menu.item', () => ctx.slots.register({

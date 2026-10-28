@@ -17,11 +17,15 @@ export interface ConsoleState {
   /** Read lifecycle of the current overview. */
   readonly status: 'idle' | 'loading' | 'ready' | 'error'
   /** User-safe failure text, set only in the error state. */
-  readonly error?: string
+  readonly error?: string | undefined
   /** Workspace the visible rows belong to. */
   readonly workspaceId?: string
   /** Live sessions of that workspace. */
   readonly sessions: readonly SessionTaskView[]
+  /** Whether the new-Session dispatch form is in flight. */
+  readonly dispatch: 'idle' | 'sending'
+  /** Whether the last dispatch attempt failed before the Host accepted it. */
+  readonly dispatchFailed?: true | undefined
 }
 
 /** Host ports the store reads; tests can provide them without a browser. */
@@ -32,6 +36,10 @@ export interface ProjectConsoleHost {
   subscribeWorkspaces(listener: () => void): () => void
   /** Read one workspace-scoped overview through the Remote. */
   snapshot(workspaceId?: string): Promise<RemoteResult<SessionTasksSnapshot>>
+  /** Show one Session's Conversation, where the shipped stream renders its progress. */
+  openSession(sessionId: string): void
+  /** Start a new Session in the Workspace with its first prompt. */
+  startSession(workspaceId: string, prompt: string): void
 }
 
 /** Default coalescing window before an event-triggered re-read. */
@@ -40,7 +48,7 @@ const REFRESH_DELAY_MS = 150
 /** One page's overview state and refresh policy. */
 export class ProjectConsoleStore {
   private readonly listeners = new Set<() => void>()
-  private state: ConsoleState = { status: 'idle', sessions: [] }
+  private state: ConsoleState = { status: 'idle', sessions: [], dispatch: 'idle' }
   private workspaces: readonly ConsoleWorkspace[] = []
   private panelId: string | undefined
   private timer: ReturnType<typeof setTimeout> | undefined
@@ -87,6 +95,37 @@ export class ProjectConsoleStore {
   }
 
   /**
+   * Show one Session's Conversation.
+   * @param sessionId - the row to open.
+   */
+  openSession(sessionId: string): void {
+    if (this.disposed) return
+    this.host.openSession(sessionId)
+  }
+
+  /**
+   * Start a new Session in the selected Workspace and send its first prompt.
+   * @param prompt - non-empty prompt text.
+   * @returns whether the Host accepted the dispatch call.
+   */
+  dispatch(prompt: string): boolean {
+    const text = prompt.trim()
+    if (this.disposed || this.panelId === undefined || text === '') return false
+    this.state = { ...this.state, dispatch: 'sending', dispatchFailed: undefined }
+    this.emit()
+    try {
+      this.host.startSession(this.panelId, text)
+      this.state = { ...this.state, dispatch: 'idle' }
+      this.emit()
+      return true
+    } catch {
+      this.state = { ...this.state, dispatch: 'idle', dispatchFailed: true }
+      this.emit()
+      return false
+    }
+  }
+
+  /**
    * Select one Workspace and read its overview.
    * @param workspaceId - Workspace to display; omission keeps the current selection.
    * @returns completion after the selected Workspace's state settles.
@@ -115,12 +154,12 @@ export class ProjectConsoleStore {
     this.panelId ??= this.workspaces[0]?.id
     const workspaceId = this.panelId
     this.state = workspaceId === undefined
-      ? { status: 'loading', sessions: this.state.sessions }
-      : { status: 'loading', workspaceId, sessions: this.state.sessions }
+      ? { ...this.state, status: 'loading' }
+      : { ...this.state, status: 'loading', workspaceId }
     this.emit()
     const run = async (): Promise<void> => {
       if (workspaceId === undefined) {
-        this.state = { status: 'ready', sessions: [] }
+        this.state = { ...this.state, status: 'ready', sessions: [] }
         this.emit()
         return
       }
@@ -128,12 +167,12 @@ export class ProjectConsoleStore {
         const result = await this.host.snapshot(workspaceId)
         if (this.disposed || this.panelId !== workspaceId) return
         this.state = result.ok
-          ? { status: 'ready', workspaceId, sessions: result.value.sessions }
-          : { status: 'error', workspaceId, sessions: this.state.sessions, error: result.error.message }
+          ? { ...this.state, status: 'ready', workspaceId, sessions: result.value.sessions, error: undefined }
+          : { ...this.state, status: 'error', workspaceId, error: result.error.message }
       } catch (error) {
         if (this.disposed || this.panelId !== workspaceId) return
         this.state = {
-          status: 'error', workspaceId, sessions: this.state.sessions,
+          ...this.state, status: 'error', workspaceId,
           error: error instanceof Error ? error.message : String(error),
         }
       }

@@ -3,8 +3,8 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/experimental/client-ui-project-console/README.md
 /:
-  en: 145f0008d98e6411
-  zh: 87a54ba0f979aae7
+  en: 1021aa5c1b2d7c3c
+  zh: 79d68d7e72015d11
 /deepseek-ai-dsh-experimental-client-ui-project-console:
   en: 8ab180af62aacfbd
   zh: 672b570744254953
@@ -18,8 +18,8 @@
   en: 0c8b3a1d35776ae5
   zh: 819535c12da5f957
 /deepseek-ai-dsh-experimental-client-ui-project-console/use-this-package/what-the-page-can-do:
-  en: 0043ae962574bf29
-  zh: 6d18bb83a1caa962
+  en: be4a05f0f9f0bd55
+  zh: 9de3639ae2f1c9ed
 /deepseek-ai-dsh-experimental-client-ui-project-console/use-this-package/failures-and-recovery:
   en: 449315238034132d
   zh: b78ba5c2cd10db78
@@ -39,14 +39,14 @@
   en: bb3863c74a85f62b
   zh: 3a5aced4219018eb
 /deepseek-ai-dsh-experimental-client-ui-project-console/model-experience:
-  en: e779e25bc83d16cd
-  zh: 32007ce4a2646b71
+  en: a57a78497da04111
+  zh: 82858081f473b073
 /deepseek-ai-dsh-experimental-client-ui-project-console/model-experience/kv-cache-effect:
   en: 512baabc4607d49a
   zh: dc7d35bf0a73784a
 /deepseek-ai-dsh-experimental-client-ui-project-console/known-limitations-and-deferred-work:
-  en: 5ee41a3a41e17051
-  zh: 462da45cc816bbeb
+  en: 958c789d43e849ea
+  zh: 102730787a6bcecd
 /deepseek-ai-dsh-experimental-client-ui-project-console/known-limitations-and-deferred-work/dev-note:
   en: d2f0d68fe29fb750
   zh: 6fc592fcae35a34d
