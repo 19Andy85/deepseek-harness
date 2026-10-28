@@ -1,6 +1,6 @@
-/** Session row menu entry that opens the project console for the row's workspace. */
+/** Workspace row menu entry that opens the project console on that Workspace. */
 import { MenuItemButton } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { SessionId } from '@deepseek-ai/dsh-session'
+import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
@@ -8,14 +8,14 @@ import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
 /** Behavior the menu row injects. */
 export interface ProjectConsoleMenuInjected {
   /**
-   * Open the console for the Workspace that accounts this Session.
-   * @param sessionId - the menu row's Session.
+   * Open the console on the row's Workspace.
+   * @param workspaceId - the menu row's Workspace.
    */
-  readonly openConsole: (sessionId: SessionId) => void
+  readonly openConsole: (workspaceId: WorkspaceId) => void
 }
 
 /** Framework props and the console dictionary of the menu row. */
-export type ProjectConsoleMenuItemProps = PropsRuntime<'sidebar.workspaces.session.menu.item'>
+export type ProjectConsoleMenuItemProps = PropsRuntime<'sidebar.workspaces.workspace.menu.item'>
   & PropsLocale<'projectConsole'>
   & InjectFace<ProjectConsoleMenuInjected>
 
@@ -25,14 +25,14 @@ export type ProjectConsoleMenuItemProps = PropsRuntime<'sidebar.workspaces.sessi
  * @returns the menu row.
  */
 export function ProjectConsoleMenuItem(props: ProjectConsoleMenuItemProps) {
-  const { sessionId, useMenuOpenState, openConsole, t } = props
+  const { workspaceId, useMenuOpenState, openConsole, t } = props
   const [, setMenuOpen] = useMenuOpenState()
   return (
     <MenuItemButton
       icon={<ProjectConsolePanelIcon />}
       onSelect={() => {
         setMenuOpen(false)
-        openConsole(sessionId)
+        openConsole(workspaceId)
       }}
     >
       {t('openConsole')}

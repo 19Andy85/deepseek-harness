@@ -5,7 +5,7 @@ import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
-import type { SessionId } from '@deepseek-ai/dsh-session'
+import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import sessionTasksRemote from '@deepseek-ai/dsh-experimental-api-session-tasks/remote'
@@ -73,20 +73,18 @@ function registerUi(ctx: Context): void {
       refresh: () => { void store.refresh() },
     }),
   }, ProjectConsolePage)), 'project-console: page')
-  ctx.effect(() => ctx.slots.inject('sidebar.workspaces.session.menu.item', () => ctx.slots.register({
-    name: 'sidebar.workspaces.session.menu.item',
+  ctx.effect(() => ctx.slots.inject('sidebar.workspaces.workspace.menu.item', () => ctx.slots.register({
+    name: 'sidebar.workspaces.workspace.menu.item',
     id: 'project-console',
-    order: 460,
+    order: 100,
     locale: NS,
     inject: (): ProjectConsoleMenuInjected => ({
-      openConsole: (sessionId: SessionId) => {
-        const workspace = ctx.workspaces.list.getSnapshot().items
-          .find(item => item.sessionIds.includes(sessionId))
+      openConsole: (workspaceId: WorkspaceId) => {
         ctx.layout.selectPanel(PANEL_ID)
-        if (workspace !== undefined) void store.selectWorkspace(workspace.workspaceId)
+        void store.selectWorkspace(workspaceId)
       },
     }),
-  }, ProjectConsoleMenuItem)), 'project-console: session menu')
+  }, ProjectConsoleMenuItem)), 'project-console: workspace menu')
   ctx.effect(() => ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
     name: 'sidebar.panellist',
     id: PANEL_ID,

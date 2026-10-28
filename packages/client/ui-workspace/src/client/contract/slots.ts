@@ -82,6 +82,14 @@ export interface SessionRowOwnerProps {
   displayTitle: string
 }
 
+/** Owner share of one Workspace row menu occurrence: the Workspace the row shows. */
+export interface WorkspaceRowOwnerProps {
+  /** Workspace the row shows. */
+  readonly workspaceId: WorkspaceId
+  /** Row display title. */
+  readonly displayTitle: string
+}
+
 /** The row menu's open state as its owner holds it: the `useState` pair. */
 export type MenuOpenState = readonly [open: boolean, setOpen: (open: boolean) => void]
 
@@ -101,6 +109,17 @@ export type UseMenuOpenState = () => MenuOpenState
  * @returns the hook the entry calls.
  */
 export const menuOpenStateFactory: SlotHookFactory<'sidebar.workspaces.session.menu.item', UseMenuOpenState> =
+  (_standard, state) => () => state
+
+/**
+ * Bind the row's render occurrence into a Workspace menu entry's
+ * `useMenuOpenState` hook, the Workspace-row counterpart of
+ * {@link menuOpenStateFactory}.
+ * @param _standard - framework standard props (unused).
+ * @param state - the menu's open-state pair from the render occurrence.
+ * @returns the hook the entry calls.
+ */
+export const workspaceMenuOpenStateFactory: SlotHookFactory<'sidebar.workspaces.workspace.menu.item', UseMenuOpenState> =
   (_standard, state) => () => state
 
 /**
@@ -191,6 +210,22 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
       inject: { hooks: {
         menuOpenState: SlotHookFactory<'sidebar.workspaces.session.menu.item', UseMenuOpenState>
         shortcuts: HostObservable<readonly ShortcutCatalogEntry[]>
+      } }
+    }
+    /**
+     * Extra rows of one Workspace row's "..." menu, in ascending `order`.
+     * The owner renders the shipped rename row first and the danger delete row
+     * last; entries here fill the space between them. Each occurrence receives
+     * the Workspace identity and title, plus the menu's open state as its hook
+     * context, so an entry can dismiss the menu before opening another surface.
+     */
+    'sidebar.workspaces.workspace.menu.item': {
+      kind: 'list'
+      scope: 'root'
+      owner: WorkspaceRowOwnerProps
+      hookContext: MenuOpenState
+      inject: { hooks: {
+        menuOpenState: SlotHookFactory<'sidebar.workspaces.workspace.menu.item', UseMenuOpenState>
       } }
     }
     /**
@@ -296,6 +331,12 @@ export type WorkspaceViewStoreHandle = ReturnType<typeof createWorkspaceViewStor
 /** Props of one shipped row-menu entry: owner share + locale seat + the entry's own injected share. */
 export type SessionMenuItemProps<Injected extends object = object> =
   PropsRuntime<'sidebar.workspaces.session.menu.item'>
+  & PropsLocale<'workspace'>
+  & InjectFace<Injected>
+
+/** Props of one Workspace row menu entry: owner share + locale seat + the entry's own injected share. */
+export type WorkspaceMenuItemProps<Injected extends object = object> =
+  PropsRuntime<'sidebar.workspaces.workspace.menu.item'>
   & PropsLocale<'workspace'>
   & InjectFace<Injected>
 
@@ -485,6 +526,7 @@ export type WorkspaceBrowserProps =
   PropsRuntime<'sidebar.workspaces'>
   & PropsRenderSlots<
     | 'sidebar.workspaces.directoryFlow'
+    | 'sidebar.workspaces.workspace.menu.item'
     | 'sidebar.workspaces.session.menu.item'
     | 'sidebar.workspaces.session.row.action'
     | 'sidebar.session.row.trailing'

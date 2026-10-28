@@ -18,7 +18,7 @@ import {
   HoverCard, IconArchiveOutlineRegular, IconEditOutlineRegular,
   IconEllipsisOutlineRegular, IconFolderCloseRegular, IconFolderOpenRegular,
   IconNewChatOutlineRegular, IconPinFillRegular, IconTrashOutlineRegular,
-  IconTriangleRightFillRegular, IconUnarchiveOutlineRegular, Menu, relativeTime, StateDot, Tooltip, useRowDragPreview,
+  IconTriangleRightFillRegular, IconUnarchiveOutlineRegular, Menu, MenuItemButton, relativeTime, StateDot, Tooltip, useRowDragPreview,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ShortcutCatalogEntry } from '@deepseek-ai/dsh-client-shortcuts/client'
 import type { StateDotState } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -52,6 +52,9 @@ type RowRenderSlots = PropsRenderSlots<
   | 'sidebar.session.row.leading'
   | 'sidebar.session.row.hover'
 >['renderSlot']
+
+/** Child-seat renderer for one Workspace row's menu entries. */
+type WorkspaceMenuRenderSlot = PropsRenderSlots<'sidebar.workspaces.workspace.menu.item'>['renderSlot']
 
 /** Row display title: blank rows show the localized New Session label. */
 function displayTitle(node: SessionNode, t: RowTranslate): string {
@@ -225,6 +228,7 @@ type ProjectRowItemProps = {
   /** Host account home; POSIX home-rooted hover paths display as `~`. */
   home?: string | undefined
   t: RowTranslate
+  renderSlot?: WorkspaceMenuRenderSlot | undefined
 } & Pick<WorkspaceBrowserProps, 'useRemoteAccess' | 'useWorkspaceAccess'>
 
 /** Which of one header row's actions the caller's access snapshot allows. */
@@ -278,7 +282,7 @@ function WorkspaceProjectRow({ workspaceId, ...props }: ProjectRowItemProps & { 
 }
 
 function ProjectRow({
-  group, containsCurrentDescendant = false, onToggle, onCreate, actions, drag: offeredDrag, home, newShortcut, t, access,
+  group, containsCurrentDescendant = false, onToggle, onCreate, actions, drag: offeredDrag, home, newShortcut, t, renderSlot, access,
 }: ProjectRowItemProps & { access: ProjectRowAccess }) {
   const drag = access.reorder ? offeredDrag : undefined
   const row = group
@@ -287,10 +291,7 @@ function ProjectRow({
   const active = containsCurrentDescendant || (group.expanded && group.containsCurrent)
   const [menuOpen, setMenuOpen] = useState(false)
   const dragPreview = useRowDragPreview(css.dragPreview as string, DRAG_PREVIEW_PROPERTIES)
-  const workspaceMenuItems = [
-    ...access.rename ? [{ id: 'rename', label: t('rename'), icon: <IconEditOutlineRegular /> }] : [],
-    ...access.delete ? [{ id: 'delete', label: t('delete.workspace'), icon: <IconTrashOutlineRegular />, danger: true }] : [],
-  ]
+  const menuOpenState = useMemo((): MenuOpenState => [menuOpen, setMenuOpen], [menuOpen])
   const ownRow = (
     <div
       className={clsx(css.projectRow, menuOpen && css.menuOpen)}
@@ -319,20 +320,10 @@ function ProjectRow({
         <span className={css.title}>{label}</span>
       </span>
       <span className={css.rowActions}>
-        {actions !== undefined && workspaceMenuItems.length > 0 && (
+        {actions !== undefined && (access.rename || access.delete) && (
           <Menu
             open={menuOpen}
             onClose={() => { setMenuOpen(false) }}
-            items={workspaceMenuItems}
-            onSelect={(id) => {
-              setMenuOpen(false)
-              // Unknown ids leave before the dispatch: a future menu row must
-              // not inherit the destructive branch as an else fallback.
-              /* v8 ignore next -- Menu can emit only the rename and delete rows supplied above. */
-              if (id !== 'rename' && id !== 'delete') return
-              if (id === 'rename') actions.rename()
-              else actions.delete()
-            }}
             portal
             closeOnPointerLeave
             anchor={(
@@ -345,7 +336,38 @@ function ProjectRow({
                 <IconEllipsisOutlineRegular />
               </button>
             )}
-          />
+          >
+            {access.rename && (
+              <MenuItemButton
+                icon={<IconEditOutlineRegular />}
+                onSelect={() => {
+                  setMenuOpen(false)
+                  actions.rename()
+                }}
+              >
+                {t('rename')}
+              </MenuItemButton>
+            )}
+            {row.workspaceId === undefined || renderSlot === undefined
+              ? null
+              : renderSlot(
+                'sidebar.workspaces.workspace.menu.item',
+                { workspaceId: row.workspaceId, displayTitle: label },
+                { hookContext: menuOpenState },
+              )}
+            {access.delete && (
+              <MenuItemButton
+                danger
+                icon={<IconTrashOutlineRegular />}
+                onSelect={() => {
+                  setMenuOpen(false)
+                  actions.delete()
+                }}
+              >
+                {t('delete.workspace')}
+              </MenuItemButton>
+            )}
+          </Menu>
         )}
         {access.create && (
           <Tooltip label={t('actions.newSession')} shortcutKeys={newShortcut?.keys} side="bottom" align="end" delayMs={500} portal>

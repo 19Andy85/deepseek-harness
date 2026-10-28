@@ -560,6 +560,7 @@ function SessionTree({
           group={group}
           useRemoteAccess={useRemoteAccess}
           useWorkspaceAccess={useWorkspaceAccess}
+          renderSlot={renderSlot}
           containsCurrentDescendant={currentAncestors.has(group.key)}
           home={home}
           t={t}

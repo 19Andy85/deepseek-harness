@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, createEvent, fireEvent, render, screen } from '@testing-library/react'
-import type { ComponentProps } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { allowAllAccess, makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { en as commonEn } from '@deepseek-ai/dsh-client-locale/src/locales/en.ts'
 import { HoverCardGroup, MenuItemButton, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
-import type { MenuOpenState, SessionRowOwnerProps } from '../src/client/contract/slots.ts'
+import type { MenuOpenState, SessionRowOwnerProps, WorkspaceRowOwnerProps } from '../src/client/contract/slots.ts'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
 import type { RowDragProps } from '../src/client/rows/Rows.tsx'
 import {
@@ -27,6 +27,7 @@ const wid = (id: string) => id as WorkspaceId
 
 /** The row lists and child seats a Session row renders. */
 type RowSlotName =
+  | 'sidebar.workspaces.workspace.menu.item'
   | 'sidebar.workspaces.session.menu.item'
   | 'sidebar.workspaces.session.row.action'
   | 'sidebar.session.row.trailing'
@@ -37,6 +38,20 @@ type SessionNodeItemProps = ComponentProps<typeof SessionNodeItemComponent>
 type ProjectRowItemProps = ComponentProps<typeof ProjectRowItemComponent>
 
 const renderNoRowEntries: RowRenderSlot = () => null
+
+/** One Workspace menu entry: asserts the owner share and dismisses the menu on select. */
+function renderWorkspaceMenuEntry<K extends 'sidebar.workspaces.workspace.menu.item'>(
+  _name: K,
+  owner: WorkspaceRowOwnerProps,
+  options: { hookContext: MenuOpenState },
+): ReactNode {
+  const [, setOpen] = options.hookContext
+  return (
+    <button type="button" role="menuitem" data-owner={owner.displayTitle} onClick={() => { setOpen(false) }}>
+      插件菜单项
+    </button>
+  )
+}
 
 // Direct row specs use the real required Slot share, empty unless the case supplies entries.
 /**
@@ -651,6 +666,22 @@ describe('workspace browser rows', () => {
     // Escape closes without selecting (Menu onClose path).
     fireEvent.click(screen.getByRole('button', { name: '工作区“Project”的操作' }))
     fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByRole('menu')).toBeNull()
+  })
+
+  it('renders workspace menu slot entries between rename and the danger delete row', () => {
+    const group: GroupNode = {
+      key: 'project', workspaceId: wid('project'), cwd: '/projects/project', createdAt: 0, label: 'Project',
+      sessionCount: 0, expanded: false, containsCurrent: false, sessions: [],
+    }
+    render(<ProjectRowItem
+      group={group} onToggle={vi.fn()} onCreate={vi.fn()}
+      actions={{ rename: () => {}, delete: () => {} }} t={t} renderSlot={renderWorkspaceMenuEntry as RowRenderSlot}
+    />)
+    fireEvent.click(screen.getByRole('button', { name: '工作区“Project”的操作' }))
+    const entries = screen.getAllByRole('menuitem').map(node => node.textContent)
+    expect(entries).toEqual(['重命名', '插件菜单项', '删除工作区'])
+    fireEvent.click(screen.getByRole('menuitem', { name: '插件菜单项' }))
     expect(screen.queryByRole('menu')).toBeNull()
   })
 

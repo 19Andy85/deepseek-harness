@@ -111,6 +111,10 @@ Client callers can pass `prompt`, `whenDraftExists`, and `clearPreviousDraft` in
 
 Each registration declares a **directory-flow child hole** (`single` kind: `conversation.hero.workspace.directoryFlow` / `sidebar.workspaces.directoryFlow`) that the composed picker package's client half fills with its picking interaction — the `-native` backend's renderless OS-chooser driver, an in-app browsing dialog under a `-browse` composition. The flat **Add workspace...** action renders only while the surface's hole is occupied; an empty hole means the composition has no picking affordance. The sidebar Add workspace action preserves an existing blank Session and its draft. This package owns the trigger and the adoption: the occupant reports one picked path per open through the hole's owner conversation (`open`/`busy`/`onPicked`/`onCancel`/`onError`), and the owner adopts it through the object layer, selecting the committed Workspace only after its list projection has refreshed.
 
+### Workspace row menu
+
+A Workspace row's "..." menu composes three parts in render order: the shipped **Rename** row, the entries of the `sidebar.workspaces.workspace.menu.item` `list` slot in ascending `order`, and the danger **Delete Workspace** row last. An entry receives the row's `workspaceId` and `displayTitle` plus the menu's open-state hook, so it dismisses the menu before opening another surface. The menu renders only while the caller's access snapshot grants Rename or Delete on that Workspace.
+
 ### Session row actions
 
 The Session row's "..." menu and its hover buttons are two `list` slots declared by the WorkspaceBrowser entry: `sidebar.workspaces.session.menu.item` and `sidebar.workspaces.session.row.action`. Every menu row and every hover button is an entry, this package's own actions included: `apply` registers `pin` (menu 100, button 200), `rename` (200), `fork` (300), `archive` (menu 400, button 100), and `session-id` (450) the way a client plugin registers its actions, so a plugin action lands wherever its `order` says, and reusing a shipped id at another `priority` shadows that action.

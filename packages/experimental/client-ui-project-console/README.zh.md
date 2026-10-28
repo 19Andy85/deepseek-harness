@@ -31,7 +31,7 @@ kind: "package-reference"
 
 - 贡献 `project-console` 主面板及其侧栏入口，并带有八种客户端语言的文案。
 - 选择一个工作区，读取其活跃会话；每行给出会话、`running` 或 `idle` 状态、工作目录，以及仍在运行的活动家族；页头汇总可见会话数与其中运行中的数量。
-- 从侧栏入口打开控制台，或从会话行的"…"菜单打开：该行所属工作区会成为选中范围。
+- 从侧栏入口打开控制台，或从工作区行的"…"菜单打开：该行工作区会成为选中范围。
 - 会话状态或活动事件后自动重读，并把连续事件合并为一次读取；**刷新** 按钮按需读取。
 - 读取失败时保留上一次的行，并显示紧凑的重试提示；只有在从未读到数据时才显示完整错误态。
 
@@ -54,7 +54,7 @@ kind: "package-reference"
 - `src/client/index.ts`——语言注册、`main` 面板注册与 `sidebar.panellist` 入口。
 - `src/client/ProjectConsoleStore.ts`——工作区选择、总览读取、失败保留与刷新合并。
 - `src/client/ProjectConsolePage.tsx`——页面组件、骨架屏、提示、数据行与页头汇总。
-- `src/client/ProjectConsoleMenu.tsx`——会话行菜单入口，打开该行所属工作区的控制台。
+- `src/client/ProjectConsoleMenu.tsx`——工作区行菜单入口，在该行工作区上打开控制台。
 - `src/client/ProjectConsolePage.module.css`——页面样式表，全部取自主题 token。
 - `src/client/locales.ts`——八种语言字典。
 
@@ -86,7 +86,7 @@ kind: "package-reference"
 - **仅活跃会话**——本 Host 中没有活跃智能体的会话不会出现，即使持久化的任务或定时器会为它报告活动。
 - **依赖 Host Remote**——页面自身没有数据通道；未挂载控制器时显示失败提示。
 - **暂无控制动作**——派发、中断与审批属于后续阶段。
-- **入口为侧栏与会话行菜单**——工作区级菜单入口与一键启用的 bundle 推迟；会话菜单入口只对工作区内已列出的会话生效。
+- **入口为侧栏与工作区行菜单**——通过 bundle 一键启用是推迟的一步式路径；未挂载页面插件时，工作区菜单槽位不会渲染额外行。
 - **尚未进入 bundle**——本包处于实验阶段，在出现实验性 bundle 之前需要显式挂载。
 
 <a id="dev-note"></a>

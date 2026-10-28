@@ -111,6 +111,10 @@ Session 行可通过 Tab 聚焦，使用不带修饰键的 Enter 或空格打开
 
 每个注册各自声明一个**目录流子 slot**（`single` kind：`conversation.hero.workspace.directoryFlow`／`sidebar.workspaces.directoryFlow`），由组合的选择器包 client half 填入其选取交互——`-native` 后端的无渲染 OS 选择器驱动，`-browse` 组合下则是应用内浏览对话框。平铺显示的**添加工作区…** 操作仅在当前界面的 slot 被占用时渲染；slot 为空意味着该组合没有目录选择能力。侧栏的添加工作区操作保留已有空白 Session 及其草稿。本包持有触发与接纳：占用方通过 slot 的属主交互约定（`open`/`busy`/`onPicked`/`onCancel`/`onError`）每次打开上报一个所选路径，owner 通过对象层接纳它，并等待 Workspace 列表投影刷新后才选中已提交的 Workspace。
 
+### Workspace 行菜单
+
+Workspace 行的 "..." 菜单按渲染顺序由三部分组成：内置 **Rename** 行、`sidebar.workspaces.workspace.menu.item` `list` slot 中按 `order` 升序的条目，以及最后的危险操作 **Delete Workspace** 行。条目会收到该行的 `workspaceId`、`displayTitle` 与菜单开合 hook，因此可在切换到其他界面前先关闭菜单。仅当调用方的访问快照授予该 Workspace 的 Rename 或 Delete 时，菜单才会渲染。
+
 ### Session 行 action
 
 Session 行的 "..." 菜单和行尾悬停按钮是 WorkspaceBrowser 注册项声明的两个 `list` slot：`sidebar.workspaces.session.menu.item` 与 `sidebar.workspaces.session.row.action`。每一个菜单行、每一个悬停按钮都是条目，本包自己的 action 也不例外：`apply` 以客户端插件注册自己 action 的同一方式注册 `pin`（菜单 100、按钮 200）、`rename`（200）、`fork`（300）、`archive`（菜单 400、按钮 100）和 `session-id`（450），因此插件 action 落在其 `order` 所指的位置，以另一个 `priority` 复用内置 id 则遮蔽该 action。
