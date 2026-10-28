@@ -6,6 +6,8 @@ import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import { brandString } from '@deepseek-ai/dsh-brand'
+import { randomUUID } from '@deepseek-ai/dsh-util-crypto'
+import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
@@ -25,7 +27,7 @@ export const NS = 'projectConsole'
 export const PANEL_ID = 'project-console' as MainPanelId
 
 /** Client capabilities the page contributes through. */
-export const inject = ['slots', 'locale', 'remote', 'workspaces', 'layout', 'uiWorkspace']
+export const inject = ['slots', 'locale', 'remote', 'remote.session', 'workspaces', 'layout', 'uiWorkspace']
 
 /**
  * Mount the overview Remote, then contribute the console entry, the page it
@@ -56,17 +58,30 @@ function registerUi(ctx: Context): void {
       ? ctx.remote.sessionTasks.snapshot({})
       : ctx.remote.sessionTasks.snapshot({ workspaceId }),
     openSession: (sessionId) => { ctx.uiWorkspace.openSession(brandString<SessionId>(sessionId)) },
-    startSession: (workspaceId, prompt) => {
-      ctx.uiWorkspace.startSession(brandString<WorkspaceId>(workspaceId), { prompt, clearPreviousDraft: true })
+    createSession: async (workspaceId) => {
+      const result = await ctx.remote.session.create({ workspaceId: brandString<WorkspaceId>(workspaceId) })
+      if (!result.ok) throw new Error(result.error.message)
+      return result.value.sessionId
+    },
+    promptSession: async (sessionId, text) => {
+      const result = await ctx.remote.session.prompt({
+        requestId: brandString<SessionRequestId>(randomUUID()),
+        sessionId: brandString<SessionId>(sessionId),
+        mode: 'queue',
+        content: [{ type: 'text', text }],
+      })
+      if (!result.ok) throw new Error(result.error.message)
     },
   })
   ctx.effect(() => () => { store.dispose() }, 'project-console: store')
   void store.refresh()
   ctx.effect(() => {
+    const offAdded = ctx.remote.$on('api-session/added', () => { store.scheduleRefresh() })
+    const offRemoved = ctx.remote.$on('api-session/removed', () => { store.scheduleRefresh() })
     const offStatus = ctx.remote.$on('api-session/status', () => { store.scheduleRefresh() })
     const offActivity = ctx.remote.$on('api-session/activity', () => { store.scheduleRefresh() })
     const offReset = ctx.on('connection/reset', () => { store.scheduleRefresh() })
-    return () => { offStatus(); offActivity(); offReset() }
+    return () => { offAdded(); offRemoved(); offStatus(); offActivity(); offReset() }
   }, 'project-console: live refresh')
   ctx.effect(() => ctx.slots.inject('main', () => ctx.slots.register({
     name: 'main',

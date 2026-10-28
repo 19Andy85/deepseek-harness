@@ -19,18 +19,23 @@ function hostOf(
 ): ProjectConsoleHost & {
   readonly reads: (string | undefined)[]
   readonly opened: string[]
-  readonly started: [string, string][]
-  failStart: boolean
+  readonly created: string[]
+  readonly prompted: [string, string][]
+  failCreate: boolean
+  failPrompt: boolean
 } {
   const reads: (string | undefined)[] = []
   const opened: string[] = []
-  const started: [string, string][] = []
+  const created: string[] = []
+  const prompted: [string, string][] = []
   let listener: (() => void) | undefined
   const host = {
     reads,
     opened,
-    started,
-    failStart: false,
+    created,
+    prompted,
+    failCreate: false,
+    failPrompt: false,
     listWorkspaces: () => workspaces,
     subscribeWorkspaces: (next: () => void) => { listener = next; return () => { listener = undefined } },
     snapshot: async (workspaceId?: string) => {
@@ -39,9 +44,14 @@ function hostOf(
       return read(workspaceId)
     },
     openSession: (sessionId: string) => { opened.push(sessionId) },
-    startSession: (workspaceId: string, prompt: string) => {
-      if (host.failStart) throw new Error('start refused')
-      started.push([workspaceId, prompt])
+    createSession: async (workspaceId: string) => {
+      if (host.failCreate) throw new Error('create refused')
+      created.push(workspaceId)
+      return 'new-session'
+    },
+    promptSession: async (sessionId: string, prompt: string) => {
+      if (host.failPrompt) throw new Error('prompt refused')
+      prompted.push([sessionId, prompt])
     },
   }
   return host
@@ -119,31 +129,45 @@ describe('ProjectConsoleStore', () => {
     store.dispose()
   })
 
-  it('dispatches a trimmed prompt into the selected Workspace', async () => {
+  it('creates a session, sends its trimmed first prompt, and opens it', async () => {
     const host = hostOf([alpha, beta], async id => snapshot(id ?? '', [row('one')]))
     const store = new ProjectConsoleStore(host)
     await store.refresh()
-    expect(store.dispatch('  fix the build  ')).toBe(true)
-    expect(host.started).toEqual([['alpha', 'fix the build']])
-    expect(store.getSnapshot()).toMatchObject({ dispatch: 'idle' })
+    expect(await store.dispatch('  fix the build  ')).toBe(true)
+    expect(host.created).toEqual(['alpha'])
+    expect(host.prompted).toEqual([['new-session', 'fix the build']])
+    expect(host.opened).toEqual(['new-session'])
+    expect(store.getSnapshot()).toMatchObject({ dispatch: 'idle', dispatchFailed: undefined })
     store.dispose()
   })
 
   it('refuses an empty prompt or a missing Workspace without calling the host', async () => {
     const host = hostOf([], async () => ({ ok: true, value: { sessions: [] } }))
     const store = new ProjectConsoleStore(host)
-    expect(store.dispatch('   ')).toBe(false)
-    expect(store.dispatch('fix the build')).toBe(false)
-    expect(host.started).toEqual([])
+    expect(await store.dispatch('   ')).toBe(false)
+    expect(await store.dispatch('fix the build')).toBe(false)
+    expect(host.created).toEqual([])
     store.dispose()
   })
 
-  it('reports a dispatch failure and returns to the idle form state', async () => {
+  it('reports a prompt failure, keeps the session unopened, and returns to idle', async () => {
     const host = hostOf([alpha], async id => snapshot(id ?? '', []))
     const store = new ProjectConsoleStore(host)
     await store.refresh()
-    host.failStart = true
-    expect(store.dispatch('fix the build')).toBe(false)
+    host.failPrompt = true
+    expect(await store.dispatch('fix the build')).toBe(false)
+    expect(host.opened).toEqual([])
+    expect(store.getSnapshot()).toMatchObject({ dispatch: 'idle', dispatchFailed: true })
+    store.dispose()
+  })
+
+  it('reports a creation failure and returns to idle', async () => {
+    const host = hostOf([alpha], async id => snapshot(id ?? '', []))
+    const store = new ProjectConsoleStore(host)
+    await store.refresh()
+    host.failCreate = true
+    expect(await store.dispatch('fix the build')).toBe(false)
+    expect(host.prompted).toEqual([])
     expect(store.getSnapshot()).toMatchObject({ dispatch: 'idle', dispatchFailed: true })
     store.dispose()
   })

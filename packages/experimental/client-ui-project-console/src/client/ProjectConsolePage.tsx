@@ -29,8 +29,8 @@ export interface ProjectConsoleInjected {
   readonly refresh: () => void
   /** Show one Session's Conversation. */
   readonly openSession: (sessionId: string) => void
-  /** Start a new Session with its first prompt; returns whether the call was made. */
-  readonly dispatch: (prompt: string) => boolean
+  /** Start a new Session with its first prompt; resolves to whether it was created and accepted. */
+  readonly dispatch: (prompt: string) => Promise<boolean>
 }
 
 /** Framework props of the workspace console page. */
@@ -90,7 +90,7 @@ export function ProjectConsolePage({
         </div>
         <form className={css.compose} onSubmit={(event) => {
           event.preventDefault()
-          if (dispatch(prompt)) setPrompt('')
+          void dispatch(prompt).then((accepted) => { if (accepted) setPrompt('') })
         }}>
           <textarea
             className={css.prompt}

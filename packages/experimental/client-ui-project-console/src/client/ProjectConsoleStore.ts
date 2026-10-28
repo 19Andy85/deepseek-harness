@@ -38,8 +38,10 @@ export interface ProjectConsoleHost {
   snapshot(workspaceId?: string): Promise<RemoteResult<SessionTasksSnapshot>>
   /** Show one Session's Conversation, where the shipped stream renders its progress. */
   openSession(sessionId: string): void
-  /** Start a new Session in the Workspace with its first prompt. */
-  startSession(workspaceId: string, prompt: string): void
+  /** Create a Session in the Workspace and return its identity. */
+  createSession(workspaceId: string): Promise<string>
+  /** Send the first prompt into a created Session. */
+  promptSession(sessionId: string, prompt: string): Promise<void>
 }
 
 /** Default coalescing window before an event-triggered re-read. */
@@ -104,18 +106,20 @@ export class ProjectConsoleStore {
   }
 
   /**
-   * Start a new Session in the selected Workspace and send its first prompt.
+   * Create a Session in the selected Workspace, send its first prompt, and open it.
    * @param prompt - non-empty prompt text.
-   * @returns whether the Host accepted the dispatch call.
+   * @returns whether the Session was created and accepted the prompt.
    */
-  dispatch(prompt: string): boolean {
+  async dispatch(prompt: string): Promise<boolean> {
     const text = prompt.trim()
     if (this.disposed || this.panelId === undefined || text === '') return false
     this.state = { ...this.state, dispatch: 'sending', dispatchFailed: undefined }
     this.emit()
     try {
-      this.host.startSession(this.panelId, text)
-      this.state = { ...this.state, dispatch: 'idle' }
+      const sessionId = await this.host.createSession(this.panelId)
+      await this.host.promptSession(sessionId, text)
+      this.host.openSession(sessionId)
+      this.state = { ...this.state, dispatch: 'idle', dispatchFailed: undefined }
       this.emit()
       return true
     } catch {
