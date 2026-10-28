@@ -6,6 +6,12 @@ export const en = {
   loading: 'Loading live sessions…',
   empty: 'No live sessions in this project yet.',
   error: 'Could not read the live sessions. Retry, or check the plugin connection.',
+  workspace: 'Workspace',
+  running: 'Running',
+  idle: 'Idle',
+  refresh: 'Refresh',
+  retry: 'Retry',
+  noActivity: 'No activity',
 }
 
 /** Keys shared by every dictionary. */
@@ -19,6 +25,12 @@ export const zh: Record<ProjectConsoleKey, string> = {
   loading: '正在读取活跃会话…',
   empty: '本项目当前没有活跃会话。',
   error: '无法读取活跃会话，请重试或检查插件连接。',
+  workspace: '工作区',
+  running: '运行中',
+  idle: '空闲',
+  refresh: '刷新',
+  retry: '重试',
+  noActivity: '无活动',
 }
 
 /** Japanese copy. */
@@ -29,6 +41,12 @@ export const ja: Record<ProjectConsoleKey, string> = {
   loading: '実行中セッションを読み込み中…',
   empty: 'このプロジェクトに実行中セッションはありません。',
   error: '実行中セッションを読み取れませんでした。再試行するか、プラグイン接続を確認してください。',
+  workspace: 'ワークスペース',
+  running: '実行中',
+  idle: '待機中',
+  refresh: '更新',
+  retry: '再試行',
+  noActivity: 'アクティビティなし',
 }
 
 /** Spanish copy. */
@@ -39,6 +57,12 @@ export const es: Record<ProjectConsoleKey, string> = {
   loading: 'Cargando sesiones activas…',
   empty: 'Aún no hay sesiones activas en este proyecto.',
   error: 'No se pudieron leer las sesiones activas. Reintenta o revisa la conexión del plugin.',
+  workspace: 'Espacio de trabajo',
+  running: 'En ejecución',
+  idle: 'Inactiva',
+  refresh: 'Actualizar',
+  retry: 'Reintentar',
+  noActivity: 'Sin actividad',
 }
 
 /** French copy. */
@@ -49,6 +73,12 @@ export const fr: Record<ProjectConsoleKey, string> = {
   loading: 'Chargement des sessions actives…',
   empty: 'Aucune session active dans ce projet pour l’instant.',
   error: 'Impossible de lire les sessions actives. Réessayez ou vérifiez la connexion du plugin.',
+  workspace: 'Espace de travail',
+  running: 'En cours',
+  idle: 'Inactive',
+  refresh: 'Actualiser',
+  retry: 'Réessayer',
+  noActivity: 'Aucune activité',
 }
 
 /** German copy. */
@@ -59,6 +89,12 @@ export const de: Record<ProjectConsoleKey, string> = {
   loading: 'Aktive Sitzungen werden geladen…',
   empty: 'In diesem Projekt sind noch keine Sitzungen aktiv.',
   error: 'Die aktiven Sitzungen konnten nicht gelesen werden. Versuche es erneut oder prüfe die Plugin-Verbindung.',
+  workspace: 'Arbeitsbereich',
+  running: 'Aktiv',
+  idle: 'Inaktiv',
+  refresh: 'Aktualisieren',
+  retry: 'Erneut versuchen',
+  noActivity: 'Keine Aktivität',
 }
 
 /** Russian copy. */
@@ -69,6 +105,12 @@ export const ru: Record<ProjectConsoleKey, string> = {
   loading: 'Загрузка активных сеансов…',
   empty: 'В этом проекте пока нет активных сеансов.',
   error: 'Не удалось прочитать активные сеансы. Повторите попытку или проверьте подключение плагина.',
+  workspace: 'Рабочее пространство',
+  running: 'Выполняется',
+  idle: 'Бездействует',
+  refresh: 'Обновить',
+  retry: 'Повторить',
+  noActivity: 'Нет активности',
 }
 
 /** Portuguese copy. */
@@ -79,4 +121,10 @@ export const pt: Record<ProjectConsoleKey, string> = {
   loading: 'A carregar sessões ativas…',
   empty: 'Ainda não há sessões ativas neste projeto.',
   error: 'Não foi possível ler as sessões ativas. Tente novamente ou verifique a ligação do plugin.',
+  workspace: 'Espaço de trabalho',
+  running: 'Em execução',
+  idle: 'Inativa',
+  refresh: 'Atualizar',
+  retry: 'Repetir',
+  noActivity: 'Sem atividade',
 }

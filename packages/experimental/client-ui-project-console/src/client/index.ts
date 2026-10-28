@@ -1,11 +1,15 @@
 /** Project console page: the sidebar entry and the workspace-scoped main panel it opens. */
 import type { Context } from '@deepseek-ai/cordis'
+import type {} from '@deepseek-ai/dsh-api-session-controller/client'
+import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
-import { ProjectConsolePage } from './ProjectConsolePage.tsx'
+import type {} from '@deepseek-ai/dsh-experimental-api-session-tasks/remote'
+import { ProjectConsolePage, type ProjectConsoleInjected } from './ProjectConsolePage.tsx'
 import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
+import { ProjectConsoleStore } from './ProjectConsoleStore.ts'
 import { de, en, es, fr, ja, pt, ru, zh } from './locales.ts'
 
 /** Locale namespace of the page copy. */
@@ -15,19 +19,44 @@ export const NS = 'projectConsole'
 export const PANEL_ID = 'project-console' as MainPanelId
 
 /** Client capabilities the page contributes through. */
-export const inject = ['slots', 'locale']
+export const inject = ['slots', 'locale', 'remote', 'remote.workspace', 'remote.sessionTasks', 'workspaces']
 
 /**
- * Contribute the console entry and the page it opens.
+ * Contribute the console entry and the page it opens, and keep the visible
+ * overview current while the Session model reports activity changes.
  * @param ctx - the browser plugin context.
  */
 export function apply(ctx: Context): void {
   ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'project-console: dictionaries')
   const t = ctx.locale.bind(NS)
+  const store = new ProjectConsoleStore({
+    listWorkspaces: () => ctx.workspaces.list.getSnapshot().items.map(workspace => ({
+      id: workspace.workspaceId, title: workspace.title, path: workspace.path,
+    })),
+    subscribeWorkspaces: listener => ctx.workspaces.list.subscribe(listener),
+    snapshot: async workspaceId => workspaceId === undefined
+      ? ctx.remote.sessionTasks.snapshot({})
+      : ctx.remote.sessionTasks.snapshot({ workspaceId }),
+  })
+  ctx.effect(() => () => { store.dispose() }, 'project-console: store')
+  void store.refresh()
+  ctx.effect(() => {
+    const offStatus = ctx.remote.$on('api-session/status', () => { store.scheduleRefresh() })
+    const offActivity = ctx.remote.$on('api-session/activity', () => { store.scheduleRefresh() })
+    const offReset = ctx.on('connection/reset', () => { store.scheduleRefresh() })
+    return () => { offStatus(); offActivity(); offReset() }
+  }, 'project-console: live refresh')
   ctx.effect(() => ctx.slots.inject('main', () => ctx.slots.register({
     name: 'main',
     key: PANEL_ID,
     locale: NS,
+    inject: (): ProjectConsoleInjected => ({
+      store,
+      workspaceOptions: () => store.workspaceOptions(),
+      selectedWorkspaceId: () => store.selectedWorkspaceId(),
+      selectWorkspace: (workspaceId) => { void store.selectWorkspace(workspaceId) },
+      refresh: () => { void store.refresh() },
+    }),
   }, ProjectConsolePage)), 'project-console: page')
   ctx.effect(() => ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
     name: 'sidebar.panellist',

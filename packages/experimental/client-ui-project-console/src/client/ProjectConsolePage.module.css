@@ -1,0 +1,131 @@
+/* Project console page: one scroller for the session list, a fixed head row. */
+.page {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: 100%;
+  padding: 0 clamp(24px, 4vw, 48px);
+  color: var(--dsw-alias-label-primary);
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 28px 0 16px;
+}
+
+.title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 500;
+}
+
+.subtitle {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+}
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.select {
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid var(--dsw-alias-settings-card-stroke);
+  background: var(--dsw-alias-settings-card-fill);
+  color: var(--dsw-alias-label-primary);
+  font-size: 13px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 8px;
+  min-height: 0;
+  overflow: auto;
+  padding-bottom: 32px;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--dsw-alias-settings-card-fill);
+  border: 1px solid var(--dsw-alias-settings-card-stroke);
+}
+
+.rowHead {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.sessionId {
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 12px;
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-skeleton);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+}
+
+.chipRunning {
+  color: var(--dsw-alias-brand-primary);
+}
+
+.empty {
+  display: grid;
+  place-items: center;
+  flex: 1;
+  padding: 48px 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 13px;
+}
+
+.skeleton {
+  height: 56px;
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-skeleton);
+}
+
+.notice {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--dsw-alias-settings-card-fill);
+  border: 1px solid var(--dsw-alias-settings-card-stroke);
+  font-size: 13px;
+}
+
+.noticeText {
+  flex: 1;
+}
