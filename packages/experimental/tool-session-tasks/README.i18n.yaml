@@ -1,0 +1,94 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/tool-session-tasks/README.md
+/:
+  en: f4813b421c362725
+  zh: 9db64c74d8aa2951
+/deepseek-ai-dsh-experimental-tool-session-tasks:
+  en: 8fbd454b6128a94c
+  zh: bc2995647b9bfcfc
+/deepseek-ai-dsh-experimental-tool-session-tasks/summary:
+  en: a3f29ae841d4e7aa
+  zh: 29ac3866291cb9c5
+/deepseek-ai-dsh-experimental-tool-session-tasks/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 405b30feaf48c087
+/deepseek-ai-dsh-experimental-tool-session-tasks/use-this-package:
+  en: 9c1bf8e6a8b13ae0
+  zh: 03f453ab6def93c4
+/deepseek-ai-dsh-experimental-tool-session-tasks/use-this-package/configuration:
+  en: 1cba78e9ba879cf0
+  zh: e50e7c3b668be0e7
+/deepseek-ai-dsh-experimental-tool-session-tasks/use-this-package/what-the-model-can-do:
+  en: a2b9348402277ceb
+  zh: 8c88d05ad6674c36
+/deepseek-ai-dsh-experimental-tool-session-tasks/use-this-package/failures-and-recovery:
+  en: e81e50d335ab900c
+  zh: 5756462a6caa3470
+/deepseek-ai-dsh-experimental-tool-session-tasks/understand-the-implementation:
+  en: ee4615a04fa6503d
+  zh: ee2c5fb2204a43cf
+/deepseek-ai-dsh-experimental-tool-session-tasks/understand-the-implementation/design-philosophy:
+  en: a9d152ebe062df8e
+  zh: 5c5de6a8f1164d2e
+/deepseek-ai-dsh-experimental-tool-session-tasks/understand-the-implementation/source-map:
+  en: 819b3384ffb0feed
+  zh: d4e4b5449e152b3a
+/deepseek-ai-dsh-experimental-tool-session-tasks/understand-the-implementation/operation-flow:
+  en: 23baed042f366eb5
+  zh: baebc89d8d1da478
+/deepseek-ai-dsh-experimental-tool-session-tasks/further-exploration:
+  en: b0ee886cace51be1
+  zh: a6f61d6c07659f97
+/deepseek-ai-dsh-experimental-tool-session-tasks/model-experience:
+  en: 215e7ba838619b7b
+  zh: a311da3843709f90
+/deepseek-ai-dsh-experimental-tool-session-tasks/model-experience/system-prompt:
+  en: cf78b9dd5596495f
+  zh: bd44560f8c2435e8
+/deepseek-ai-dsh-experimental-tool-session-tasks/model-experience/system-prompt/what-the-model-sees:
+  en: 601f282609ab2832
+  zh: 0e61bcf7d64a0e8e
+/deepseek-ai-dsh-experimental-tool-session-tasks/model-experience/system-prompt/what-the-model-sees/live-task-overview-guidance:
+  en: df05f0f62f40f1ae
+  zh: 826845b27602fcbf
+/deepseek-ai-dsh-experimental-tool-session-tasks/model-experience/system-prompt/token-effect:
+  en: 6ee4d42e6b3b56c1
+  zh: 8db423eca8406742
+/deepseek-ai-dsh-experimental-tool-session-tasks/model-experience/system-prompt/kv-cache-effect:
+  en: 3bca5cdc9c4f1ad8
+  zh: 3e78b61e8b621ec5
+/deepseek-ai-dsh-experimental-tool-session-tasks/model-experience/tool-schemas:
+  en: 3039bc5e7a796b21
+  zh: 6b7a9eaf69c9ea53
+/deepseek-ai-dsh-experimental-tool-session-tasks/model-experience/tool-schemas/what-the-model-sees:
+  en: 78324eaadbc57124
+  zh: 29d471d042695784
+/deepseek-ai-dsh-experimental-tool-session-tasks/model-experience/tool-schemas/token-effect:
+  en: a6dd6fca6a45cb38
+  zh: 9fed1539f38e6fdb
+/deepseek-ai-dsh-experimental-tool-session-tasks/model-experience/tool-schemas/kv-cache-effect:
+  en: c4c8902cae469840
+  zh: 1e83b6018e619a36
+/deepseek-ai-dsh-experimental-tool-session-tasks/model-experience/tool-results:
+  en: beaabb79f229692a
+  zh: 8573891441963be4
+/deepseek-ai-dsh-experimental-tool-session-tasks/model-experience/tool-results/what-the-model-sees:
+  en: c7a1a8cc804515f0
+  zh: 727e6b254af749e7
+/deepseek-ai-dsh-experimental-tool-session-tasks/model-experience/tool-results/token-effect:
+  en: d6e3b92d37376354
+  zh: e9fe07a4b4ba3643
+/deepseek-ai-dsh-experimental-tool-session-tasks/model-experience/tool-results/kv-cache-effect:
+  en: 9dbeb5d10d26d110
+  zh: 9e38e4ea830e440c
+/deepseek-ai-dsh-experimental-tool-session-tasks/known-limitations-and-deferred-work:
+  en: db3c127d67a24210
+  zh: 957e3271bb3ccf86
+/deepseek-ai-dsh-experimental-tool-session-tasks/known-limitations-and-deferred-work/dev-note:
+  en: d2f0d68fe29fb750
+  zh: 6fc592fcae35a34d
+/deepseek-ai-dsh-experimental-tool-session-tasks/known-limitations-and-deferred-work/dev-note/future-titles-and-progress-summaries:
+  en: d7dd7c4c2bbf81ed
+  zh: 3b14b142063cbfed

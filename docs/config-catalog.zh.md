@@ -1453,6 +1453,26 @@ export interface Config {
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-tool-agent-team -->
 
+<!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-tool-session-tasks -->
+<a id="deepseek-aidsh-experimental-tool-session-tasks"></a>
+
+## `@deepseek-ai/dsh-experimental-tool-session-tasks`
+
+- `inject`: `tools` · `systemPrompt` · `agents`
+- `source`: [`packages/experimental/tool-session-tasks/src/index.ts:24`](../packages/experimental/tool-session-tasks/src/index.ts)
+
+```ts config-catalog
+/** Deployment-owned visibility policy for the overview. */
+export interface Config {
+  /** Which live sessions the tool may reveal. Defaults to `same-cwd`. */
+  visibleScope?: VisibleScope
+}
+
+/** Which live sessions the tool may reveal. */
+export type VisibleScope = typeof VISIBLE_SCOPES[number]
+```
+<!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-tool-session-tasks -->
+
 <!-- BEGIN GENERATED config-catalog:@deepseek-ai/dsh-experimental-tool-subagent-oar -->
 <a id="deepseek-aidsh-experimental-tool-subagent-oar"></a>
 
@@ -3770,7 +3790,7 @@ export interface Config {
 
 ## `@deepseek-ai/dsh-system-prompt`
 
-- `source`: [`packages/core/system-prompt/src/index.ts:263`](../packages/core/system-prompt/src/index.ts)
+- `source`: [`packages/core/system-prompt/src/index.ts:264`](../packages/core/system-prompt/src/index.ts)
 
 ```ts config-catalog
 /** Plugin config: the deployment-authored fragment of the system prompt (see {@link Config.personaPrefix} for its contract). */

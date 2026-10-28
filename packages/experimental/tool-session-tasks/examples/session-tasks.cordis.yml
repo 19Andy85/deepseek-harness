@@ -1,0 +1,7 @@
+# Mount the read-only session task overview on top of a source profile:
+#   pnpm dsh web --no-open --patch packages/experimental/tool-session-tasks/examples/session-tasks.cordis.yml
+- insert:
+    - id: tool-session-tasks
+      name: '../src/index.ts'
+      config:
+        visibleScope: same-cwd
