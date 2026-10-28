@@ -20,22 +20,27 @@ function hostOf(
   readonly reads: (string | undefined)[]
   readonly opened: string[]
   readonly created: string[]
-  readonly prompted: [string, string][]
+  readonly prompted: [string, string, 'queue' | 'steer'][]
+  readonly cancelled: string[]
   failCreate: boolean
   failPrompt: boolean
+  failCancel: boolean
 } {
   const reads: (string | undefined)[] = []
   const opened: string[] = []
   const created: string[] = []
-  const prompted: [string, string][] = []
+  const prompted: [string, string, 'queue' | 'steer'][] = []
+  const cancelled: string[] = []
   let listener: (() => void) | undefined
   const host = {
     reads,
     opened,
     created,
     prompted,
+    cancelled,
     failCreate: false,
     failPrompt: false,
+    failCancel: false,
     listWorkspaces: () => workspaces,
     subscribeWorkspaces: (next: () => void) => { listener = next; return () => { listener = undefined } },
     snapshot: async (workspaceId?: string) => {
@@ -49,9 +54,13 @@ function hostOf(
       created.push(workspaceId)
       return 'new-session'
     },
-    promptSession: async (sessionId: string, prompt: string) => {
+    promptSession: async (sessionId: string, prompt: string, mode: 'queue' | 'steer') => {
       if (host.failPrompt) throw new Error('prompt refused')
-      prompted.push([sessionId, prompt])
+      prompted.push([sessionId, prompt, mode])
+    },
+    cancelSession: async (sessionId: string) => {
+      if (host.failCancel) throw new Error('cancel refused')
+      cancelled.push(sessionId)
     },
   }
   return host
@@ -135,7 +144,7 @@ describe('ProjectConsoleStore', () => {
     await store.refresh()
     expect(await store.dispatch('  fix the build  ')).toBe(true)
     expect(host.created).toEqual(['alpha'])
-    expect(host.prompted).toEqual([['new-session', 'fix the build']])
+    expect(host.prompted).toEqual([['new-session', 'fix the build', 'queue']])
     expect(host.opened).toEqual(['new-session'])
     expect(store.getSnapshot()).toMatchObject({ dispatch: 'idle', dispatchFailed: undefined })
     store.dispose()
@@ -169,6 +178,46 @@ describe('ProjectConsoleStore', () => {
     expect(await store.dispatch('fix the build')).toBe(false)
     expect(host.prompted).toEqual([])
     expect(store.getSnapshot()).toMatchObject({ dispatch: 'idle', dispatchFailed: true })
+    store.dispose()
+  })
+
+  it('sends a prompt into an existing Session with the requested mode', async () => {
+    const host = hostOf([alpha], async id => snapshot(id ?? '', [row('one')]))
+    const store = new ProjectConsoleStore(host)
+    await store.refresh()
+    expect(await store.sendToSession('one', '  continue  ', 'steer')).toBe(true)
+    expect(host.prompted).toEqual([['one', 'continue', 'steer']])
+    expect(store.getSnapshot()).toMatchObject({ busySessionId: undefined, actionFailed: undefined })
+    store.dispose()
+  })
+
+  it('reports a prompt failure without pretending the row sent', async () => {
+    const host = hostOf([alpha], async id => snapshot(id ?? '', [row('one')]))
+    const store = new ProjectConsoleStore(host)
+    await store.refresh()
+    host.failPrompt = true
+    expect(await store.sendToSession('one', 'continue', 'queue')).toBe(false)
+    expect(store.getSnapshot()).toMatchObject({ busySessionId: undefined, actionFailed: true })
+    store.dispose()
+  })
+
+  it('cancels an active turn and refreshes the overview', async () => {
+    const host = hostOf([alpha], async id => snapshot(id ?? '', [row('one')]))
+    const store = new ProjectConsoleStore(host)
+    await store.refresh()
+    expect(await store.cancelSession('one')).toBe(true)
+    expect(host.cancelled).toEqual(['one'])
+    expect(store.getSnapshot()).toMatchObject({ busySessionId: undefined, actionFailed: undefined })
+    store.dispose()
+  })
+
+  it('reports a cancellation failure', async () => {
+    const host = hostOf([alpha], async id => snapshot(id ?? '', [row('one')]))
+    const store = new ProjectConsoleStore(host)
+    await store.refresh()
+    host.failCancel = true
+    expect(await store.cancelSession('one')).toBe(false)
+    expect(store.getSnapshot()).toMatchObject({ busySessionId: undefined, actionFailed: true })
     store.dispose()
   })
 

@@ -56,20 +56,31 @@
 .row {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  width: 100%;
+  gap: 8px;
   padding: 12px 14px;
   border-radius: 8px;
   background: var(--dsw-alias-settings-card-fill);
   border: 1px solid var(--dsw-alias-settings-card-stroke);
+}
+
+.rowMain {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
 
-.row:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+.rowActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .compose {

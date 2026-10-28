@@ -26,6 +26,10 @@ export interface ConsoleState {
   readonly dispatch: 'idle' | 'sending'
   /** Whether the last dispatch attempt failed before the Host accepted it. */
   readonly dispatchFailed?: true | undefined
+  /** Session whose row action is in flight, when one is running. */
+  readonly busySessionId?: string | undefined
+  /** Whether the last row action failed. */
+  readonly actionFailed?: true | undefined
 }
 
 /** Host ports the store reads; tests can provide them without a browser. */
@@ -40,8 +44,10 @@ export interface ProjectConsoleHost {
   openSession(sessionId: string): void
   /** Create a Session in the Workspace and return its identity. */
   createSession(workspaceId: string): Promise<string>
-  /** Send the first prompt into a created Session. */
-  promptSession(sessionId: string, prompt: string): Promise<void>
+  /** Send one prompt into an existing Session. */
+  promptSession(sessionId: string, prompt: string, mode: 'queue' | 'steer'): Promise<void>
+  /** Cancel the active turn of one Session. */
+  cancelSession(sessionId: string): Promise<void>
 }
 
 /** Default coalescing window before an event-triggered re-read. */
@@ -117,13 +123,60 @@ export class ProjectConsoleStore {
     this.emit()
     try {
       const sessionId = await this.host.createSession(this.panelId)
-      await this.host.promptSession(sessionId, text)
+      await this.host.promptSession(sessionId, text, 'queue')
       this.host.openSession(sessionId)
       this.state = { ...this.state, dispatch: 'idle', dispatchFailed: undefined }
       this.emit()
       return true
     } catch {
       this.state = { ...this.state, dispatch: 'idle', dispatchFailed: true }
+      this.emit()
+      return false
+    }
+  }
+
+  /**
+   * Send a prompt into one existing Session without leaving the console.
+   * @param sessionId - target row.
+   * @param prompt - non-empty prompt text.
+   * @param mode - 'queue' appends a turn; 'steer' interrupts the running one.
+   * @returns whether the Host accepted the prompt.
+   */
+  async sendToSession(sessionId: string, prompt: string, mode: 'queue' | 'steer'): Promise<boolean> {
+    const text = prompt.trim()
+    if (this.disposed || text === '') return false
+    this.state = { ...this.state, busySessionId: sessionId, actionFailed: undefined }
+    this.emit()
+    try {
+      await this.host.promptSession(sessionId, text, mode)
+      this.state = { ...this.state, busySessionId: undefined, actionFailed: undefined }
+      this.emit()
+      this.scheduleRefresh()
+      return true
+    } catch {
+      this.state = { ...this.state, busySessionId: undefined, actionFailed: true }
+      this.emit()
+      return false
+    }
+  }
+
+  /**
+   * Cancel the active turn of one Session.
+   * @param sessionId - target row.
+   * @returns whether the Host admitted the cancellation.
+   */
+  async cancelSession(sessionId: string): Promise<boolean> {
+    if (this.disposed) return false
+    this.state = { ...this.state, busySessionId: sessionId, actionFailed: undefined }
+    this.emit()
+    try {
+      await this.host.cancelSession(sessionId)
+      this.state = { ...this.state, busySessionId: undefined, actionFailed: undefined }
+      this.emit()
+      this.scheduleRefresh()
+      return true
+    } catch {
+      this.state = { ...this.state, busySessionId: undefined, actionFailed: true }
       this.emit()
       return false
     }

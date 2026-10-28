@@ -31,6 +31,10 @@ export interface ProjectConsoleInjected {
   readonly openSession: (sessionId: string) => void
   /** Start a new Session with its first prompt; resolves to whether it was created and accepted. */
   readonly dispatch: (prompt: string) => Promise<boolean>
+  /** Send one prompt into an existing Session. */
+  readonly sendToSession: (sessionId: string, prompt: string, mode: 'queue' | 'steer') => Promise<boolean>
+  /** Cancel one Session's active turn. */
+  readonly cancelSession: (sessionId: string) => Promise<boolean>
 }
 
 /** Framework props of the workspace console page. */
@@ -57,8 +61,11 @@ function activityLabel(entry: ConsoleState['sessions'][number]['activity'][numbe
  */
 export function ProjectConsolePage({
   t, store, workspaceOptions, selectedWorkspaceId, selectWorkspace, refresh, openSession, dispatch,
+  sendToSession, cancelSession,
 }: ProjectConsolePageProps) {
   const [prompt, setPrompt] = useState('')
+  const [replyingTo, setReplyingTo] = useState<string | null>(null)
+  const [replyText, setReplyText] = useState('')
   const state = useSyncExternalStore(
     listener => store.subscribe(listener),
     () => store.getSnapshot(),
@@ -106,6 +113,9 @@ export function ProjectConsolePage({
         {state.dispatchFailed === true
           ? <div className={css.notice} role="alert"><span className={css.noticeText}>{t('newSessionFailed')}</span></div>
           : null}
+        {state.actionFailed === true
+          ? <div className={css.notice} role="alert"><span className={css.noticeText}>{t('actionFailed')}</span></div>
+          : null}
       </header>
       <div className={css.body}>
         {state.status === 'error' && !hasRows
@@ -124,34 +134,103 @@ export function ProjectConsolePage({
           ? <div className={css.empty}>{t('empty')}</div>
           : null}
         {state.sessions.map(session => (
-          <button
-            key={session.sessionId}
-            type="button"
-            className={css.row}
-            aria-label={t('openSession')}
-            onClick={() => { openSession(session.sessionId) }}
-          >
-            <div className={css.rowHead}>
-              <span className={css.sessionId} title={session.sessionId}>{session.title ?? t('untitled')}</span>
-              <span className={css.meta}>{session.status === 'running' ? t('running') : t('idle')}</span>
-              {session.lastPromptAt === undefined
-                ? null
-                : <span className={css.meta}>{relativeTime(session.lastPromptAt, t)}</span>}
-              {session.cwd === undefined ? null : <span className={css.meta} title={session.cwd}>{session.cwd}</span>}
-            </div>
-            <div className={css.badges}>
-              {session.activity.length === 0
-                ? <span className={css.chip}>{t('noActivity')}</span>
-                : session.activity.map(entry => (
-                  <span
-                    key={entry.kind}
-                    className={session.status === 'running' ? `${css.chip} ${css.chipRunning}` : css.chip}
+          <article key={session.sessionId} className={css.row}>
+            <button
+              type="button"
+              className={css.rowMain}
+              aria-label={t('openSession')}
+              onClick={() => { openSession(session.sessionId) }}
+            >
+              <div className={css.rowHead}>
+                <span className={css.sessionId} title={session.sessionId}>{session.title ?? t('untitled')}</span>
+                <span className={css.meta}>{session.status === 'running' ? t('running') : t('idle')}</span>
+                {session.lastPromptAt === undefined
+                  ? null
+                  : <span className={css.meta}>{relativeTime(session.lastPromptAt, t)}</span>}
+                {session.cwd === undefined ? null : <span className={css.meta} title={session.cwd}>{session.cwd}</span>}
+              </div>
+              <div className={css.badges}>
+                {session.activity.length === 0
+                  ? <span className={css.chip}>{t('noActivity')}</span>
+                  : session.activity.map(entry => (
+                    <span
+                      key={entry.kind}
+                      className={session.status === 'running' ? `${css.chip} ${css.chipRunning}` : css.chip}
+                    >
+                      {activityLabel(entry)}
+                    </span>
+                  ))}
+              </div>
+            </button>
+            <div className={css.rowActions}>
+              <button
+                type="button"
+                className={css.select}
+                onClick={() => {
+                  setReplyingTo(replyingTo === session.sessionId ? null : session.sessionId)
+                  setReplyText('')
+                }}
+              >
+                {t('sendPrompt')}
+              </button>
+              {session.status === 'running'
+                ? (
+                  <button
+                    type="button"
+                    className={css.select}
+                    disabled={state.busySessionId === session.sessionId}
+                    onClick={() => { void cancelSession(session.sessionId) }}
                   >
-                    {activityLabel(entry)}
-                  </span>
-                ))}
+                    {t('interrupt')}
+                  </button>
+                )
+                : null}
             </div>
-          </button>
+            {replyingTo === session.sessionId
+              ? (
+                <div className={css.compose}>
+                  <textarea
+                    className={css.prompt}
+                    rows={2}
+                    value={replyText}
+                    placeholder={t('replyPlaceholder')}
+                    onChange={(event) => { setReplyText(event.currentTarget.value) }}
+                  />
+                  <button
+                    type="button"
+                    className={css.select}
+                    disabled={replyText.trim() === '' || state.busySessionId === session.sessionId}
+                    onClick={() => {
+                      void sendToSession(session.sessionId, replyText, 'queue').then((accepted) => {
+                        if (!accepted) return
+                        setReplyingTo(null)
+                        setReplyText('')
+                      })
+                    }}
+                  >
+                    {t('sendQueue')}
+                  </button>
+                  <button
+                    type="button"
+                    className={css.select}
+                    disabled={replyText.trim() === '' || state.busySessionId === session.sessionId}
+                    onClick={() => {
+                      void sendToSession(session.sessionId, replyText, 'steer').then((accepted) => {
+                        if (!accepted) return
+                        setReplyingTo(null)
+                        setReplyText('')
+                      })
+                    }}
+                  >
+                    {t('sendSteer')}
+                  </button>
+                  <button type="button" className={css.select} onClick={() => { setReplyingTo(null); setReplyText('') }}>
+                    {t('cancel')}
+                  </button>
+                </div>
+              )
+              : null}
+          </article>
         ))}
       </div>
     </section>

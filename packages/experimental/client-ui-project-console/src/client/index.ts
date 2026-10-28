@@ -63,14 +63,17 @@ function registerUi(ctx: Context): void {
       if (!result.ok) throw new Error(result.error.message)
       return result.value.sessionId
     },
-    promptSession: async (sessionId, text) => {
+    promptSession: async (sessionId, text, mode) => {
       const result = await ctx.remote.session.prompt({
         requestId: brandString<SessionRequestId>(randomUUID()),
         sessionId: brandString<SessionId>(sessionId),
-        mode: 'queue',
+        mode,
         content: [{ type: 'text', text }],
       })
       if (!result.ok) throw new Error(result.error.message)
+    },
+    cancelSession: async (sessionId) => {
+      ctx.remote.session.cancel({ sessionId: brandString<SessionId>(sessionId) })
     },
   })
   ctx.effect(() => () => { store.dispose() }, 'project-console: store')
@@ -95,6 +98,8 @@ function registerUi(ctx: Context): void {
       refresh: () => { void store.refresh() },
       openSession: (sessionId) => { store.openSession(sessionId) },
       dispatch: prompt => store.dispatch(prompt),
+      sendToSession: (sessionId, prompt, mode) => store.sendToSession(sessionId, prompt, mode),
+      cancelSession: sessionId => store.cancelSession(sessionId),
     }),
   }, ProjectConsolePage)), 'project-console: page')
   ctx.effect(() => ctx.slots.inject('sidebar.workspaces.workspace.menu.item', () => ctx.slots.register({
