@@ -1,0 +1,112 @@
+/**
+ * Workspace scoping, activity aggregation, and failure behavior of the
+ * session task overview Remote.
+ */
+
+import { SessionId } from '@deepseek-ai/dsh-session'
+import type { SessionActivity } from '@deepseek-ai/dsh-workspace'
+import { describe, expect, it } from 'vitest'
+import { collectSessionTasks, readSessionTasks, type WorkspaceLookup } from '../src/aggregation.ts'
+import type { SessionTaskAgent, SessionTaskHost } from '../src/types.ts'
+
+function agent(id: string, status: SessionTaskAgent['status'], cwd?: string): SessionTaskAgent {
+  return { session: { id: SessionId(id), header: cwd === undefined ? {} : { cwd } }, status }
+}
+
+function host(
+  agents: readonly SessionTaskAgent[],
+  activities: Readonly<Record<string, readonly SessionActivity[]>> = {},
+): SessionTaskHost {
+  return {
+    agents: { list: () => agents },
+    activityOf: async sessionId => activities[sessionId] ?? [],
+  }
+}
+
+const never = new AbortController().signal
+const registry: WorkspaceLookup = {
+  get: id => id === 'workspace-a' ? { id: 'workspace-a', path: '/work' }
+    : id === 'workspace-empty' ? { id: 'workspace-empty', path: '/empty' }
+      : undefined,
+}
+
+describe('collectSessionTasks', () => {
+  it('aggregates provider activity families and keeps running sessions first', async () => {
+    const rows = await collectSessionTasks(host([
+      agent('idle-a', 'idle', '/work'),
+      agent('running-b', 'running', '/work'),
+    ], {
+      'idle-a': [{ kind: 'schedule', items: [{ id: 'schedule-1', label: 'Morning review' }] }],
+      'running-b': [{ kind: 'turn' }, { kind: 'job', items: [{ id: 'job-1' }] }],
+    }), {}, never)
+    expect(rows.map(row => row.sessionId)).toEqual(['running-b', 'idle-a'])
+    expect(rows[0]?.activity).toEqual([
+      { kind: 'turn' },
+      { kind: 'job', items: [{ id: 'job-1' }] },
+    ])
+    expect(rows[1]?.activity).toEqual([{ kind: 'schedule', items: [{ id: 'schedule-1', label: 'Morning review' }] }])
+  })
+
+  it('keeps only sessions created in the requested working directory', async () => {
+    const rows = await collectSessionTasks(host([
+      agent('caller', 'idle', '/work'),
+      agent('sibling', 'running', '/work'),
+      agent('outside', 'running', '/elsewhere'),
+      agent('no-cwd', 'idle'),
+    ]), { cwd: '/work' }, never)
+    expect(rows.map(row => row.sessionId)).toEqual(['sibling', 'caller'])
+  })
+
+  it('keeps only requested activity families', async () => {
+    const rows = await collectSessionTasks(host([agent('caller', 'running', '/work')], {
+      caller: [
+        { kind: 'turn' },
+        { kind: 'job', items: [{ id: 'job-1', label: 'Build' }] },
+        { kind: 'subagent', items: [{ id: 'subagent-1' }] },
+      ],
+    }), { include: ['job'] }, never)
+    expect(rows[0]?.activity).toEqual([{ kind: 'job', items: [{ id: 'job-1', label: 'Build' }] }])
+  })
+
+  it('surfaces cancellation between session reads', async () => {
+    const controller = new AbortController()
+    const pending = collectSessionTasks(host([agent('a', 'running', '/work'), agent('b', 'idle', '/work')]), {}, controller.signal)
+    controller.abort(new Error('cancelled by caller'))
+    await expect(pending).rejects.toThrow('cancelled by caller')
+  })
+})
+
+describe('readSessionTasks', () => {
+  it('projects one workspace scope and echoes its identity and path', async () => {
+    const snapshot = await readSessionTasks(host([
+      agent('caller', 'idle', '/work'),
+      agent('outside', 'running', '/elsewhere'),
+    ]), { workspaceId: 'workspace-a' }, registry, never)
+    expect(snapshot).toMatchObject({ workspaceId: 'workspace-a', workspacePath: '/work' })
+    expect(snapshot.sessions.map(row => row.sessionId)).toEqual(['caller'])
+  })
+
+  it('reads every live session when no workspace is requested', async () => {
+    const snapshot = await readSessionTasks(host([
+      agent('caller', 'idle', '/work'),
+      agent('outside', 'running', '/elsewhere'),
+    ]), {}, registry, never)
+    expect(snapshot.workspaceId).toBeUndefined()
+    expect(snapshot.sessions.map(row => row.sessionId)).toEqual(['outside', 'caller'])
+  })
+
+  it('returns an empty session list for a workspace without live sessions', async () => {
+    const snapshot = await readSessionTasks(host([agent('caller', 'idle', '/work')]), { workspaceId: 'workspace-empty' }, registry, never)
+    expect(snapshot.sessions).toEqual([])
+  })
+
+  it('rejects an unknown workspace with a stable code', async () => {
+    await expect(readSessionTasks(host([]), { workspaceId: 'missing' }, registry, never))
+      .rejects.toMatchObject({ code: 'session-tasks/workspace-not-found' })
+  })
+
+  it('rejects a workspace request when no registry is mounted', async () => {
+    await expect(readSessionTasks(host([]), { workspaceId: 'workspace-a' }, undefined, never))
+      .rejects.toMatchObject({ code: 'session-tasks/workspace-unavailable' })
+  })
+})

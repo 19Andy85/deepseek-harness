@@ -1,0 +1,98 @@
+---
+description: "面向浏览器的只读 Remote，投影同一 Host 某个工作区的活跃会话与运行中的活动家族，供项目控制台页面使用。"
+kind: "package-reference"
+---
+
+# @deepseek-ai/dsh-experimental-api-session-tasks
+
+[English](README.md) | 中文
+
+## 概述
+
+本控制器提供一个只读 Remote 命名空间 `sessionTasks`，其唯一方法 `snapshot` 报告某个工作区的活跃会话，以及每个会话仍在运行的活动家族。它投影智能体注册表与 `workspace/session-activity` 瀑布；从不读取或写入会话内容，也不产生面向模型的贡献。本包需要选择启用，通常与消费它的浏览器页面一起挂载。
+
+## 目录
+
+- [使用本包](#use-this-package)
+- [理解实现](#understand-the-implementation)
+- [进一步探索](#further-exploration)
+- [模型体验](#model-experience)
+- [已知限制与后续工作](#known-limitations-and-deferred-work)
+- [开发备注](#dev-note)
+
+-----
+
+<a id="use-this-package"></a>
+## 使用本包
+
+在需要实时任务总览的浏览器页面的 Host 组合中挂载本控制器。它需要 `ctx.typert` 与 `ctx.agents`；按工作区读取时还需要挂载 `ctx.workspaceRegistry`。本包不声明配置。
+
+### 浏览器能做什么
+
+- `sessionTasks.snapshot({ workspaceId? })`——一次一致性读取：按范围请求时返回工作区身份与路径，以及每个活跃会话的 `sessionId`、`cwd`、`status`（`running` 或 `idle`）和提供方活动家族。
+- 省略 `workspaceId` 时读取本 Host 的全部活跃会话；运行中的会话排在前面，其次按会话 id 排序。
+- 请求是快照；跟随流推迟到页面需要推送更新时再实现。
+
+### 失败与恢复
+
+- `session-tasks/workspace-not-found`——请求的工作区 id 未注册。
+- `session-tasks/workspace-unavailable`——请求了工作区范围，但没有挂载工作区注册表。
+- Remote 访问控制仍然对每个连接生效；未授权调用方不会到达聚合层。
+
+<a id="understand-the-implementation"></a>
+## 理解实现
+
+### 设计理念
+
+控制器只拥有浏览器投影。聚合是对两个 Host 端口（智能体注册表与一次活动查询）的纯函数，因此面向模型的 `session_tasks` 工具与本 Remote 共享同一份"活跃会话"的定义，区别在授权：工具应用智能体作用域的 `visibleScope`，Remote 则遵循页面的工作区范围。
+
+### 源码地图
+
+- `src/index.ts`——`SessionTasksController`、`sessionTasks` 命名空间与单例 `snapshot` 方法。
+- `src/aggregation.ts`——纯聚合、工作区投影与两个 Remote 错误码。
+- `src/types.ts`——线上值类型、Host 端口与 `RemoteErrorDetailsMap` 声明。
+
+### 操作流程
+
+`snapshot` 通过 `ctx.workspaceRegistry` 解析可选的工作区，收集活跃智能体，对每个可见会话询问 `workspace/session-activity` 瀑布，投影条目身份，排序后返回一个快照。工作区注册表与活动提供方始终是 Host 服务；页面不会收到会话事件。
+
+<a id="further-exploration"></a>
+## 进一步探索
+
+- [会话活动接缝](../../workspace/workspace/README.zh.md)——本控制器读取的提供方瀑布。
+- [会话任务总览工具](../tool-session-tasks/README.zh.md)——同一聚合的模型侧消费者。
+- [Typert 协议](../../typert/protocol/README.zh.md)——`sessionTasks` 命名空间如何生成与分发。
+
+<a id="model-experience"></a>
+## 模型体验
+
+无，因为本控制器只把 Host 活动投影到浏览器 Remote；它不产生模型上下文、工具或会话事件。
+
+#### KV 缓存影响
+
+没有影响；本包不改变模型请求前缀。
+
+<a id="known-limitations-and-deferred-work"></a>
+## 已知限制与后续工作
+
+这些限制说明本包何时不合适或需要额外的运维注意。它们是当前的包约束，不是任务清单。
+
+- **仅活跃会话**——本 Host 中没有活跃智能体的会话不可见，即使持久化的任务或定时器会为它报告活动。
+- **仅快照**——活动变化后页面必须重新读取；跟随流推迟到页面需要推送更新时再实现。
+- **只读**——派发、中断与审批动作属于后续阶段。
+- **工作区范围需要注册表**——未挂载 `ctx.workspaceRegistry` 时，按工作区读取会报错，而不是回退到全部活跃会话。
+- **暂无页面级访问策略**——连接受既有 Remote 访问控制约束；页面级授权推迟。
+
+<a id="dev-note"></a>
+### 开发备注
+
+<details>
+<summary>维护者工作上下文——点击展开</summary>
+
+本开发备注是维护者的工作上下文：未决的开放问题与方向，明确非权威——已发布行为、限制与已接受的依据来自上方各节、包代码和链接的 Agent Notes。
+
+#### 后续：推送与控制
+
+跟随流会复用既有的会话活动事件，而不是新增项目级事件；控制动作会扩展本命名空间，而不是面向模型的工具。
+
+</details>
