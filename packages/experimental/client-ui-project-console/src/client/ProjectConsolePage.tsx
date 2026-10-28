@@ -50,12 +50,16 @@ export function ProjectConsolePage({ t, store, workspaceOptions, selectedWorkspa
   const selected = selectedWorkspaceId()
   const workspaces = workspaceOptions()
   const hasRows = state.sessions.length > 0
+  const running = state.sessions.filter(session => session.status === 'running').length
 
   return (
     <section className={css.page}>
       <header className={css.head}>
         <h1 className={css.title}>{t('title')}</h1>
         <p className={css.subtitle}>{t('description')}</p>
+        {state.status === 'ready' && hasRows
+          ? <p className={css.meta}>{t('summary', { total: state.sessions.length, running })}</p>
+          : null}
         <div className={css.toolbar}>
           <label className={css.meta} htmlFor="project-console-workspace">{t('workspace')}</label>
           <select

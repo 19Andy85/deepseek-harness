@@ -30,7 +30,8 @@ Mount the page in a Web composition that also mounts a Host controller serving t
 ### What the page can do
 
 - Contribute the `project-console` main panel and its sidebar entry, with copy for the eight shipped Client languages.
-- Pick one Workspace, then read its live sessions, each row naming the session, its `running` or `idle` state, its working directory, and the activity families still running for it.
+- Pick one Workspace, then read its live sessions, each row naming the session, its `running` or `idle` state, its working directory, and the activity families still running for it; the header summarizes visible sessions and how many run.
+- Open the console from the sidebar entry, or from a Session row's "…" menu: the row's Workspace becomes the selected scope.
 - Re-read automatically after a session status or activity event, coalescing bursts into one read; **Refresh** reads on demand.
 - A failed read keeps the last rows visible and shows a compact retry notice; the full error state appears only when no rows were ever read.
 
@@ -52,7 +53,8 @@ A global main panel fits the "one console per project" shape: the sidebar entry 
 - `src/index.ts` — Host-face marker; the browser contribution is discovered through the package client declaration.
 - `src/client/index.ts` — locale registration, the `main` panel registration, and the `sidebar.panellist` entry.
 - `src/client/ProjectConsoleStore.ts` — Workspace selection, overview reads, failure retention, and refresh coalescing.
-- `src/client/ProjectConsolePage.tsx` — the page component, skeletons, notices, and rows.
+- `src/client/ProjectConsolePage.tsx` — the page component, skeletons, notices, rows, and the header summary.
+- `src/client/ProjectConsoleMenu.tsx` — the Session row menu entry that opens the console for that row's Workspace.
 - `src/client/ProjectConsolePage.module.css` — the page stylesheet, built from theme tokens.
 - `src/client/locales.ts` — the eight language dictionaries.
 
@@ -81,7 +83,7 @@ These limits define when this package is a poor fit or needs special operational
 - **Live sessions only** — sessions without a live Agent in this Host never appear, even when persisted jobs or schedules would report activity for them.
 - **Requires the Host Remote** — the page has no data path of its own; a composition without the controller shows the failure notice.
 - **No controls** — dispatch, interruption, and approvals belong to a later phase.
-- **Opened from the sidebar entry** — a Workspace menu entry and a bundle for one-step enablement are deferred.
+- **Entry points are the sidebar and the Session row menu** — a Workspace-level menu entry and a bundle for one-step enablement are deferred; the session menu entry only scopes a Session whose Workspace row is present.
 - **Not in a bundle yet** — the package is experimental and must be mounted explicitly until an experimental bundle exists.
 
 <a id="dev-note"></a>

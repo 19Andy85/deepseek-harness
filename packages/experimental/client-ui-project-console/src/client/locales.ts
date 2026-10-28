@@ -12,6 +12,8 @@ export const en = {
   refresh: 'Refresh',
   retry: 'Retry',
   noActivity: 'No activity',
+  openConsole: 'Open project console',
+  summary: '{total} live sessions · {running} running',
 }
 
 /** Keys shared by every dictionary. */
@@ -31,6 +33,8 @@ export const zh: Record<ProjectConsoleKey, string> = {
   refresh: '刷新',
   retry: '重试',
   noActivity: '无活动',
+  openConsole: '打开项目控制台',
+  summary: '活跃会话 {total} · 运行中 {running}',
 }
 
 /** Japanese copy. */
@@ -47,6 +51,8 @@ export const ja: Record<ProjectConsoleKey, string> = {
   refresh: '更新',
   retry: '再試行',
   noActivity: 'アクティビティなし',
+  openConsole: 'プロジェクトコンソールを開く',
+  summary: '実行中セッション {total} · 稼働中 {running}',
 }
 
 /** Spanish copy. */
@@ -63,6 +69,8 @@ export const es: Record<ProjectConsoleKey, string> = {
   refresh: 'Actualizar',
   retry: 'Reintentar',
   noActivity: 'Sin actividad',
+  openConsole: 'Abrir la consola del proyecto',
+  summary: '{total} sesiones activas · {running} en ejecución',
 }
 
 /** French copy. */
@@ -79,6 +87,8 @@ export const fr: Record<ProjectConsoleKey, string> = {
   refresh: 'Actualiser',
   retry: 'Réessayer',
   noActivity: 'Aucune activité',
+  openConsole: 'Ouvrir la console du projet',
+  summary: '{total} sessions actives · {running} en cours',
 }
 
 /** German copy. */
@@ -95,6 +105,8 @@ export const de: Record<ProjectConsoleKey, string> = {
   refresh: 'Aktualisieren',
   retry: 'Erneut versuchen',
   noActivity: 'Keine Aktivität',
+  openConsole: 'Projektkonsole öffnen',
+  summary: '{total} aktive Sitzungen · {running} aktiv',
 }
 
 /** Russian copy. */
@@ -111,6 +123,8 @@ export const ru: Record<ProjectConsoleKey, string> = {
   refresh: 'Обновить',
   retry: 'Повторить',
   noActivity: 'Нет активности',
+  openConsole: 'Открыть консоль проекта',
+  summary: 'Активных сеансов: {total} · выполняется: {running}',
 }
 
 /** Portuguese copy. */
@@ -127,4 +141,6 @@ export const pt: Record<ProjectConsoleKey, string> = {
   refresh: 'Atualizar',
   retry: 'Repetir',
   noActivity: 'Sem atividade',
+  openConsole: 'Abrir a consola do projeto',
+  summary: '{total} sessões ativas · {running} em execução',
 }
