@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Tareas de sesión",
+    "description": "Enumera las sesiones activas de este host con las familias de actividad que siguen ejecutándose en cada una."
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Aperçu des tâches de session",
+    "description": "Lit les sessions actives d’un espace de travail via le Remote du navigateur."
+  }
+}
