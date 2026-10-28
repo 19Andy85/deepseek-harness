@@ -12,6 +12,8 @@ import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
+import type {} from '@deepseek-ai/dsh-client-ui-approval/client'
+import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import sessionTasksRemote from '@deepseek-ai/dsh-experimental-api-session-tasks/remote'
 import { ProjectConsoleMenuItem, type ProjectConsoleMenuInjected } from './ProjectConsoleMenu.tsx'
@@ -27,7 +29,7 @@ export const NS = 'projectConsole'
 export const PANEL_ID = 'project-console' as MainPanelId
 
 /** Client capabilities the page contributes through. */
-export const inject = ['slots', 'locale', 'remote', 'remote.session', 'workspaces', 'layout', 'uiWorkspace']
+export const inject = ['slots', 'locale', 'remote', 'remote.session', 'workspaces', 'layout', 'uiWorkspace', 'uiSession']
 
 /**
  * Mount the overview Remote, then contribute the console entry, the page it
@@ -75,6 +77,11 @@ function registerUi(ctx: Context): void {
     cancelSession: async (sessionId) => {
       ctx.remote.session.cancel({ sessionId: brandString<SessionId>(sessionId) })
     },
+    respondApproval: async (sessionId, decision) => {
+      const pending = ctx.uiSession.sessionStatus.getSnapshot().get(brandString<SessionId>(sessionId))?.pendingInteraction
+      if (pending === undefined || pending.kind !== 'approval') throw new Error('no pending approval')
+      await pending.answer(decision)
+    },
   })
   ctx.effect(() => () => { store.dispose() }, 'project-console: store')
   void store.refresh()
@@ -100,6 +107,8 @@ function registerUi(ctx: Context): void {
       dispatch: prompt => store.dispatch(prompt),
       sendToSession: (sessionId, prompt, mode) => store.sendToSession(sessionId, prompt, mode),
       cancelSession: sessionId => store.cancelSession(sessionId),
+      answerApproval: (sessionId, decision) => store.answerApproval(sessionId, decision),
+      hooks: { sessionStatus: ctx.uiSession.sessionStatus },
     }),
   }, ProjectConsolePage)), 'project-console: page')
   ctx.effect(() => ctx.slots.inject('sidebar.workspaces.workspace.menu.item', () => ctx.slots.register({

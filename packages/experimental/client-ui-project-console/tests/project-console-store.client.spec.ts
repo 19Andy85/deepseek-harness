@@ -22,15 +22,18 @@ function hostOf(
   readonly created: string[]
   readonly prompted: [string, string, 'queue' | 'steer'][]
   readonly cancelled: string[]
+  readonly responses: [string, 'allowed-once' | 'rejected'][]
   failCreate: boolean
   failPrompt: boolean
   failCancel: boolean
+  failRespond: boolean
 } {
   const reads: (string | undefined)[] = []
   const opened: string[] = []
   const created: string[] = []
   const prompted: [string, string, 'queue' | 'steer'][] = []
   const cancelled: string[] = []
+  const responses: [string, 'allowed-once' | 'rejected'][] = []
   let listener: (() => void) | undefined
   const host = {
     reads,
@@ -41,6 +44,8 @@ function hostOf(
     failCreate: false,
     failPrompt: false,
     failCancel: false,
+    failRespond: false,
+    responses,
     listWorkspaces: () => workspaces,
     subscribeWorkspaces: (next: () => void) => { listener = next; return () => { listener = undefined } },
     snapshot: async (workspaceId?: string) => {
@@ -61,6 +66,10 @@ function hostOf(
     cancelSession: async (sessionId: string) => {
       if (host.failCancel) throw new Error('cancel refused')
       cancelled.push(sessionId)
+    },
+    respondApproval: async (sessionId: string, decision: 'allowed-once' | 'rejected') => {
+      if (host.failRespond) throw new Error('approval refused')
+      responses.push([sessionId, decision])
     },
   }
   return host
@@ -217,6 +226,26 @@ describe('ProjectConsoleStore', () => {
     await store.refresh()
     host.failCancel = true
     expect(await store.cancelSession('one')).toBe(false)
+    expect(store.getSnapshot()).toMatchObject({ busySessionId: undefined, actionFailed: true })
+    store.dispose()
+  })
+
+  it('answers a pending approval with the requested decision', async () => {
+    const host = hostOf([alpha], async id => snapshot(id ?? '', [row('one')]))
+    const store = new ProjectConsoleStore(host)
+    await store.refresh()
+    expect(await store.answerApproval('one', 'allowed-once')).toBe(true)
+    expect(host.responses).toEqual([['one', 'allowed-once']])
+    expect(store.getSnapshot()).toMatchObject({ busySessionId: undefined, actionFailed: undefined })
+    store.dispose()
+  })
+
+  it('reports an approval failure', async () => {
+    const host = hostOf([alpha], async id => snapshot(id ?? '', [row('one')]))
+    const store = new ProjectConsoleStore(host)
+    await store.refresh()
+    host.failRespond = true
+    expect(await store.answerApproval('one', 'rejected')).toBe(false)
     expect(store.getSnapshot()).toMatchObject({ busySessionId: undefined, actionFailed: true })
     store.dispose()
   })

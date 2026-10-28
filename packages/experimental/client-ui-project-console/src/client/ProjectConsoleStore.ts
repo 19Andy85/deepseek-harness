@@ -48,6 +48,8 @@ export interface ProjectConsoleHost {
   promptSession(sessionId: string, prompt: string, mode: 'queue' | 'steer'): Promise<void>
   /** Cancel the active turn of one Session. */
   cancelSession(sessionId: string): Promise<void>
+  /** Answer one Session's pending approval with the user's decision. */
+  respondApproval(sessionId: string, decision: 'allowed-once' | 'rejected'): Promise<void>
 }
 
 /** Default coalescing window before an event-triggered re-read. */
@@ -171,6 +173,29 @@ export class ProjectConsoleStore {
     this.emit()
     try {
       await this.host.cancelSession(sessionId)
+      this.state = { ...this.state, busySessionId: undefined, actionFailed: undefined }
+      this.emit()
+      this.scheduleRefresh()
+      return true
+    } catch {
+      this.state = { ...this.state, busySessionId: undefined, actionFailed: true }
+      this.emit()
+      return false
+    }
+  }
+
+  /**
+   * Answer one Session's pending approval.
+   * @param sessionId - target row.
+   * @param decision - allow once or reject the pending tool call.
+   * @returns whether the decision was delivered.
+   */
+  async answerApproval(sessionId: string, decision: 'allowed-once' | 'rejected'): Promise<boolean> {
+    if (this.disposed) return false
+    this.state = { ...this.state, busySessionId: sessionId, actionFailed: undefined }
+    this.emit()
+    try {
+      await this.host.respondApproval(sessionId, decision)
       this.state = { ...this.state, busySessionId: undefined, actionFailed: undefined }
       this.emit()
       this.scheduleRefresh()
