@@ -14,6 +14,11 @@ export const en = {
   noActivity: 'No activity',
   openConsole: 'Open project console',
   summary: '{total} live sessions · {running} running',
+  untitled: 'Untitled session',
+  justNow: 'just now',
+  minutesAgo: '{n} min ago',
+  hoursAgo: '{n} h ago',
+  daysAgo: '{n} d ago',
 }
 
 /** Keys shared by every dictionary. */
@@ -35,6 +40,11 @@ export const zh: Record<ProjectConsoleKey, string> = {
   noActivity: '无活动',
   openConsole: '打开项目控制台',
   summary: '活跃会话 {total} · 运行中 {running}',
+  untitled: '未命名会话',
+  justNow: '刚刚',
+  minutesAgo: '{n} 分钟前',
+  hoursAgo: '{n} 小时前',
+  daysAgo: '{n} 天前',
 }
 
 /** Japanese copy. */
@@ -53,6 +63,11 @@ export const ja: Record<ProjectConsoleKey, string> = {
   noActivity: 'アクティビティなし',
   openConsole: 'プロジェクトコンソールを開く',
   summary: '実行中セッション {total} · 稼働中 {running}',
+  untitled: '無題のセッション',
+  justNow: 'たった今',
+  minutesAgo: '{n} 分前',
+  hoursAgo: '{n} 時間前',
+  daysAgo: '{n} 日前',
 }
 
 /** Spanish copy. */
@@ -71,6 +86,11 @@ export const es: Record<ProjectConsoleKey, string> = {
   noActivity: 'Sin actividad',
   openConsole: 'Abrir la consola del proyecto',
   summary: '{total} sesiones activas · {running} en ejecución',
+  untitled: 'Sesión sin título',
+  justNow: 'ahora mismo',
+  minutesAgo: 'hace {n} min',
+  hoursAgo: 'hace {n} h',
+  daysAgo: 'hace {n} d',
 }
 
 /** French copy. */
@@ -89,6 +109,11 @@ export const fr: Record<ProjectConsoleKey, string> = {
   noActivity: 'Aucune activité',
   openConsole: 'Ouvrir la console du projet',
   summary: '{total} sessions actives · {running} en cours',
+  untitled: 'Session sans titre',
+  justNow: 'à l’instant',
+  minutesAgo: 'il y a {n} min',
+  hoursAgo: 'il y a {n} h',
+  daysAgo: 'il y a {n} j',
 }
 
 /** German copy. */
@@ -107,6 +132,11 @@ export const de: Record<ProjectConsoleKey, string> = {
   noActivity: 'Keine Aktivität',
   openConsole: 'Projektkonsole öffnen',
   summary: '{total} aktive Sitzungen · {running} aktiv',
+  untitled: 'Unbenannte Sitzung',
+  justNow: 'gerade eben',
+  minutesAgo: 'vor {n} Min.',
+  hoursAgo: 'vor {n} Std.',
+  daysAgo: 'vor {n} T.',
 }
 
 /** Russian copy. */
@@ -125,6 +155,11 @@ export const ru: Record<ProjectConsoleKey, string> = {
   noActivity: 'Нет активности',
   openConsole: 'Открыть консоль проекта',
   summary: 'Активных сеансов: {total} · выполняется: {running}',
+  untitled: 'Сеанс без названия',
+  justNow: 'только что',
+  minutesAgo: '{n} мин назад',
+  hoursAgo: '{n} ч назад',
+  daysAgo: '{n} дн назад',
 }
 
 /** Portuguese copy. */
@@ -143,4 +178,9 @@ export const pt: Record<ProjectConsoleKey, string> = {
   noActivity: 'Sem atividade',
   openConsole: 'Abrir a consola do projeto',
   summary: '{total} sessões ativas · {running} em execução',
+  untitled: 'Sessão sem título',
+  justNow: 'agora mesmo',
+  minutesAgo: 'há {n} min',
+  hoursAgo: 'há {n} h',
+  daysAgo: 'há {n} d',
 }

@@ -40,6 +40,18 @@ describe('gatherSessionTasks', () => {
     expect(rows[0]).toMatchObject({ cwd: '/work', status: 'running' })
   })
 
+  it('carries title and last prompt time through the tool result', async () => {
+    const caller = agent('caller', 'idle', '/work')
+    const hostWithMetadata: SessionTaskHost = {
+      ...host([caller]),
+      metadataOf: () => ({ title: 'Fix the build', lastPromptAt: 1_760_000_000_000 }),
+    }
+    const rows = await gatherSessionTasks(hostWithMetadata, caller, { scope: 'same-cwd' }, never)
+    expect(JSON.parse(renderSessionTasks(rows))).toEqual([expect.objectContaining({
+      sessionId: 'caller', title: 'Fix the build', lastPromptAt: 1_760_000_000_000,
+    })])
+  })
+
   it('restricts the self scope to the caller and the host scope to every live session', async () => {
     const caller = agent('caller', 'idle', '/work')
     const agents = [caller, agent('sibling', 'idle', '/work'), agent('outside', 'running', '/elsewhere')]

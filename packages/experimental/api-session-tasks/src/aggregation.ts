@@ -63,10 +63,13 @@ export async function collectSessionTasks(
     if (options.cwd !== undefined && cwd !== options.cwd) continue
     const activity = await host.activityOf(agent.session.id)
     signal.throwIfAborted()
+    const metadata = host.metadataOf?.(agent.session.id)
     rows.push({
       sessionId: agent.session.id,
       ...cwd === undefined ? {} : { cwd },
       status: agent.status,
+      ...metadata?.title === undefined ? {} : { title: metadata.title },
+      ...metadata?.lastPromptAt === undefined ? {} : { lastPromptAt: metadata.lastPromptAt },
       activity: activity.filter(entry => keepActivity(entry, options.include)).map(projectActivity),
     })
   }

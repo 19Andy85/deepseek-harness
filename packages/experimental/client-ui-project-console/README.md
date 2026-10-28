@@ -30,7 +30,7 @@ Mount the page in a Web composition that also mounts a Host controller serving t
 ### What the page can do
 
 - Contribute the `project-console` main panel and its sidebar entry, with copy for the eight shipped Client languages.
-- Pick one Workspace, then read its live sessions, each row naming the session, its `running` or `idle` state, its working directory, and the activity families still running for it; the header summarizes visible sessions and how many run.
+- Pick one Workspace, then read its live sessions, each row showing the Session title (falling back to *Untitled session*), its `running` or `idle` state, the relative time of its latest human prompt, its working directory, and the activity families still running for it; the header summarizes visible sessions and how many run.
 - Open the console from the sidebar entry, or from a Workspace row's "…" menu: that row's Workspace becomes the selected scope.
 - Re-read automatically after a session status or activity event, coalescing bursts into one read; **Refresh** reads on demand.
 - A failed read keeps the last rows visible and shows a compact retry notice; the full error state appears only when no rows were ever read.

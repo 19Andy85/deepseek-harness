@@ -32,6 +32,15 @@ export interface ProjectConsoleInjected {
 /** Framework props of the workspace console page. */
 export type ProjectConsolePageProps = PropsRuntime<'main'> & PropsLocale<'projectConsole'> & InjectFace<ProjectConsoleInjected>
 
+function relativeTime(at: number, t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string): string {
+  const minutes = Math.floor((Date.now() - at) / 60_000)
+  if (minutes < 1) return t('justNow')
+  if (minutes < 60) return t('minutesAgo', { n: minutes })
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return t('hoursAgo', { n: hours })
+  return t('daysAgo', { n: Math.floor(hours / 24) })
+}
+
 function activityLabel(entry: ConsoleState['sessions'][number]['activity'][number]): string {
   const items = entry.items?.map(item => item.label ?? item.id).join(', ')
   return items === undefined || items === '' ? entry.kind : `${entry.kind} · ${items}`
@@ -92,9 +101,12 @@ export function ProjectConsolePage({ t, store, workspaceOptions, selectedWorkspa
         {state.sessions.map(session => (
           <article key={session.sessionId} className={css.row}>
             <div className={css.rowHead}>
-              <span className={css.sessionId}>{session.sessionId}</span>
+              <span className={css.sessionId} title={session.sessionId}>{session.title ?? t('untitled')}</span>
               <span className={css.meta}>{session.status === 'running' ? t('running') : t('idle')}</span>
-              {session.cwd === undefined ? null : <span className={css.meta}>{session.cwd}</span>}
+              {session.lastPromptAt === undefined
+                ? null
+                : <span className={css.meta}>{relativeTime(session.lastPromptAt, t)}</span>}
+              {session.cwd === undefined ? null : <span className={css.meta} title={session.cwd}>{session.cwd}</span>}
             </div>
             <div className={css.badges}>
               {session.activity.length === 0

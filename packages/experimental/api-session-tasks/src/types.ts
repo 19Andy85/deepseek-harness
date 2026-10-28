@@ -36,6 +36,14 @@ export interface SessionTaskActivityViewEntry {
   readonly items?: readonly SessionTaskActivityView[]
 }
 
+/** Row metadata read from the owning domain services. */
+export interface SessionTaskMetadata {
+  /** Current Session title, when a title provider has produced one. */
+  readonly title?: string
+  /** Time of the latest human-authored prompt, when the projection carries one. */
+  readonly lastPromptAt?: number
+}
+
 /** One live session of this Host with the activity families that still run for it. */
 export interface SessionTaskView {
   /** Session identity. */
@@ -44,6 +52,10 @@ export interface SessionTaskView {
   readonly cwd?: string
   /** Current lifecycle state of the live agent driving the session. */
   readonly status: 'idle' | 'running'
+  /** Current Session title, when a title provider has produced one. */
+  readonly title?: string
+  /** Time of the latest human-authored prompt, when the projection carries one. */
+  readonly lastPromptAt?: number
   /** Activity families still running for this session, in provider order. */
   readonly activity: readonly SessionTaskActivityViewEntry[]
 }
@@ -81,6 +93,8 @@ export interface SessionTaskHost {
   readonly agents: { list(): readonly SessionTaskAgent[] }
   /** Ask composed providers what still runs for one session. */
   activityOf(sessionId: SessionId): Promise<readonly SessionActivity[]>
+  /** Read row metadata from the owning domain services, when composed. */
+  metadataOf?(sessionId: SessionId): SessionTaskMetadata | undefined
 }
 
 /** Resolved scope of one overview read. */

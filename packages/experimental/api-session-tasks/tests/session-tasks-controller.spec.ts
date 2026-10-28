@@ -16,10 +16,12 @@ function agent(id: string, status: SessionTaskAgent['status'], cwd?: string): Se
 function host(
   agents: readonly SessionTaskAgent[],
   activities: Readonly<Record<string, readonly SessionActivity[]>> = {},
+  metadata: Readonly<Record<string, import('../src/types.ts').SessionTaskMetadata>> = {},
 ): SessionTaskHost {
   return {
     agents: { list: () => agents },
     activityOf: async sessionId => activities[sessionId] ?? [],
+    metadataOf: sessionId => metadata[sessionId],
   }
 }
 
@@ -66,6 +68,21 @@ describe('collectSessionTasks', () => {
       ],
     }), { include: ['job'] }, never)
     expect(rows[0]?.activity).toEqual([{ kind: 'job', items: [{ id: 'job-1', label: 'Build' }] }])
+  })
+
+  it('includes the title and last prompt time reported by the owning services', async () => {
+    const rows = await collectSessionTasks(host(
+      [agent('caller', 'running', '/work')],
+      {},
+      { caller: { title: 'Fix the build', lastPromptAt: 1_760_000_000_000 } },
+    ), {}, never)
+    expect(rows[0]).toMatchObject({ title: 'Fix the build', lastPromptAt: 1_760_000_000_000 })
+  })
+
+  it('omits metadata fields when the owning services report none', async () => {
+    const rows = await collectSessionTasks(host([agent('caller', 'running', '/work')]), {}, never)
+    expect(rows[0]).not.toHaveProperty('title')
+    expect(rows[0]).not.toHaveProperty('lastPromptAt')
   })
 
   it('surfaces cancellation between session reads', async () => {

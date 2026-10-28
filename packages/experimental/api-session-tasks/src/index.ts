@@ -8,11 +8,14 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-agent'
+import type {} from '@deepseek-ai/dsh-api-session-controller'
+import type {} from '@deepseek-ai/dsh-session-projection'
 import type { SessionId } from '@deepseek-ai/dsh-session'
+import type {} from '@deepseek-ai/dsh-session-title'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import type { SessionActivity } from '@deepseek-ai/dsh-workspace'
 import { readSessionTasks } from './aggregation.ts'
-import type { SessionTaskHost, SessionTasksRequest, SessionTasksSnapshot } from './types.ts'
+import type { SessionTaskHost, SessionTaskMetadata, SessionTasksRequest, SessionTasksSnapshot } from './types.ts'
 
 export type * from './types.ts'
 export { collectSessionTasks, readSessionTasks } from './aggregation.ts'
@@ -53,6 +56,21 @@ export class SessionTasksController extends TypertRemoteService {
       activityOf: (sessionId: SessionId): Promise<readonly SessionActivity[]> => this.ctx.waterfall(
         'workspace/session-activity', { sessionId }, () => Promise.resolve([]),
       ),
+      metadataOf: (sessionId: SessionId): SessionTaskMetadata | undefined => this.metadataOf(sessionId),
+    }
+  }
+
+  private metadataOf(sessionId: SessionId): SessionTaskMetadata | undefined {
+    const agent = this.ctx.agents.list().find(item => item.session.id === sessionId)
+    const projections = this.ctx.get('sessionProjections')
+    if (agent === undefined || projections === undefined) return undefined
+    const snapshot = projections.snapshot(agent.session, ['title', 'sessionListMetadata'])
+    const title = snapshot.values.title
+    const lastPromptAt = snapshot.values.sessionListMetadata?.lastPromptAt
+    if ((title === undefined || title === null) && (lastPromptAt === null || lastPromptAt === undefined)) return undefined
+    return {
+      ...title === undefined || title === null ? {} : { title },
+      ...lastPromptAt === null || lastPromptAt === undefined ? {} : { lastPromptAt },
     }
   }
 }

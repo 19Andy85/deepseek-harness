@@ -76,7 +76,7 @@ The model receives one fixed overview guidance section.
 ##### Live task overview guidance
 
 ```markdown
-Use session_tasks to list the sessions currently active in this Host with the activity families still running for each one. Pass session_id to restrict the overview to one session and include to keep selected families. The result is a read-only snapshot; it never returns transcript text.
+Use session_tasks to list the sessions currently active in this Host with each row's title, latest human-prompt time, working directory, state, and the activity families still running for it. Pass session_id to restrict the overview to one session and include to keep selected families. The result is a read-only snapshot; it never returns transcript text.
 ```
 
 #### Token effect

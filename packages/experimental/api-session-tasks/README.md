@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The controller serves one read-only Remote namespace, `sessionTasks`, whose single `snapshot` method reports the live sessions of a workspace with the activity families that still run for each one. It projects the Agent registry and the `workspace/session-activity` waterfall; it never reads or writes Session content and adds no model-facing contribution. The package is opt-in and is meant to be mounted beside the browser page that consumes it.
+The controller serves one read-only Remote namespace, `sessionTasks`, whose single `snapshot` method reports the live sessions of a workspace with the activity families that still run for each one. It projects the Agent registry, the `workspace/session-activity` waterfall, and the `title`/`sessionListMetadata` projections; it never reads or writes Session content and adds no model-facing contribution. The package is opt-in and is meant to be mounted beside the browser page that consumes it.
 
 ## Table of Contents
 
@@ -29,7 +29,7 @@ Mount the controller in a Host composition whose browser pages need a live task 
 
 ### What the browser can do
 
-- `sessionTasks.snapshot({ workspaceId? })` — one consistent read: the requested workspace identity and path when scoped, plus each live session's `sessionId`, `cwd`, `status` (`running` or `idle`), and provider activity families.
+- `sessionTasks.snapshot({ workspaceId? })` — one consistent read: the requested workspace identity and path when scoped, plus each live session's `sessionId`, optional `title`, optional `lastPromptAt`, `cwd`, `status` (`running` or `idle`), and provider activity families.
 - Omit `workspaceId` to read every live session of the Host; running sessions are listed first, then ordered by session id.
 - The request is a snapshot; a follow stream is deferred until the page needs push updates.
 
@@ -54,7 +54,7 @@ The controller owns the browser projection only. Aggregation is a pure function 
 
 ### Operation flow
 
-`snapshot` resolves the optional workspace through `ctx.workspaceRegistry`, collects live agents, asks the `workspace/session-activity` waterfall per visible session, projects item identities, sorts the rows, and returns one snapshot. The workspace registry and activity providers stay Host services; the page never receives Session events.
+`snapshot` resolves the optional workspace through `ctx.workspaceRegistry`, collects live agents, asks the `workspace/session-activity` waterfall per visible session, reads the title and last-prompt projections when composed, projects item identities, sorts the rows, and returns one snapshot. The workspace registry and activity providers stay Host services; the page never receives Session events.
 
 ## Further Exploration
 

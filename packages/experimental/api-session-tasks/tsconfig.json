@@ -26,6 +26,15 @@
     },
     {
       "path": "../../typert/protocol"
+    },
+    {
+      "path": "../../api/session-controller/tsconfig.host.json"
+    },
+    {
+      "path": "../../session/session-projection"
+    },
+    {
+      "path": "../../session/session-title"
     }
   ]
 }

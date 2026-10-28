@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-本控制器提供一个只读 Remote 命名空间 `sessionTasks`，其唯一方法 `snapshot` 报告某个工作区的活跃会话，以及每个会话仍在运行的活动家族。它投影智能体注册表与 `workspace/session-activity` 瀑布；从不读取或写入会话内容，也不产生面向模型的贡献。本包需要选择启用，通常与消费它的浏览器页面一起挂载。
+本控制器提供一个只读 Remote 命名空间 `sessionTasks`，其唯一方法 `snapshot` 报告某个工作区的活跃会话，以及每个会话仍在运行的活动家族。它投影智能体注册表、`workspace/session-activity` 瀑布以及 `title`/`sessionListMetadata` 投影；从不读取或写入会话内容，也不产生面向模型的贡献。本包需要选择启用，通常与消费它的浏览器页面一起挂载。
 
 ## 目录
 
@@ -29,7 +29,7 @@ kind: "package-reference"
 
 ### 浏览器能做什么
 
-- `sessionTasks.snapshot({ workspaceId? })`——一次一致性读取：按范围请求时返回工作区身份与路径，以及每个活跃会话的 `sessionId`、`cwd`、`status`（`running` 或 `idle`）和提供方活动家族。
+- `sessionTasks.snapshot({ workspaceId? })`——一次一致性读取：按范围请求时返回工作区身份与路径，以及每个活跃会话的 `sessionId`、可选 `title`、可选 `lastPromptAt`、`cwd`、`status`（`running` 或 `idle`）和提供方活动家族。
 - 省略 `workspaceId` 时读取本 Host 的全部活跃会话；运行中的会话排在前面，其次按会话 id 排序。
 - 请求是快照；跟随流推迟到页面需要推送更新时再实现。
 
@@ -54,7 +54,7 @@ kind: "package-reference"
 
 ### 操作流程
 
-`snapshot` 通过 `ctx.workspaceRegistry` 解析可选的工作区，收集活跃智能体，对每个可见会话询问 `workspace/session-activity` 瀑布，投影条目身份，排序后返回一个快照。工作区注册表与活动提供方始终是 Host 服务；页面不会收到会话事件。
+`snapshot` 通过 `ctx.workspaceRegistry` 解析可选的工作区，收集活跃智能体，对每个可见会话询问 `workspace/session-activity` 瀑布，在组合存在时读取标题与最近提示投影，投影条目身份，排序后返回一个快照。工作区注册表与活动提供方始终是 Host 服务；页面不会收到会话事件。
 
 <a id="further-exploration"></a>
 ## 进一步探索
