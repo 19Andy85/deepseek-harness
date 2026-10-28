@@ -1,12 +1,13 @@
 /** Project console page: the sidebar entry and the workspace-scoped main panel it opens. */
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-api-session-controller/client'
+import type {} from '@deepseek-ai/dsh-api-remotes/client'
 import type {} from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { MainPanelId } from '@deepseek-ai/dsh-client-ui-layout/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
-import type {} from '@deepseek-ai/dsh-experimental-api-session-tasks/remote'
+import sessionTasksRemote from '@deepseek-ai/dsh-experimental-api-session-tasks/remote'
 import { ProjectConsolePage, type ProjectConsoleInjected } from './ProjectConsolePage.tsx'
 import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
 import { ProjectConsoleStore } from './ProjectConsoleStore.ts'
@@ -19,15 +20,27 @@ export const NS = 'projectConsole'
 export const PANEL_ID = 'project-console' as MainPanelId
 
 /** Client capabilities the page contributes through. */
-export const inject = ['slots', 'locale', 'remote', 'remote.workspace', 'remote.sessionTasks', 'workspaces']
+export const inject = ['slots', 'locale', 'remote', 'workspaces']
 
 /**
- * Contribute the console entry and the page it opens, and keep the visible
- * overview current while the Session model reports activity changes.
+ * Mount the overview Remote, then contribute the console entry, the page it
+ * opens, and the refresh path that keeps the visible overview current.
  * @param ctx - the browser plugin context.
+ * @returns disposer that unmounts the Remote contribution.
  */
-export function apply(ctx: Context): void {
+export async function apply(ctx: Context): Promise<() => Promise<void>> {
   ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'project-console: dictionaries')
+  const unmount = await ctx.remote.$mount(sessionTasksRemote)
+  try {
+    await ctx.inject(['remote.sessionTasks'], (inner) => { registerUi(inner) })
+  } catch (error) {
+    await unmount()
+    throw error
+  }
+  return async () => { await unmount() }
+}
+
+function registerUi(ctx: Context): void {
   const t = ctx.locale.bind(NS)
   const store = new ProjectConsoleStore({
     listWorkspaces: () => ctx.workspaces.list.getSnapshot().items.map(workspace => ({

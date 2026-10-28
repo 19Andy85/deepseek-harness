@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Consola del proyecto",
+    "description": "Revisa las sesiones activas y las familias de actividad en curso de un proyecto; el modelo consulta el mismo resumen con session_tasks."
+  }
+}

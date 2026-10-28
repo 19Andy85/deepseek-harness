@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Project console",
+    "description": "Review live sessions and the activity families still running in one project, and let the model inspect the same overview through session_tasks."
+  }
+}

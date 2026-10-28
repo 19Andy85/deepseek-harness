@@ -3137,6 +3137,19 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'sessionTasks',
+    summary: 'Host service backing the generated `ctx.remote.sessionTasks` namespace.',
+    description: 'Host service backing the generated `ctx.remote.sessionTasks` namespace.',
+    methods: [
+      {
+        signature: '@Remote(\'snapshot\') async snapshot(request: SessionTasksRequest): Promise<SessionTasksSnapshot>',
+        description: 'Read the live sessions of one workspace, or of the whole Host when no workspace is requested, together with their activity families.',
+        parameters: [{ name: 'request', description: 'optional workspace scope.' }],
+        returns: 'the consistent overview snapshot.',
+      },
+    ],
+  },
+  {
     key: 'sessionTelemetry',
     summary: 'Loadable form of the backend contract: one implementation per context — the cordis `Service` registration under the `telemetry` key throws on a duplicate, cordis\' standard behavior.',
     description: 'Loadable form of the backend contract: one implementation per context — the cordis `Service` registration under the `telemetry` key throws on a duplicate, cordis\' standard behavior. A backend composes a SessionTelemetryCoordinator in its constructor to install the capture side.',
@@ -8554,6 +8567,26 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SessionSurfaceSnapshot',
     declaration: 'export interface SessionSurfaceSnapshot {\n    session: SessionHeader;\n    inheritedEventCount: SessionLogOffset;\n    capturedThroughSeq: OptionalSessionSeq;\n    events: SurfaceEvent[];\n}',
+  },
+  {
+    name: 'SessionTaskActivityView',
+    declaration: 'export interface SessionTaskActivityView {\n    readonly id: string;\n    readonly label?: string;\n}',
+  },
+  {
+    name: 'SessionTaskActivityViewEntry',
+    declaration: 'export interface SessionTaskActivityViewEntry {\n    readonly kind: string;\n    readonly items?: readonly SessionTaskActivityView[];\n}',
+  },
+  {
+    name: 'SessionTasksRequest',
+    declaration: 'export interface SessionTasksRequest {\n    readonly workspaceId?: string;\n}',
+  },
+  {
+    name: 'SessionTasksSnapshot',
+    declaration: 'export interface SessionTasksSnapshot {\n    readonly workspaceId?: string;\n    readonly workspacePath?: string;\n    readonly sessions: readonly SessionTaskView[];\n}',
+  },
+  {
+    name: 'SessionTaskView',
+    declaration: 'export interface SessionTaskView {\n    readonly sessionId: string;\n    readonly cwd?: string;\n    readonly status: \'idle\' | \'running\';\n    readonly activity: readonly SessionTaskActivityViewEntry[];\n}',
   },
   {
     name: 'SessionTelemetryRecord',

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Projektkonsole",
+    "description": "Prüft aktive Sitzungen und laufende Aktivitätsfamilien eines Projekts; das Modell liest dieselbe Übersicht über session_tasks."
+  }
+}

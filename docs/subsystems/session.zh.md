@@ -1188,6 +1188,24 @@ Types: [CreateSessionOptions](persistence.zh.md) · [PrepareSessionOptions](pers
 
 Source: [`packages/core/session/src/index.ts`](../../packages/core/session/src/index.ts)
 
+<a id="ctxsessiontasks--sessiontaskscontroller"></a>
+
+### `ctx.sessionTasks` — `SessionTasksController`
+
+Host service backing the generated `ctx.remote.sessionTasks` namespace.
+
+```ts cordis-catalog
+/**
+ * Read the live sessions of one workspace, or of the whole Host when no
+ * workspace is requested, together with their activity families.
+ * @param request - optional workspace scope.
+ * @returns the consistent overview snapshot.
+ */
+@Remote('snapshot') async snapshot(request: SessionTasksRequest): Promise<SessionTasksSnapshot>
+```
+
+Source: [`packages/experimental/api-session-tasks/src/index.ts`](../../packages/experimental/api-session-tasks/src/index.ts)
+
 <a id="api-session-events"></a>
 
 ### `api-session/*` events

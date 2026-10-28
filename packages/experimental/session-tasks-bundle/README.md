@@ -1,0 +1,94 @@
+---
+description: "Experimental composition of the project console: workspace-level live session tasks in the browser plus the model-facing session_tasks tool."
+kind: "package-bundle"
+---
+
+# @deepseek-ai/dsh-experimental-session-tasks-bundle
+
+English | [中文](README.zh.md)
+
+## Summary
+
+This experimental bundle composes three plugins into one opt-in capability:
+
+- `@deepseek-ai/dsh-experimental-api-session-tasks` — the Host `sessionTasks` Remote that reads live sessions and their running activity families;
+- `@deepseek-ai/dsh-experimental-client-ui-project-console` — the **Project console** main panel and sidebar entry that render that overview;
+- `@deepseek-ai/dsh-experimental-tool-session-tasks` — the model-facing `session_tasks` tool over the same aggregation.
+
+Nothing is enabled by default: the bundle must be installed into a profile explicitly.
+
+## Table of Contents
+
+- [Use this bundle](#use-this-bundle)
+- [Understand the implementation](#understand-the-implementation)
+- [Further Exploration](#further-exploration)
+- [Model Experience](#model-experience)
+- [Known Limitations and Deferred Work](#known-limitations-and-deferred-work)
+- [Dev Note](#dev-note)
+
+-----
+
+<a id="use-this-bundle"></a>
+## Use this bundle
+
+Install and enable `@deepseek-ai/dsh-experimental-session-tasks-bundle` in a Web profile, then open the **Project console** entry in the sidebar. The model gets the `session_tasks` tool in the same profile.
+
+### What the bundle provides
+
+- The workspace-level console page: live sessions, their `running` or `idle` state, working directory, and running activity families.
+- The `session_tasks` tool, scoped by `visibleScope` (default `same-cwd`).
+- One switch for all three rows: disable the bundle row to remove the page, the Remote, and the tool together.
+
+### Failures and recovery
+
+A missing Host Remote leaves the page showing its retry notice; an unknown or absent Workspace scope is reported by the Remote with `session-tasks/workspace-not-found` or `session-tasks/workspace-unavailable`.
+
+<a id="understand-the-implementation"></a>
+## Understand the implementation
+
+### Design philosophy
+
+The bundle is only a composition layer: each row keeps its own package, tests, and enablement options, so a deployment can mount the page without the model tool (or the tool without the page) by composing the packages directly instead of enabling this bundle.
+
+### Source map
+
+- `cordis.patch.yml` — the three inserted rows and their ids.
+- `src/index.ts` — an empty runtime entry; the composition lives entirely in the patch file.
+
+## Further Exploration
+
+- [Session task overview Remote](../api-session-tasks/README.md)
+- [Project console page](../client-ui-project-console/README.md)
+- [Session task overview tool](../tool-session-tasks/README.md)
+
+## Model Experience
+
+Indirectly, through the `session_tasks` tool it mounts: the tool's prompt section and result shape are owned by [the tool package](../tool-session-tasks/README.md).
+
+#### KV Cache effect
+
+Adds one tool definition and one prompt section to every request of a profile with this bundle enabled; removing the bundle row removes both.
+
+## Known Limitations and Deferred Work
+
+These limits define when this bundle is a poor fit or needs special operational care. They are current package constraints, not a task backlog.
+
+- **Experimental** — not part of any release bundle; mount it explicitly in a profile.
+- **Live sessions only** — sessions without a live Agent in this Host never appear.
+- **Read-only** — dispatch, interruption, and approvals are deferred.
+- **Bundled tool scope** — the tool defaults to `same-cwd`; the controller row itself has no configuration.
+- **No bundle artwork yet** — the plugin row uses the default glyph until designer-approved artwork lands.
+
+<a id="dev-note"></a>
+### Dev Note
+
+<details>
+<summary>Working context for maintainers — click to expand</summary>
+
+This Dev Note is working context for maintainers: open design questions and directions that are not decided. It is explicitly non-authoritative — shipped behavior, limits, and accepted rationale live in the sections above, the package code, and the linked Agent Notes.
+
+#### Future: one-step enablement and artwork
+
+Once the page passes product review, the bundle gains official artwork and a detail document; whether the tool row stays inside this bundle is revisited then.
+
+</details>
