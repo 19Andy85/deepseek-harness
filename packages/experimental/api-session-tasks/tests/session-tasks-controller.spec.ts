@@ -70,13 +70,13 @@ describe('collectSessionTasks', () => {
     expect(rows[0]?.activity).toEqual([{ kind: 'job', items: [{ id: 'job-1', label: 'Build' }] }])
   })
 
-  it('includes the title and last prompt time reported by the owning services', async () => {
+  it('includes the title, last prompt time, and blank flag reported by the owning services', async () => {
     const rows = await collectSessionTasks(host(
       [agent('caller', 'running', '/work')],
       {},
-      { caller: { title: 'Fix the build', lastPromptAt: 1_760_000_000_000 } },
+      { caller: { title: 'Fix the build', lastPromptAt: 1_760_000_000_000, blank: false } },
     ), {}, never)
-    expect(rows[0]).toMatchObject({ title: 'Fix the build', lastPromptAt: 1_760_000_000_000 })
+    expect(rows[0]).toMatchObject({ title: 'Fix the build', lastPromptAt: 1_760_000_000_000, blank: false })
   })
 
   it('omits metadata fields when the owning services report none', async () => {

@@ -42,6 +42,8 @@ export interface SessionTaskMetadata {
   readonly title?: string
   /** Time of the latest human-authored prompt, when the projection carries one. */
   readonly lastPromptAt?: number
+  /** Whether the Session has no turn yet (a placeholder not yet given work). */
+  readonly blank?: boolean
 }
 
 /** One live session of this Host with the activity families that still run for it. */
@@ -56,6 +58,8 @@ export interface SessionTaskView {
   readonly title?: string
   /** Time of the latest human-authored prompt, when the projection carries one. */
   readonly lastPromptAt?: number
+  /** Whether the Session has no turn yet (a placeholder not yet given work). */
+  readonly blank?: boolean
   /** Activity families still running for this session, in provider order. */
   readonly activity: readonly SessionTaskActivityViewEntry[]
 }

@@ -66,11 +66,13 @@ export class SessionTasksController extends TypertRemoteService {
     if (agent === undefined || projections === undefined) return undefined
     const snapshot = projections.snapshot(agent.session, ['title', 'sessionListMetadata'])
     const title = snapshot.values.title
-    const lastPromptAt = snapshot.values.sessionListMetadata?.lastPromptAt
-    if ((title === undefined || title === null) && (lastPromptAt === null || lastPromptAt === undefined)) return undefined
+    const metadata = snapshot.values.sessionListMetadata
+    const lastPromptAt = metadata?.lastPromptAt
+    if ((title === undefined || title === null) && metadata === undefined) return undefined
     return {
       ...title === undefined || title === null ? {} : { title },
       ...lastPromptAt === null || lastPromptAt === undefined ? {} : { lastPromptAt },
+      ...metadata === undefined ? {} : { blank: metadata.blank },
     }
   }
 }

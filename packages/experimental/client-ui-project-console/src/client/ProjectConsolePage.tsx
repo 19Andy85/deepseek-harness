@@ -5,6 +5,7 @@ import type { SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/c
 import type {} from '@deepseek-ai/dsh-client-ui-user-questions/client'
 import type { QuestionAnswer } from '@deepseek-ai/dsh-client-ui-user-questions/client'
 import type { ConsoleState, ConsoleWorkspace } from './ProjectConsoleStore.ts'
+import { runningCount, visibleSessions } from './sessions-view.ts'
 import type { ProjectConsoleKey } from './locales.ts'
 import css from './ProjectConsolePage.module.css'
 
@@ -82,8 +83,9 @@ export function ProjectConsolePage({
   )
   const selected = selectedWorkspaceId()
   const workspaces = workspaceOptions()
-  const hasRows = state.sessions.length > 0
-  const running = state.sessions.filter(session => session.status === 'running').length
+  const rows = visibleSessions(state.sessions)
+  const hasRows = rows.length > 0
+  const running = runningCount(rows)
 
   return (
     <section className={css.page}>
@@ -91,7 +93,7 @@ export function ProjectConsolePage({
         <h1 className={css.title}>{t('title')}</h1>
         <p className={css.subtitle}>{t('description')}</p>
         {state.status === 'ready' && hasRows
-          ? <p className={css.meta}>{t('summary', { total: state.sessions.length, running })}</p>
+          ? <p className={css.meta}>{t('summary', { total: rows.length, running })}</p>
           : null}
         <div className={css.toolbar}>
           <label className={css.meta} htmlFor="project-console-workspace">{t('workspace')}</label>

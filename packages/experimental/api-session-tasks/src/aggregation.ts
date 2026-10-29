@@ -70,6 +70,7 @@ export async function collectSessionTasks(
       status: agent.status,
       ...metadata?.title === undefined ? {} : { title: metadata.title },
       ...metadata?.lastPromptAt === undefined ? {} : { lastPromptAt: metadata.lastPromptAt },
+      ...metadata?.blank === undefined ? {} : { blank: metadata.blank },
       activity: activity.filter(entry => keepActivity(entry, options.include)).map(projectActivity),
     })
   }
