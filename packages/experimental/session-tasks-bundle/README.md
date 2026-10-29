@@ -49,7 +49,7 @@ pnpm exec tsx packages/experimental/session-tasks-bundle/src/enable-local.ts --p
 pnpm dsh --profile web
 ```
 
-The script adds `link:` dependencies for the bundle and the three packages its patch inserts, appends the bundle to the profile's `dsh.profile.bundles`, and installs the profile. Restart the profile afterwards; the sidebar shows **Project console**. Revert with `--remove`, and inspect the change first with `--dry-run`.
+The script adds `link:` dependencies for the bundle and the three packages its patch inserts, appends the bundle to the profile's `dsh.profile.bundles`, and installs the profile. Restart the profile afterwards; the sidebar shows **Project console**. The same script enables the desktop profile (`--profile desktop`) before the desktop app starts, where the entry appears inside the window as it does in the Web client. Revert with `--remove`, and inspect the change first with `--dry-run`.
 
 ### Failures and recovery
 

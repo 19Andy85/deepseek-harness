@@ -49,7 +49,7 @@ pnpm exec tsx packages/experimental/session-tasks-bundle/src/enable-local.ts --p
 pnpm dsh --profile web
 ```
 
-脚本会为 bundle 及其 patch 插入的三个包写入 `link:` 依赖，把 bundle 追加到 profile 的 `dsh.profile.bundles`，并安装 profile。重启 profile 后侧栏显示 **项目控制台**。用 `--remove` 撤销，用 `--dry-run` 先预览改动。
+脚本会为 bundle 及其 patch 插入的三个包写入 `link:` 依赖，把 bundle 追加到 profile 的 `dsh.profile.bundles`，并安装 profile。重启 profile 后侧栏显示 **项目控制台**。同一脚本也可用于桌面 profile（`--profile desktop`），启动桌面应用后该入口会像 Web 客户端一样出现在窗口内。用 `--remove` 撤销，用 `--dry-run` 先预览改动。
 
 ### 失败与恢复
 
