@@ -14,6 +14,8 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'session-tasks/workspace-not-found': Record<string, never>
     /** The request names a workspace but no workspace registry is mounted. */
     'session-tasks/workspace-unavailable': Record<string, never>
+    /** The followed Session is not live in this Host. */
+    'session-tasks/session-not-found': Record<string, never>
   }
 }
 
@@ -68,6 +70,23 @@ export interface SessionTaskView {
 export interface SessionTasksRequest {
   /** Workspace whose sessions to read; omission reads every live session of this Host. */
   readonly workspaceId?: string
+}
+
+/** Request one live session's follow stream. */
+export interface SessionTaskFollowRequest {
+  /** Session to follow; must be live in this Host. */
+  readonly sessionId: string
+}
+
+/**
+ * One frame of a session follow stream: the current row while the Session is
+ * live, and a final frame without a row once it stops being live.
+ */
+export interface SessionTaskFollowFrame {
+  /** Followed Session identity. */
+  readonly sessionId: string
+  /** Current row, absent once the Session is no longer live. */
+  readonly row?: SessionTaskView
 }
 
 /** One consistent overview read for a browser. */

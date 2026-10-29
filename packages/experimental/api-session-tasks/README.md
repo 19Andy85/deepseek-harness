@@ -9,7 +9,7 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The controller serves one read-only Remote namespace, `sessionTasks`, whose single `snapshot` method reports the live sessions of a workspace with the activity families that still run for each one. It projects the Agent registry, the `workspace/session-activity` waterfall, and the `title`/`sessionListMetadata` projections; it never reads or writes Session content and adds no model-facing contribution. The package is opt-in and is meant to be mounted beside the browser page that consumes it.
+The controller serves one read-only Remote namespace, `sessionTasks`: `snapshot` reports the live sessions of a workspace with the activity families that still run for each one, and `follow` streams one live session's row until it stops being live. It projects the Agent registry, the `workspace/session-activity` waterfall, and the `title`/`sessionListMetadata` projections; it never reads or writes Session content and adds no model-facing contribution. The package is opt-in and is meant to be mounted beside the browser page that consumes it.
 
 ## Table of Contents
 
@@ -30,8 +30,9 @@ Mount the controller in a Host composition whose browser pages need a live task 
 ### What the browser can do
 
 - `sessionTasks.snapshot({ workspaceId? })` — one consistent read: the requested workspace identity and path when scoped, plus each live session's `sessionId`, optional `title`, optional `lastPromptAt`, `cwd`, `status` (`running` or `idle`), and provider activity families.
+- `sessionTasks.follow({ sessionId })` — a stream of that session's row: one frame on open, one whenever the row changes, and a final frame without a row once the session stops being live. An unknown or non-live session fails with `session-tasks/session-not-found`. Frames are produced by comparing the row at `followIntervalMs` (default 750, minimum 100).
 - Omit `workspaceId` to read every live session of the Host; running sessions are listed first, then ordered by session id.
-- The request is a snapshot; a follow stream is deferred until the page needs push updates.
+- A follow stream compares the projected row instead of subscribing to individual Host events; a change that flips twice between comparisons is observed as its latest row.
 
 ### Failures and recovery
 
@@ -48,7 +49,7 @@ The controller owns the browser projection only. Aggregation is a pure function 
 
 ### Source map
 
-- `src/index.ts` — `SessionTasksController`, the `sessionTasks` namespace, and the singleton `snapshot` method.
+- `src/index.ts` — `SessionTasksController`, the `sessionTasks` namespace, the `snapshot` method, the polling `follow` stream, and its `followIntervalMs` config.
 - `src/aggregation.ts` — pure collection, workspace projection, and the two Remote error codes.
 - `src/types.ts` — wire value types, Host ports, and the `RemoteErrorDetailsMap` declarations.
 

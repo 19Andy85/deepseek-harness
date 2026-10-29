@@ -1,7 +1,9 @@
 /** Live project console state: workspace selection, one session snapshot, and refresh scheduling. */
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import type { QuestionAnswer } from '@deepseek-ai/dsh-client-ui-user-questions/client'
-import type { SessionTaskView, SessionTasksSnapshot } from '@deepseek-ai/dsh-experimental-api-session-tasks/types'
+import type {
+  SessionTaskFollowFrame, SessionTaskView, SessionTasksSnapshot,
+} from '@deepseek-ai/dsh-experimental-api-session-tasks/types'
 
 /** One selectable Workspace row. */
 export interface ConsoleWorkspace {
@@ -11,6 +13,19 @@ export interface ConsoleWorkspace {
   readonly title: string
   /** Canonical directory path. */
   readonly path: string
+}
+
+/** Follow lifecycle of the focused Session. */
+export type ConsoleFocusPhase = 'connecting' | 'live' | 'ended' | 'failed'
+
+/** One focused Session followed inside the console. */
+export interface ConsoleFocus {
+  /** Followed Session identity. */
+  readonly sessionId: string
+  /** Stream lifecycle. */
+  readonly phase: ConsoleFocusPhase
+  /** Latest row reported by the follow stream. */
+  readonly row?: SessionTaskView
 }
 
 /** Observable page state. */
@@ -31,6 +46,8 @@ export interface ConsoleState {
   readonly busySessionId?: string | undefined
   /** Whether the last row action failed. */
   readonly actionFailed?: true | undefined
+  /** Session followed inside the console, when the overview is replaced by it. */
+  readonly focus?: ConsoleFocus | undefined
 }
 
 /** Host ports the store reads; tests can provide them without a browser. */
@@ -53,6 +70,8 @@ export interface ProjectConsoleHost {
   respondApproval(sessionId: string, decision: 'allowed-once' | 'rejected'): Promise<void>
   /** Submit one complete answer batch to a pending question or plan review. */
   answerQuestion(sessionId: string, answer: QuestionAnswer): Promise<void>
+  /** Follow one Session's row updates until it stops being live. */
+  follow(sessionId: string, signal: AbortSignal): AsyncIterable<SessionTaskFollowFrame>
 }
 
 /** Default coalescing window before an event-triggered re-read. */
@@ -67,6 +86,8 @@ export class ProjectConsoleStore {
   private timer: ReturnType<typeof setTimeout> | undefined
   private disposed = false
   private tail: Promise<void> = Promise.resolve()
+  private focusAbort: AbortController | undefined
+  private focusRun = 0
   private readonly stopWorkspaces: () => void
 
   /** @param host - Workspace and Remote ports. */
@@ -234,12 +255,56 @@ export class ProjectConsoleStore {
   }
 
   /**
+   * Follow one Session inside the console until it stops being live.
+   * @param sessionId - the row to follow.
+   */
+  focusSession(sessionId: string): void {
+    if (this.disposed) return
+    this.closeFocus()
+    const abort = new AbortController()
+    this.focusAbort = abort
+    const run = ++this.focusRun
+    this.state = { ...this.state, focus: { sessionId, phase: 'connecting' } }
+    this.emit()
+    void (async () => {
+      try {
+        for await (const frame of this.host.follow(sessionId, abort.signal)) {
+          if (this.disposed || run !== this.focusRun) return
+          const row = frame.row
+          this.state = {
+            ...this.state,
+            focus: row === undefined ? { sessionId, phase: 'ended' } : { sessionId, phase: 'live', row },
+          }
+          this.emit()
+          if (row === undefined) return
+        }
+      } catch {
+        if (this.disposed || run !== this.focusRun || abort.signal.aborted) return
+        this.state = { ...this.state, focus: { sessionId, phase: 'failed' } }
+        this.emit()
+      }
+    })()
+  }
+
+  /** Leave the focused Session and stop its follow stream. */
+  closeFocus(): void {
+    this.focusAbort?.abort()
+    this.focusAbort = undefined
+    this.focusRun += 1
+    if (this.state.focus === undefined) return
+    const { focus: _focus, ...rest } = this.state
+    this.state = rest
+    this.emit()
+  }
+
+  /**
    * Select one Workspace and read its overview.
    * @param workspaceId - Workspace to display; omission keeps the current selection.
    * @returns completion after the selected Workspace's state settles.
    */
   selectWorkspace(workspaceId?: string): Promise<void> {
     if (this.disposed) return Promise.resolve()
+    this.closeFocus()
     this.panelId = workspaceId
     return this.refresh()
   }
@@ -293,6 +358,8 @@ export class ProjectConsoleStore {
   /** Stop timers, subscriptions, and pending publication. */
   dispose(): void {
     this.disposed = true
+    this.focusAbort?.abort()
+    this.focusAbort = undefined
     if (this.timer !== undefined) clearTimeout(this.timer)
     this.timer = undefined
     this.stopWorkspaces()

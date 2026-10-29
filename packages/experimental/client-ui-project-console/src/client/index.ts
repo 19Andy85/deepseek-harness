@@ -85,6 +85,7 @@ function registerUi(ctx: Context): void {
       }
       await pending.answer(answer)
     },
+    follow: (sessionId, signal) => ctx.remote.sessionTasks.follow({ sessionId }, signal),
     respondApproval: async (sessionId, decision) => {
       const pending = ctx.uiSession.sessionStatus.getSnapshot().get(brandString<SessionId>(sessionId))?.pendingInteraction
       if (pending === undefined || pending.kind !== 'approval') throw new Error('no pending approval')
@@ -112,6 +113,8 @@ function registerUi(ctx: Context): void {
       selectWorkspace: (workspaceId) => { void store.selectWorkspace(workspaceId) },
       refresh: () => { void store.refresh() },
       openSession: (sessionId) => { store.openSession(sessionId) },
+      focusSession: (sessionId) => { store.focusSession(sessionId) },
+      closeFocus: () => { store.closeFocus() },
       dispatch: prompt => store.dispatch(prompt),
       sendToSession: (sessionId, prompt, mode) => store.sendToSession(sessionId, prompt, mode),
       cancelSession: sessionId => store.cancelSession(sessionId),

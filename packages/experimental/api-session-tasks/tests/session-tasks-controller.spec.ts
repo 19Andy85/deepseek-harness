@@ -6,7 +6,7 @@
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionActivity } from '@deepseek-ai/dsh-workspace'
 import { describe, expect, it } from 'vitest'
-import { collectSessionTasks, readSessionTasks, type WorkspaceLookup } from '../src/aggregation.ts'
+import { collectSessionTasks, followSessionTask, readSessionTasks, type WorkspaceLookup } from '../src/aggregation.ts'
 import type { SessionTaskAgent, SessionTaskHost } from '../src/types.ts'
 
 function agent(id: string, status: SessionTaskAgent['status'], cwd?: string): SessionTaskAgent {
@@ -90,6 +90,30 @@ describe('collectSessionTasks', () => {
     const pending = collectSessionTasks(host([agent('a', 'running', '/work'), agent('b', 'idle', '/work')]), {}, controller.signal)
     controller.abort(new Error('cancelled by caller'))
     await expect(pending).rejects.toThrow('cancelled by caller')
+  })
+})
+
+describe('followSessionTask', () => {
+  it('emits the row on open, after a change, and a final frame once the session is gone', async () => {
+    const state = { agents: [agent('followed', 'idle', '/work')] as SessionTaskAgent[] }
+    const mutable: SessionTaskHost = {
+      agents: { list: () => state.agents },
+      activityOf: async () => [],
+    }
+    const abort = new AbortController()
+    const frames = followSessionTask(mutable, { sessionId: 'followed' }, 1, abort.signal)[Symbol.asyncIterator]()
+    expect((await frames.next()).value).toMatchObject({ row: { status: 'idle' } })
+    state.agents = [agent('followed', 'running', '/work')]
+    expect((await frames.next()).value).toMatchObject({ row: { status: 'running' } })
+    state.agents = []
+    expect((await frames.next()).value).toEqual({ sessionId: 'followed' })
+    expect((await frames.next()).done).toBe(true)
+    abort.abort()
+  })
+
+  it('rejects a session that is not live when the stream opens', async () => {
+    const frames = followSessionTask(host([]), { sessionId: 'missing' }, 1, never)[Symbol.asyncIterator]()
+    await expect(frames.next()).rejects.toMatchObject({ code: 'session-tasks/session-not-found' })
   })
 })
 

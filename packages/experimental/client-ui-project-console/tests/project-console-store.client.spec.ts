@@ -2,7 +2,9 @@
 
 import { RemoteError, type RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import type { QuestionAnswer } from '@deepseek-ai/dsh-client-ui-user-questions/client'
-import type { SessionTaskView, SessionTasksSnapshot } from '@deepseek-ai/dsh-experimental-api-session-tasks/types'
+import type {
+  SessionTaskFollowFrame, SessionTaskView, SessionTasksSnapshot,
+} from '@deepseek-ai/dsh-experimental-api-session-tasks/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ProjectConsoleStore, type ConsoleWorkspace, type ProjectConsoleHost } from '../src/client/ProjectConsoleStore.ts'
 
@@ -17,6 +19,7 @@ function snapshot(workspaceId: string, sessions: readonly SessionTaskView[]): Re
 function hostOf(
   workspaces: readonly ConsoleWorkspace[],
   read: (workspaceId?: string) => Promise<RemoteResult<SessionTasksSnapshot>>,
+  follow?: (sessionId: string, signal: AbortSignal) => AsyncIterable<SessionTaskFollowFrame>,
 ): ProjectConsoleHost & {
   readonly reads: (string | undefined)[]
   readonly opened: string[]
@@ -52,6 +55,7 @@ function hostOf(
     failAnswer: false,
     responses,
     answered,
+    follow: follow ?? (() => (async function* () {})()),
     listWorkspaces: () => workspaces,
     subscribeWorkspaces: (next: () => void) => { listener = next; return () => { listener = undefined } },
     snapshot: async (workspaceId?: string) => {
@@ -89,6 +93,53 @@ const alpha: ConsoleWorkspace = { id: 'alpha', title: 'Alpha', path: '/alpha' }
 const beta: ConsoleWorkspace = { id: 'beta', title: 'Beta', path: '/beta' }
 
 afterEach(() => { vi.useRealTimers() })
+
+describe('ProjectConsoleStore focus', () => {
+  it('follows a focused session, updates its row, and ends when the session stops being live', async () => {
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => { release = resolve })
+    const follow = (_sessionId: string): AsyncIterable<SessionTaskFollowFrame> => (async function* () {
+      yield { sessionId: 's1', row: row('s1') }
+      await gate
+      yield { sessionId: 's1' }
+    })()
+    const store = new ProjectConsoleStore(hostOf(
+      [{ id: 'ws', title: 'Workspace', path: '/work' }],
+      async () => snapshot('ws', []),
+      follow,
+    ))
+    store.selectWorkspace('ws')
+    store.focusSession('s1')
+    await vi.waitFor(() => {
+      expect(store.getSnapshot().focus).toMatchObject({ phase: 'live', row: { sessionId: 's1' } })
+    })
+    release()
+    await vi.waitFor(() => { expect(store.getSnapshot().focus?.phase).toBe('ended') })
+    store.dispose()
+  })
+
+  it('closes the focus and aborts its stream', async () => {
+    let seen: AbortSignal | undefined
+    const follow = (_sessionId: string, signal: AbortSignal): AsyncIterable<SessionTaskFollowFrame> => {
+      seen = signal
+      return (async function* () {
+        await new Promise<void>((resolve) => { signal.addEventListener('abort', () => { resolve() }, { once: true }) })
+      })()
+    }
+    const store = new ProjectConsoleStore(hostOf(
+      [{ id: 'ws', title: 'Workspace', path: '/work' }],
+      async () => snapshot('ws', []),
+      follow,
+    ))
+    store.selectWorkspace('ws')
+    store.focusSession('s1')
+    await vi.waitFor(() => { expect(seen).toBeDefined() })
+    store.closeFocus()
+    expect(store.getSnapshot().focus).toBeUndefined()
+    expect(seen?.aborted).toBe(true)
+    store.dispose()
+  })
+})
 
 describe('ProjectConsoleStore', () => {
   it('reads the first Workspace and publishes its rows', async () => {

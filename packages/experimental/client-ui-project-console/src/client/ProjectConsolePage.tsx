@@ -33,6 +33,10 @@ export interface ProjectConsoleInjected {
   readonly refresh: () => void
   /** Show one Session's Conversation. */
   readonly openSession: (sessionId: string) => void
+  /** Follow one Session inside the console. */
+  readonly focusSession: (sessionId: string) => void
+  /** Leave the focused Session. */
+  readonly closeFocus: () => void
   /** Start a new Session with its first prompt; resolves to whether it was created and accepted. */
   readonly dispatch: (prompt: string) => Promise<boolean>
   /** Send one prompt into an existing Session. */
@@ -70,8 +74,8 @@ function activityLabel(entry: ConsoleState['sessions'][number]['activity'][numbe
  * @returns the page body.
  */
 export function ProjectConsolePage({
-  t, store, workspaceOptions, selectedWorkspaceId, selectWorkspace, refresh, openSession, dispatch,
-  sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus,
+  t, store, workspaceOptions, selectedWorkspaceId, selectWorkspace, refresh, openSession, focusSession,
+  closeFocus, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus,
 }: ProjectConsolePageProps) {
   const [prompt, setPrompt] = useState('')
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
@@ -130,141 +134,84 @@ export function ProjectConsolePage({
           : null}
       </header>
       <div className={css.body}>
-        {state.status === 'error' && !hasRows
-          ? <div className={css.empty}>{t('error')}</div>
-          : null}
-        {state.status === 'error' && hasRows
-          ? <div className={css.notice} role="alert">
-            <span className={css.noticeText}>{t('error')}</span>
-            <button type="button" className={css.select} onClick={() => { refresh() }}>{t('retry')}</button>
-          </div>
-          : null}
-        {state.status === 'loading' && !hasRows
-          ? ['a', 'b', 'c'].map(key => <div key={key} className={css.skeleton} />)
-          : null}
-        {state.status === 'ready' && !hasRows
-          ? <div className={css.empty}>{t('empty')}</div>
-          : null}
-        {state.sessions.map((session) => {
-          const pending = [...statuses].find(([sessionId]) => sessionId === session.sessionId)?.[1].pendingInteraction
-          const approval = pending?.kind === 'approval' ? pending : undefined
-          const question = pending?.kind === 'question' || pending?.kind === 'plan-review' ? pending : undefined
-          const firstQuestion = question?.questions[0]
-          const simpleOptions = firstQuestion !== undefined
-            && firstQuestion.multiSelect !== true
-            && firstQuestion.options !== undefined
-            && firstQuestion.options.length > 0
-            ? firstQuestion.options
-            : undefined
-          return (
-            <article key={session.sessionId} className={css.row}>
-              <button
-                type="button"
-                className={css.rowMain}
-                aria-label={t('openSession')}
-                onClick={() => { openSession(session.sessionId) }}
-              >
-                <div className={css.rowHead}>
-                  <span className={css.sessionId} title={session.sessionId}>{session.title ?? t('untitled')}</span>
-                  <span className={css.meta}>{session.status === 'running' ? t('running') : t('idle')}</span>
-                  {session.lastPromptAt === undefined
-                    ? null
-                    : <span className={css.meta}>{relativeTime(session.lastPromptAt, t)}</span>}
-                  {session.cwd === undefined ? null : <span className={css.meta} title={session.cwd}>{session.cwd}</span>}
-                </div>
-                <div className={css.badges}>
-                  {session.activity.length === 0
-                    ? <span className={css.chip}>{t('noActivity')}</span>
-                    : session.activity.map(entry => (
-                      <span
-                        key={entry.kind}
-                        className={session.status === 'running' ? `${css.chip} ${css.chipRunning}` : css.chip}
-                      >
-                        {activityLabel(entry)}
-                      </span>
-                    ))}
-                </div>
-              </button>
+        {state.focus === undefined
+          ? null
+          : (
+            <article className={css.row}>
+              <div className={css.rowHead}>
+                <span className={css.sessionId} title={state.focus.sessionId}>
+                  {state.focus.row === undefined ? t('untitled') : state.focus.row.title ?? t('untitled')}
+                </span>
+                {state.focus.row === undefined
+                  ? null
+                  : <span className={css.meta}>{state.focus.row.status === 'running' ? t('running') : t('idle')}</span>}
+                {state.focus.row === undefined || state.focus.row.lastPromptAt === undefined
+                  ? null
+                  : <span className={css.meta}>{relativeTime(state.focus.row.lastPromptAt, t)}</span>}
+                {state.focus.row === undefined || state.focus.row.cwd === undefined
+                  ? null
+                  : <span className={css.meta} title={state.focus.row.cwd}>{state.focus.row.cwd}</span>}
+              </div>
+              <div className={css.badges}>
+                {state.focus.row === undefined || state.focus.row.activity.length === 0
+                  ? <span className={css.chip}>{t('noActivity')}</span>
+                  : state.focus.row.activity.map(entry => (
+                    <span
+                      key={entry.kind}
+                      className={state.focus?.row?.status === 'running' ? `${css.chip} ${css.chipRunning}` : css.chip}
+                    >
+                      {activityLabel(entry)}
+                    </span>
+                  ))}
+              </div>
+              {state.focus.phase === 'ended' || state.focus.phase === 'failed'
+                ? (
+                  <div className={css.notice} role={state.focus.phase === 'failed' ? 'alert' : 'status'}>
+                    <span className={css.noticeText}>
+                      {state.focus.phase === 'failed' ? t('focusFailed') : t('focusEnded')}
+                    </span>
+                  </div>
+                )
+                : null}
               <div className={css.rowActions}>
+                <button type="button" className={css.select} onClick={() => { closeFocus() }}>{t('focusBack')}</button>
                 <button
                   type="button"
                   className={css.select}
-                  onClick={() => {
-                    setReplyingTo(replyingTo === session.sessionId ? null : session.sessionId)
-                    setReplyText('')
-                  }}
+                  onClick={() => { if (state.focus === undefined) return; openSession(state.focus.sessionId) }}
                 >
-                  {t('sendPrompt')}
+                  {t('openSession')}
                 </button>
-                {session.status === 'running'
+                {state.focus.row?.status === 'running'
                   ? (
                     <button
                       type="button"
                       className={css.select}
-                      disabled={state.busySessionId === session.sessionId}
-                      onClick={() => { void cancelSession(session.sessionId) }}
+                      disabled={state.busySessionId === state.focus.sessionId}
+                      onClick={() => {
+                        if (state.focus === undefined) return
+                        void cancelSession(state.focus.sessionId)
+                      }}
                     >
                       {t('interrupt')}
                     </button>
                   )
                   : null}
+                <button
+                  type="button"
+                  className={css.select}
+                  onClick={() => {
+                    setReplyingTo(replyingTo === state.focus?.sessionId ? null : state.focus?.sessionId ?? null)
+                    setReplyText('')
+                  }}
+                >
+                  {t('sendPrompt')}
+                </button>
               </div>
-              {approval === undefined
-                ? null
-                : (
-                  <div className={css.rowActions}>
-                    <span className={css.chip}>{t('pendingApproval')} · {approval.toolName}</span>
-                    <button
-                      type="button"
-                      className={css.select}
-                      disabled={state.busySessionId === session.sessionId || !approval.answerable}
-                      onClick={() => { void answerApproval(session.sessionId, 'allowed-once') }}
-                    >
-                      {t('allowOnce')}
-                    </button>
-                    <button
-                      type="button"
-                      className={css.select}
-                      disabled={state.busySessionId === session.sessionId || !approval.answerable}
-                      onClick={() => { void answerApproval(session.sessionId, 'rejected') }}
-                    >
-                      {t('rejectApproval')}
-                    </button>
-                  </div>
-                )}
-              {question === undefined || firstQuestion === undefined
-                ? null
-                : (
-                  <div className={css.rowActions}>
-                    <span className={css.chip}>
-                      {question.kind === 'plan-review' ? t('planReviewPending') : t('questionPending')}
-                      {' · '}
-                      {firstQuestion.question}
-                    </span>
-                    {simpleOptions === undefined
-                      ? (
-                        <button type="button" className={css.select} onClick={() => { openSession(session.sessionId) }}>
-                          {t('goToConversation')}
-                        </button>
-                      )
-                      : simpleOptions.map(option => (
-                        <button
-                          key={option.label}
-                          type="button"
-                          className={css.select}
-                          disabled={state.busySessionId === session.sessionId}
-                          onClick={() => {
-                            void answerQuestion(session.sessionId, {
-                              answers: [{ id: firstQuestion.id, selected: [option.label] }],
-                            })
-                          }}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                  </div>
-                )}
-              {replyingTo === session.sessionId
+              {state.focus.phase === 'connecting' && state.focus.row === undefined
+                ? <p className={css.meta}>{t('focusConnecting')}</p>
+                : null}
+              {replyingTo === state.focus.sessionId
                 ? (
                   <div className={css.compose}>
                     <textarea
@@ -277,9 +224,11 @@ export function ProjectConsolePage({
                     <button
                       type="button"
                       className={css.select}
-                      disabled={replyText.trim() === '' || state.busySessionId === session.sessionId}
+                      disabled={replyText.trim() === '' || state.busySessionId === state.focus.sessionId}
                       onClick={() => {
-                        void sendToSession(session.sessionId, replyText, 'queue').then((accepted) => {
+                        if (state.focus === undefined) return
+                        const sessionId = state.focus.sessionId
+                        void sendToSession(sessionId, replyText, 'queue').then((accepted) => {
                           if (!accepted) return
                           setReplyingTo(null)
                           setReplyText('')
@@ -288,20 +237,6 @@ export function ProjectConsolePage({
                     >
                       {t('sendQueue')}
                     </button>
-                    <button
-                      type="button"
-                      className={css.select}
-                      disabled={replyText.trim() === '' || state.busySessionId === session.sessionId}
-                      onClick={() => {
-                        void sendToSession(session.sessionId, replyText, 'steer').then((accepted) => {
-                          if (!accepted) return
-                          setReplyingTo(null)
-                          setReplyText('')
-                        })
-                      }}
-                    >
-                      {t('sendSteer')}
-                    </button>
                     <button type="button" className={css.select} onClick={() => { setReplyingTo(null); setReplyText('') }}>
                       {t('cancel')}
                     </button>
@@ -309,8 +244,194 @@ export function ProjectConsolePage({
                 )
                 : null}
             </article>
+          )}
+        {state.focus === undefined
+          ? (
+            <>
+              {state.status === 'error' && !hasRows
+                ? <div className={css.empty}>{t('error')}</div>
+                : null}
+              {state.status === 'error' && hasRows
+                ? <div className={css.notice} role="alert">
+                  <span className={css.noticeText}>{t('error')}</span>
+                  <button type="button" className={css.select} onClick={() => { refresh() }}>{t('retry')}</button>
+                </div>
+                : null}
+              {state.status === 'loading' && !hasRows
+                ? ['a', 'b', 'c'].map(key => <div key={key} className={css.skeleton} />)
+                : null}
+              {state.status === 'ready' && !hasRows
+                ? <div className={css.empty}>{t('empty')}</div>
+                : null}
+              {state.sessions.map((session) => {
+                const pending = [...statuses].find(([sessionId]) => sessionId === session.sessionId)?.[1].pendingInteraction
+                const approval = pending?.kind === 'approval' ? pending : undefined
+                const question = pending?.kind === 'question' || pending?.kind === 'plan-review' ? pending : undefined
+                const firstQuestion = question?.questions[0]
+                const simpleOptions = firstQuestion !== undefined
+            && firstQuestion.multiSelect !== true
+            && firstQuestion.options !== undefined
+            && firstQuestion.options.length > 0
+                  ? firstQuestion.options
+                  : undefined
+                return (
+                  <article key={session.sessionId} className={css.row}>
+                    <button
+                      type="button"
+                      className={css.rowMain}
+                      aria-label={t('focusSession')}
+                      onClick={() => { focusSession(session.sessionId) }}
+                    >
+                      <div className={css.rowHead}>
+                        <span className={css.sessionId} title={session.sessionId}>{session.title ?? t('untitled')}</span>
+                        <span className={css.meta}>{session.status === 'running' ? t('running') : t('idle')}</span>
+                        {session.lastPromptAt === undefined
+                          ? null
+                          : <span className={css.meta}>{relativeTime(session.lastPromptAt, t)}</span>}
+                        {session.cwd === undefined ? null : <span className={css.meta} title={session.cwd}>{session.cwd}</span>}
+                      </div>
+                      <div className={css.badges}>
+                        {session.activity.length === 0
+                          ? <span className={css.chip}>{t('noActivity')}</span>
+                          : session.activity.map(entry => (
+                            <span
+                              key={entry.kind}
+                              className={session.status === 'running' ? `${css.chip} ${css.chipRunning}` : css.chip}
+                            >
+                              {activityLabel(entry)}
+                            </span>
+                          ))}
+                      </div>
+                    </button>
+                    <div className={css.rowActions}>
+                      <button
+                        type="button"
+                        className={css.select}
+                        onClick={() => {
+                          setReplyingTo(replyingTo === session.sessionId ? null : session.sessionId)
+                          setReplyText('')
+                        }}
+                      >
+                        {t('sendPrompt')}
+                      </button>
+                      {session.status === 'running'
+                        ? (
+                          <button
+                            type="button"
+                            className={css.select}
+                            disabled={state.busySessionId === session.sessionId}
+                            onClick={() => { void cancelSession(session.sessionId) }}
+                          >
+                            {t('interrupt')}
+                          </button>
+                        )
+                        : null}
+                    </div>
+                    {approval === undefined
+                      ? null
+                      : (
+                        <div className={css.rowActions}>
+                          <span className={css.chip}>{t('pendingApproval')} · {approval.toolName}</span>
+                          <button
+                            type="button"
+                            className={css.select}
+                            disabled={state.busySessionId === session.sessionId || !approval.answerable}
+                            onClick={() => { void answerApproval(session.sessionId, 'allowed-once') }}
+                          >
+                            {t('allowOnce')}
+                          </button>
+                          <button
+                            type="button"
+                            className={css.select}
+                            disabled={state.busySessionId === session.sessionId || !approval.answerable}
+                            onClick={() => { void answerApproval(session.sessionId, 'rejected') }}
+                          >
+                            {t('rejectApproval')}
+                          </button>
+                        </div>
+                      )}
+                    {question === undefined || firstQuestion === undefined
+                      ? null
+                      : (
+                        <div className={css.rowActions}>
+                          <span className={css.chip}>
+                            {question.kind === 'plan-review' ? t('planReviewPending') : t('questionPending')}
+                            {' · '}
+                            {firstQuestion.question}
+                          </span>
+                          {simpleOptions === undefined
+                            ? (
+                              <button type="button" className={css.select} onClick={() => { openSession(session.sessionId) }}>
+                                {t('goToConversation')}
+                              </button>
+                            )
+                            : simpleOptions.map(option => (
+                              <button
+                                key={option.label}
+                                type="button"
+                                className={css.select}
+                                disabled={state.busySessionId === session.sessionId}
+                                onClick={() => {
+                                  void answerQuestion(session.sessionId, {
+                                    answers: [{ id: firstQuestion.id, selected: [option.label] }],
+                                  })
+                                }}
+                              >
+                                {option.label}
+                              </button>
+                            ))}
+                        </div>
+                      )}
+                    {replyingTo === session.sessionId
+                      ? (
+                        <div className={css.compose}>
+                          <textarea
+                            className={css.prompt}
+                            rows={2}
+                            value={replyText}
+                            placeholder={t('replyPlaceholder')}
+                            onChange={(event) => { setReplyText(event.currentTarget.value) }}
+                          />
+                          <button
+                            type="button"
+                            className={css.select}
+                            disabled={replyText.trim() === '' || state.busySessionId === session.sessionId}
+                            onClick={() => {
+                              void sendToSession(session.sessionId, replyText, 'queue').then((accepted) => {
+                                if (!accepted) return
+                                setReplyingTo(null)
+                                setReplyText('')
+                              })
+                            }}
+                          >
+                            {t('sendQueue')}
+                          </button>
+                          <button
+                            type="button"
+                            className={css.select}
+                            disabled={replyText.trim() === '' || state.busySessionId === session.sessionId}
+                            onClick={() => {
+                              void sendToSession(session.sessionId, replyText, 'steer').then((accepted) => {
+                                if (!accepted) return
+                                setReplyingTo(null)
+                                setReplyText('')
+                              })
+                            }}
+                          >
+                            {t('sendSteer')}
+                          </button>
+                          <button type="button" className={css.select} onClick={() => { setReplyingTo(null); setReplyText('') }}>
+                            {t('cancel')}
+                          </button>
+                        </div>
+                      )
+                      : null}
+                  </article>
+                )
+              })}
+            </>
           )
-        })}
+          : null}
       </div>
     </section>
   )

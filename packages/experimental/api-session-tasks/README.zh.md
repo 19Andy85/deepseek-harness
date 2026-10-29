@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-本控制器提供一个只读 Remote 命名空间 `sessionTasks`，其唯一方法 `snapshot` 报告某个工作区的活跃会话，以及每个会话仍在运行的活动家族。它投影智能体注册表、`workspace/session-activity` 瀑布以及 `title`/`sessionListMetadata` 投影；从不读取或写入会话内容，也不产生面向模型的贡献。本包需要选择启用，通常与消费它的浏览器页面一起挂载。
+本控制器提供一个只读 Remote 命名空间 `sessionTasks`：`snapshot` 报告某个工作区的活跃会话，以及每个会话仍在运行的活动家族；`follow` 流式跟随单个活跃会话的行，直到它不再是活跃会话。它投影智能体注册表、`workspace/session-activity` 瀑布以及 `title`/`sessionListMetadata` 投影；从不读取或写入会话内容，也不产生面向模型的贡献。本包需要选择启用，通常与消费它的浏览器页面一起挂载。
 
 ## 目录
 
@@ -25,13 +25,14 @@ kind: "package-reference"
 <a id="use-this-package"></a>
 ## 使用本包
 
-在需要实时任务总览的浏览器页面的 Host 组合中挂载本控制器。它需要 `ctx.typert` 与 `ctx.agents`；按工作区读取时还需要挂载 `ctx.workspaceRegistry`。本包不声明配置。
+在需要实时任务总览的浏览器页面的 Host 组合中挂载本控制器。它需要 `ctx.typert` 与 `ctx.agents`；按工作区读取时还需要挂载 `ctx.workspaceRegistry`。本包声明一个配置项 `followIntervalMs`（跟随流的比较间隔，默认 750 毫秒）。
 
 ### 浏览器能做什么
 
 - `sessionTasks.snapshot({ workspaceId? })`——一次一致性读取：按范围请求时返回工作区身份与路径，以及每个活跃会话的 `sessionId`、可选 `title`、可选 `lastPromptAt`、`cwd`、`status`（`running` 或 `idle`）和提供方活动家族。
+- `sessionTasks.follow({ sessionId })`——该会话行的流：打开时一帧，行发生变化时一帧，会话不再是活跃会话时一帧不含行的结束帧。未知或非活跃会话以 `session-tasks/session-not-found` 失败。帧通过按 `followIntervalMs`（默认 750，最小 100）比较行产生。
 - 省略 `workspaceId` 时读取本 Host 的全部活跃会话；运行中的会话排在前面，其次按会话 id 排序。
-- 请求是快照；跟随流推迟到页面需要推送更新时再实现。
+- 跟随流通过比较投影行而不是订阅单个 Host 事件实现；两次比较之间翻转两次的变化只会观察到最新行。
 
 ### 失败与恢复
 
@@ -48,7 +49,7 @@ kind: "package-reference"
 
 ### 源码地图
 
-- `src/index.ts`——`SessionTasksController`、`sessionTasks` 命名空间与单例 `snapshot` 方法。
+- `src/index.ts`——`SessionTasksController`、`sessionTasks` 命名空间、`snapshot` 方法、轮询式 `follow` 流及其 `followIntervalMs` 配置。
 - `src/aggregation.ts`——纯聚合、工作区投影与两个 Remote 错误码。
 - `src/types.ts`——线上值类型、Host 端口与 `RemoteErrorDetailsMap` 声明。
 

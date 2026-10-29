@@ -32,13 +32,14 @@ Mount the page in a Web composition that also mounts a Host controller serving t
 - Contribute the `project-console` main panel and its sidebar entry, with copy for the eight shipped Client languages.
 - Pick one Workspace, then read its live sessions, each row showing the Session title (falling back to *Untitled session*), its `running` or `idle` state, the relative time of its latest human prompt, its working directory, and the activity families still running for it; the header summarizes visible sessions and how many run. Blank placeholder Sessions stay hidden; rows list running sessions first, then the most recent prompt. While the panel is visible it re-reads every few seconds in addition to the event-driven refresh, and **Refresh** reads on demand.
 - Open the console from the sidebar entry, or from a Workspace row's "…" menu: that row's Workspace becomes the selected scope.
-- Select any session row to open its Conversation, where the shipped view streams the session's progress.
+- Select any session row to follow it inside the console: the page keeps the row (title, state, recency, working directory, running activity families) current from `sessionTasks.follow` until the session stops being live, then says so. **Back to overview** returns to the list, **Open session** shows its Conversation.
 - Write a first prompt and choose **Start session and send**: the console creates a Session through the shipped `session/create` Remote, sends the prompt through `session/prompt`, then opens that session's Conversation.
 - Reply inside a row: choose **Reply in this session**, then **Queue** to append a turn or **Interrupt and send** to replace the running one through the same `session/prompt` Remote.
 - Stop a running row with **Interrupt**, which calls the shipped `session/cancel` Remote.
 - A row with a pending tool approval shows **Approval needed** with the tool name and **Allow once** / **Reject**; the decision resolves the same pending approval the Conversation would show.
 - A row with a pending question or plan review shows the first question; a single-select question and a plan review answer from their option buttons (**Open to answer** when the shape needs the Conversation, such as multi-select, free text, or several questions).
 - Re-read automatically after a session status or activity event, coalescing bursts into one read; **Refresh** reads on demand.
+- While a session is focused, its row comes from the follow stream and the same **Interrupt**, **Reply in this session**, and **Open session** actions stay available; pending approvals and questions remain on the overview row.
 - A failed read keeps the last rows visible and shows a compact retry notice; the full error state appears only when no rows were ever read.
 
 ### Failures and recovery
