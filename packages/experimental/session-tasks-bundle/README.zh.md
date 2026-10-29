@@ -39,6 +39,17 @@ kind: "package-bundle"
 - `session_tasks` 工具，按 `visibleScope` 授权（默认 `same-cwd`）。
 - 三行共用一个开关：禁用 bundle 行即可同时移除页面、Remote 与工具。
 
+### 为已发布版本构建兼容包
+
+运行旧版 app 的 profile 需要与**该 app 依赖一致**的构建，而不是本 workspace 的依赖。本 bundle 提供 `dsh-v0.2.1-rc.3` 线的可复现兼容构建：
+
+```sh
+node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs \
+  --tag dsh-v0.2.1-rc.3 --link-profile desktop
+```
+
+脚本会为该 tag 创建 detached worktree、复制四个包、应用 `compat/target.patch`（版本线注册与缺失的 prompt section id）和 `compat/plugins.patch`（该版本线需要的客户端适配），安装并构建该 worktree，再把结果链接进指定 profile。之后重启 app 生效。修改包源码后需重新生成两个 patch；`--skip-build` 只复现源码树。
+
 ### 不发布也能本地启用
 
 本 bundle 处于实验阶段、尚未发布。可以直接从本 checkout 链接进某个 profile：

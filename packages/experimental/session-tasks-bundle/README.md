@@ -39,6 +39,17 @@ Install and enable `@deepseek-ai/dsh-experimental-session-tasks-bundle` in a Web
 - The `session_tasks` tool, scoped by `visibleScope` (default `same-cwd`).
 - One switch for all three rows: disable the bundle row to remove the page, the Remote, and the tool together.
 
+### Build for a shipped release line
+
+A profile that runs an older app needs packages built against that app's dependencies, not this workspace's. The bundle ships a reproducible compatibility build for the `dsh-v0.2.1-rc.3` line:
+
+```sh
+node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs \
+  --tag dsh-v0.2.1-rc.3 --link-profile desktop
+```
+
+The script creates a detached worktree for the tag, copies the four packages, applies `compat/target.patch` (release-line registrations and the missing prompt section id) and `compat/plugins.patch` (the client adaptations that release line needs), installs and builds that worktree, and links the result into the named profile. Restart the app afterwards. Regenerate both patches after changing the package sources; `--skip-build` reproduces only the source tree.
+
 ### Enable locally without publishing
 
 The bundle is experimental and not published. Link it into one profile from this checkout:

@@ -1,0 +1,207 @@
+
+--- a/packages/experimental/tool-session-tasks/package.json	2026-10-29 04:02:07
++++ b/packages/experimental/tool-session-tasks/package.json	2026-10-29 20:49:06
+@@ -1,7 +1,7 @@
+ {
+   "name": "@deepseek-ai/dsh-experimental-tool-session-tasks",
+   "description": "Read-only model-facing live session task overview across the sessions of one Host",
+-  "version": "0.2.2-alpha.2",
++  "version": "0.2.1-rc.3",
+   "publishConfig": {
+     "access": "public"
+   },
+@@ -58,8 +58,6 @@
+     "@deepseek-ai/dsh-sandbox-policy": "workspace:*",
+     "@deepseek-ai/dsh-session-projection": "workspace:*",
+     "@deepseek-ai/dsh-subprocess-local": "workspace:*",
+-    "@deepseek-ai/dsh-tool-executor-native": "workspace:*",
+-    "@deepseek-ai/dsh-tool-testkit": "workspace:*",
+     "@deepseek-ai/dsh-working-directory": "workspace:*",
+     "@deepseek-ai/dsh-experimental-api-session-tasks": "workspace:*"
+   }
+
+--- a/packages/experimental/api-session-tasks/package.json	2026-10-29 04:49:56
++++ b/packages/experimental/api-session-tasks/package.json	2026-10-29 20:43:27
+@@ -1,7 +1,7 @@
+ {
+   "name": "@deepseek-ai/dsh-experimental-api-session-tasks",
+   "description": "Read-only browser Remote for the live session task overview of one Host workspace",
+-  "version": "0.2.2-alpha.2",
++  "version": "0.2.1-rc.3",
+   "publishConfig": {
+     "access": "public"
+   },
+
+--- a/packages/experimental/client-ui-project-console/package.json	2026-10-29 07:21:12
++++ b/packages/experimental/client-ui-project-console/package.json	2026-10-29 20:43:27
+@@ -1,7 +1,7 @@
+ {
+   "name": "@deepseek-ai/dsh-experimental-client-ui-project-console",
+   "description": "Workspace console page: the read-only live session task overview of one project",
+-  "version": "0.2.2-alpha.2",
++  "version": "0.2.1-rc.3",
+   "publishConfig": {
+     "access": "public"
+   },
+
+--- a/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-10-29 04:06:48
++++ b/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-10-29 20:58:57
+@@ -1,6 +1,5 @@
+-/** Workspace row menu entry that opens the project console on that Workspace. */
++/** Session row menu entry that opens the project console for the row's workspace. */
+ import { MenuItemButton } from '@deepseek-ai/dsh-client-ui-primitives'
+-import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
+ import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+ import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
+ import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
+@@ -8,14 +7,14 @@
+ /** Behavior the menu row injects. */
+ export interface ProjectConsoleMenuInjected {
+   /**
+-   * Open the console on the row's Workspace.
+-   * @param workspaceId - the menu row's Workspace.
++   * Open the console for the Workspace that accounts this Session.
++   * @param sessionId - the menu row's Session.
+    */
+-  readonly openConsole: (workspaceId: WorkspaceId) => void
++  readonly openConsole: (sessionId: string) => void
+ }
+ 
+ /** Framework props and the console dictionary of the menu row. */
+-export type ProjectConsoleMenuItemProps = PropsRuntime<'sidebar.workspaces.workspace.menu.item'>
++export type ProjectConsoleMenuItemProps = PropsRuntime<'sidebar.workspaces.session.menu.item'>
+   & PropsLocale<'projectConsole'>
+   & InjectFace<ProjectConsoleMenuInjected>
+ 
+@@ -25,14 +24,14 @@
+  * @returns the menu row.
+  */
+ export function ProjectConsoleMenuItem(props: ProjectConsoleMenuItemProps) {
+-  const { workspaceId, useMenuOpenState, openConsole, t } = props
++  const { sessionId, useMenuOpenState, openConsole, t } = props
+   const [, setMenuOpen] = useMenuOpenState()
+   return (
+     <MenuItemButton
+       icon={<ProjectConsolePanelIcon />}
+       onSelect={() => {
+         setMenuOpen(false)
+-        openConsole(workspaceId)
++        openConsole(sessionId)
+       }}
+     >
+       {t('openConsole')}
+
+--- a/packages/experimental/client-ui-project-console/src/client/index.ts	2026-10-29 07:25:46
++++ b/packages/experimental/client-ui-project-console/src/client/index.ts	2026-10-29 20:59:38
+@@ -21,7 +21,7 @@
+ import { ProjectConsolePage, type ProjectConsoleInjected } from './ProjectConsolePage.tsx'
+ import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
+ import { ProjectConsoleStore } from './ProjectConsoleStore.ts'
+-import { de, en, es, fr, ja, pt, ru, zh } from './locales.ts'
++import { en, zh } from './locales.ts'
+ 
+ /** Locale namespace of the page copy. */
+ export const NS = 'projectConsole'
+@@ -39,7 +39,7 @@
+  * @returns disposer that unmounts the Remote contribution.
+  */
+ export async function apply(ctx: Context): Promise<() => Promise<void>> {
+-  ctx.effect(() => ctx.locale.register(NS, { zh, en, ja, es, fr, de, ru, pt }), 'project-console: dictionaries')
++  ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'project-console: dictionaries')
+   const unmount = await ctx.remote.$mount(sessionTasksRemote)
+   try {
+     await ctx.inject(['remote.sessionTasks'], (inner) => { registerUi(inner) })
+@@ -120,18 +120,20 @@
+       hooks: { sessionStatus: ctx.uiSession.sessionStatus },
+     }),
+   }, ProjectConsolePage)), 'project-console: page')
+-  ctx.effect(() => ctx.slots.inject('sidebar.workspaces.workspace.menu.item', () => ctx.slots.register({
+-    name: 'sidebar.workspaces.workspace.menu.item',
++  ctx.effect(() => ctx.slots.inject('sidebar.workspaces.session.menu.item', () => ctx.slots.register({
++    name: 'sidebar.workspaces.session.menu.item',
+     id: 'project-console',
+-    order: 100,
++    order: 460,
+     locale: NS,
+     inject: (): ProjectConsoleMenuInjected => ({
+-      openConsole: (workspaceId: WorkspaceId) => {
++      openConsole: (sessionId) => {
++        const workspace = ctx.workspaces.list.getSnapshot().items
++          .find(item => item.sessionIds.includes(sessionId as never))
+         ctx.layout.selectPanel(PANEL_ID)
+-        void store.selectWorkspace(workspaceId)
++        if (workspace !== undefined) void store.selectWorkspace(String(workspace.workspaceId))
+       },
+     }),
+-  }, ProjectConsoleMenuItem)), 'project-console: workspace menu')
++  }, ProjectConsoleMenuItem)), 'project-console: session menu')
+   ctx.effect(() => ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
+     name: 'sidebar.panellist',
+     id: PANEL_ID,
+
+--- a/packages/experimental/session-tasks-bundle/README.i18n.yaml	2026-10-29 21:27:48
++++ b/packages/experimental/session-tasks-bundle/README.i18n.yaml	2026-10-29 18:51:33
+@@ -20,9 +20,6 @@
+ /deepseek-ai-dsh-experimental-session-tasks-bundle/use-this-bundle/what-the-bundle-provides:
+   en: ac82e3dccd24ea1e
+   zh: c8e2681b1461420a
+-/deepseek-ai-dsh-experimental-session-tasks-bundle/use-this-bundle/build-for-a-shipped-release-line:
+-  en: a7e99d3f9bb799b8
+-  zh: 1a9114c4bdf5a7e2
+ /deepseek-ai-dsh-experimental-session-tasks-bundle/use-this-bundle/enable-locally-without-publishing:
+   en: b1bfe7862294073a
+   zh: 89c168e26f73431b
+
+--- a/packages/experimental/session-tasks-bundle/README.md	2026-10-29 21:27:46
++++ b/packages/experimental/session-tasks-bundle/README.md	2026-10-29 18:51:30
+@@ -39,17 +39,6 @@
+ - The `session_tasks` tool, scoped by `visibleScope` (default `same-cwd`).
+ - One switch for all three rows: disable the bundle row to remove the page, the Remote, and the tool together.
+ 
+-### Build for a shipped release line
+-
+-A profile that runs an older app needs packages built against that app's dependencies, not this workspace's. The bundle ships a reproducible compatibility build for the `dsh-v0.2.1-rc.3` line:
+-
+-```sh
+-node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs \
+-  --tag dsh-v0.2.1-rc.3 --link-profile desktop
+-```
+-
+-The script creates a detached worktree for the tag, copies the four packages, applies `compat/target.patch` (release-line registrations and the missing prompt section id) and `compat/plugins.patch` (the client adaptations that release line needs), installs and builds that worktree, and links the result into the named profile. Restart the app afterwards. Regenerate both patches after changing the package sources; `--skip-build` reproduces only the source tree.
+-
+ ### Enable locally without publishing
+ 
+ The bundle is experimental and not published. Link it into one profile from this checkout:
+
+--- a/packages/experimental/session-tasks-bundle/README.zh.md	2026-10-29 21:27:46
++++ b/packages/experimental/session-tasks-bundle/README.zh.md	2026-10-29 18:51:30
+@@ -39,17 +39,6 @@
+ - `session_tasks` 工具，按 `visibleScope` 授权（默认 `same-cwd`）。
+ - 三行共用一个开关：禁用 bundle 行即可同时移除页面、Remote 与工具。
+ 
+-### 为已发布版本构建兼容包
+-
+-运行旧版 app 的 profile 需要与**该 app 依赖一致**的构建，而不是本 workspace 的依赖。本 bundle 提供 `dsh-v0.2.1-rc.3` 线的可复现兼容构建：
+-
+-```sh
+-node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs \
+-  --tag dsh-v0.2.1-rc.3 --link-profile desktop
+-```
+-
+-脚本会为该 tag 创建 detached worktree、复制四个包、应用 `compat/target.patch`（版本线注册与缺失的 prompt section id）和 `compat/plugins.patch`（该版本线需要的客户端适配），安装并构建该 worktree，再把结果链接进指定 profile。之后重启 app 生效。修改包源码后需重新生成两个 patch；`--skip-build` 只复现源码树。
+-
+ ### 不发布也能本地启用
+ 
+ 本 bundle 处于实验阶段、尚未发布。可以直接从本 checkout 链接进某个 profile：
+
+--- a/packages/experimental/session-tasks-bundle/package.json	2026-10-29 04:02:07
++++ b/packages/experimental/session-tasks-bundle/package.json	2026-10-29 20:43:27
+@@ -1,7 +1,7 @@
+ {
+   "name": "@deepseek-ai/dsh-experimental-session-tasks-bundle",
+   "description": "Experimental project console: workspace-level live session task overview with its browser page and the model-facing session_tasks tool",
+-  "version": "0.2.2-alpha.2",
++  "version": "0.2.1-rc.3",
+   "publishConfig": {
+     "access": "public"
+   },
