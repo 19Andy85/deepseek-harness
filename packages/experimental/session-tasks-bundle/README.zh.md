@@ -44,11 +44,14 @@ kind: "package-bundle"
 运行旧版 app 的 profile 需要与**该 app 依赖一致**的构建，而不是本 workspace 的依赖。本 bundle 提供 `dsh-v0.2.1-rc.3` 线的可复现兼容构建：
 
 ```sh
-node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs \
-  --tag dsh-v0.2.1-rc.3 --link-profile desktop
+# Detect the installed application version and build the matching line.
+node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs --link-profile desktop
+# Or pin a tag / preview the plan without changing anything.
+node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs --tag dsh-v0.2.1-rc.3 --link-profile desktop
+node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs --detect
 ```
 
-脚本会为该 tag 创建 detached worktree、复制四个包、应用 `compat/target.patch`（版本线注册与缺失的 prompt section id）和 `compat/plugins.patch`（该版本线需要的客户端适配），安装并构建该 worktree，再把结果链接进指定 profile。之后重启 app 生效。修改包源码后需重新生成两个 patch；`--skip-build` 只复现源码树。
+未指定 tag 时脚本从安装包读取 `CFBundleShortVersionString`（可用 `--app` 覆盖），拒绝与 app 不匹配的版本线，打印目标版本行，并在复制后校验四个包的版本是否与之一致。随后为该 tag 创建 detached worktree、复制四个包、应用 `compat/target.patch`（版本线注册与缺失的 prompt section id）和 `compat/plugins.patch`（该版本线需要的客户端适配），安装并构建该 worktree，再把结果链接进指定 profile。之后重启 app 生效。修改包源码后需重新生成两个 patch；`--skip-build` 只复现源码树。
 
 ### 不发布也能本地启用
 

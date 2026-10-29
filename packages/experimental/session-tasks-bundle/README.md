@@ -44,11 +44,14 @@ Install and enable `@deepseek-ai/dsh-experimental-session-tasks-bundle` in a Web
 A profile that runs an older app needs packages built against that app's dependencies, not this workspace's. The bundle ships a reproducible compatibility build for the `dsh-v0.2.1-rc.3` line:
 
 ```sh
-node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs \
-  --tag dsh-v0.2.1-rc.3 --link-profile desktop
+# Detect the installed application version and build the matching line.
+node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs --link-profile desktop
+# Or pin a tag / preview the plan without changing anything.
+node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs --tag dsh-v0.2.1-rc.3 --link-profile desktop
+node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs --detect
 ```
 
-The script creates a detached worktree for the tag, copies the four packages, applies `compat/target.patch` (release-line registrations and the missing prompt section id) and `compat/plugins.patch` (the client adaptations that release line needs), installs and builds that worktree, and links the result into the named profile. Restart the app afterwards. Regenerate both patches after changing the package sources; `--skip-build` reproduces only the source tree.
+The script reads `CFBundleShortVersionString` from the install (override with `--app`) when no tag is given, rejects a tag the application cannot match, prints the target line, and fails when the copied packages' versions differ from it. It then creates a detached worktree for the tag, copies the four packages, applies `compat/target.patch` (release-line registrations and the missing prompt section id) and `compat/plugins.patch` (the client adaptations that release line needs), installs and builds that worktree, and links the result into the named profile. Restart the app afterwards. Regenerate both patches after changing the package sources; `--skip-build` reproduces only the source tree.
 
 ### Enable locally without publishing
 
