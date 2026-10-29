@@ -39,6 +39,18 @@ kind: "package-bundle"
 - `session_tasks` 工具，按 `visibleScope` 授权（默认 `same-cwd`）。
 - 三行共用一个开关：禁用 bundle 行即可同时移除页面、Remote 与工具。
 
+### 不发布也能本地启用
+
+本 bundle 处于实验阶段、尚未发布。可以直接从本 checkout 链接进某个 profile：
+
+```sh
+pnpm run build:artifacts
+pnpm exec tsx packages/experimental/session-tasks-bundle/src/enable-local.ts --profile web
+pnpm dsh --profile web
+```
+
+脚本会为 bundle 及其 patch 插入的三个包写入 `link:` 依赖，把 bundle 追加到 profile 的 `dsh.profile.bundles`，并安装 profile。重启 profile 后侧栏显示 **项目控制台**。用 `--remove` 撤销，用 `--dry-run` 先预览改动。
+
 ### 失败与恢复
 
 缺少 Host Remote 时页面显示重试提示；工作区未知或缺少作用域时，Remote 以 `session-tasks/workspace-not-found` 或 `session-tasks/workspace-unavailable` 报告。

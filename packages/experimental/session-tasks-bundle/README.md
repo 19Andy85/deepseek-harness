@@ -39,6 +39,18 @@ Install and enable `@deepseek-ai/dsh-experimental-session-tasks-bundle` in a Web
 - The `session_tasks` tool, scoped by `visibleScope` (default `same-cwd`).
 - One switch for all three rows: disable the bundle row to remove the page, the Remote, and the tool together.
 
+### Enable locally without publishing
+
+The bundle is experimental and not published. Link it into one profile from this checkout:
+
+```sh
+pnpm run build:artifacts
+pnpm exec tsx packages/experimental/session-tasks-bundle/src/enable-local.ts --profile web
+pnpm dsh --profile web
+```
+
+The script adds `link:` dependencies for the bundle and the three packages its patch inserts, appends the bundle to the profile's `dsh.profile.bundles`, and installs the profile. Restart the profile afterwards; the sidebar shows **Project console**. Revert with `--remove`, and inspect the change first with `--dry-run`.
+
 ### Failures and recovery
 
 A missing Host Remote leaves the page showing its retry notice; an unknown or absent Workspace scope is reported by the Remote with `session-tasks/workspace-not-found` or `session-tasks/workspace-unavailable`.
