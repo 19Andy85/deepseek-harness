@@ -263,7 +263,7 @@ export function ProjectConsolePage({
               {state.status === 'ready' && !hasRows
                 ? <div className={css.empty}>{t('empty')}</div>
                 : null}
-              {state.sessions.map((session) => {
+              {rows.map((session) => {
                 const pending = [...statuses].find(([sessionId]) => sessionId === session.sessionId)?.[1].pendingInteraction
                 const approval = pending?.kind === 'approval' ? pending : undefined
                 const question = pending?.kind === 'question' || pending?.kind === 'plan-review' ? pending : undefined

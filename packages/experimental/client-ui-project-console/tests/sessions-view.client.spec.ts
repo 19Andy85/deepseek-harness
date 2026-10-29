@@ -10,8 +10,17 @@ function row(sessionId: string, status: SessionTaskView['status'], extra: Partia
 
 describe('visibleSessions', () => {
   it('hides blank placeholder sessions', () => {
-    const rows = visibleSessions([row('blank', 'idle', { blank: true }), row('real', 'idle')])
+    const rows = visibleSessions([row('blank', 'idle', { blank: true }), row('real', 'idle', { title: 'Real' })])
     expect(rows.map(item => item.sessionId)).toEqual(['real'])
+  })
+
+  it('hides idle Sessions with no title, prompt, or activity', () => {
+    const rows = visibleSessions([
+      row('orphan', 'idle'),
+      row('named', 'idle', { title: 'Kept' }),
+      row('running-empty', 'running'),
+    ])
+    expect(rows.map(item => item.sessionId)).toEqual(['running-empty', 'named'])
   })
 
   it('orders running rows first, then by latest prompt time', () => {
@@ -19,7 +28,7 @@ describe('visibleSessions', () => {
       row('old-idle', 'idle', { lastPromptAt: 100 }),
       row('new-idle', 'idle', { lastPromptAt: 300 }),
       row('running', 'running', { lastPromptAt: 200 }),
-      row('no-time', 'idle'),
+      row('no-time', 'idle', { title: 'No time' }),
     ])
     expect(rows.map(item => item.sessionId)).toEqual(['running', 'new-idle', 'old-idle', 'no-time'])
   })
@@ -27,7 +36,7 @@ describe('visibleSessions', () => {
   it('counts running rows only among the visible ones', () => {
     expect(runningCount(visibleSessions([
       row('running', 'running'),
-      row('idle', 'idle'),
+      row('idle', 'idle', { title: 'Idle' }),
       row('blank-running', 'running', { blank: true }),
     ]))).toBe(1)
   })
