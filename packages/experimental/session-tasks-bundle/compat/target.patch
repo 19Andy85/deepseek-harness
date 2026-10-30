@@ -51,7 +51,7 @@ index 1b09bef969..6d68208f38 100644
    readonly items?: readonly SessionActivityItem[]
  }
 diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
-index d6df9aae42..a3510b9caa 100644
+index d6df9aae42..a6c4a9f593 100644
 --- a/pnpm-lock.yaml
 +++ b/pnpm-lock.yaml
 @@ -35,6 +35,9 @@ importers:
@@ -87,7 +87,7 @@ index d6df9aae42..a3510b9caa 100644
        '@deepseek-ai/dsh-experimental-tool-worktree':
          specifier: workspace:*
          version: link:packages/experimental/tool-worktree
-@@ -7703,6 +7715,46 @@ importers:
+@@ -7703,6 +7715,49 @@ importers:
          specifier: ^4.3.2
          version: 4.3.2
  
@@ -130,11 +130,14 @@ index d6df9aae42..a3510b9caa 100644
 +      '@deepseek-ai/dsh-workspace':
 +        specifier: workspace:*
 +        version: link:../../workspace/workspace
++      '@deepseek-ai/dsh-workspace-changes':
++        specifier: workspace:*
++        version: link:../../deliverables/workspace-changes
 +
    packages/experimental/api-speech-to-text:
      dependencies:
        '@deepseek-ai/schemastery':
-@@ -8339,6 +8391,64 @@ importers:
+@@ -8339,6 +8394,64 @@ importers:
          specifier: ^18.2.0
          version: 18.3.1(react@18.3.1)
  
@@ -199,7 +202,7 @@ index d6df9aae42..a3510b9caa 100644
    packages/experimental/client-ui-voice-input:
      devDependencies:
        '@deepseek-ai/cordis':
-@@ -9093,6 +9203,28 @@ importers:
+@@ -9093,6 +9206,28 @@ importers:
          specifier: workspace:~
          version: link:../../../vendor/cordis
  
@@ -228,7 +231,7 @@ index d6df9aae42..a3510b9caa 100644
    packages/experimental/session-title-all-prompts-llm:
      dependencies:
        '@deepseek-ai/dsh-util-values':
-@@ -9383,6 +9515,67 @@ importers:
+@@ -9383,6 +9518,67 @@ importers:
          specifier: workspace:*
          version: link:../../core/tools
  

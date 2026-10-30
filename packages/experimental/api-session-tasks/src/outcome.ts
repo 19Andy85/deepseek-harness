@@ -6,6 +6,7 @@
  */
 import { z } from 'zod'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import type {} from '@deepseek-ai/dsh-workspace-changes'
 import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
 import type { SessionProjectionSummaryExcluded } from '@deepseek-ai/dsh-session-projection/types'
 
@@ -24,6 +25,8 @@ export interface SessionTaskOutcome {
   readonly reason?: string | undefined
   /** Stable failure code for `failed`. */
   readonly code?: string | undefined
+  /** Sequence of the latest `workspace/changes` event, when one exists. */
+  readonly changesSeq?: number | undefined
 }
 
 declare module '@deepseek-ai/dsh-session-projection/types' {
@@ -39,9 +42,11 @@ const outcomeSchema: z.ZodType<SessionTaskOutcome> = z.object({
   at: z.number().optional(),
   reason: z.string().optional(),
   code: z.string().optional(),
+  changesSeq: z.number().int().nonnegative().optional(),
 }).strict()
 
 function fold(state: SessionTaskOutcome, event: SessionEvent): SessionTaskOutcome {
+  if (event.type === 'workspace/changes') return { ...state, changesSeq: event.seq as number }
   if (event.type === 'turn/start') return { turn: event.data.turn, at: event.time }
   if (event.type !== 'turn/end') return state
   const { turn, reason } = event.data

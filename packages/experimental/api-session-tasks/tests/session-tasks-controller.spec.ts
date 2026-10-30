@@ -102,6 +102,15 @@ describe('outcome metadata', () => {
   })
 })
 
+describe('workspace changes metadata', () => {
+  it('projects the summarized changed-file totals onto the row', async () => {
+    const rows = await collectSessionTasks(host([agent('s', 'idle', '/work')], {}, {
+      s: { changes: { total: 3, added: 12, deleted: 4, files: ['src/a.ts'] } },
+    }), {}, never)
+    expect(rows[0]?.changes).toEqual({ total: 3, added: 12, deleted: 4, files: ['src/a.ts'] })
+  })
+})
+
 describe('activity timing', () => {
   it('projects provider timestamps and flags a stalled running row', async () => {
     const rows = await collectSessionTasks(host([agent('s', 'running', '/work')], {

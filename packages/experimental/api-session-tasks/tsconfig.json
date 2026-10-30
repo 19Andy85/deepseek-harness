@@ -35,6 +35,9 @@
     },
     {
       "path": "../../session/session-title"
+    },
+    {
+      "path": "../../deliverables/workspace-changes"
     }
   ]
 }

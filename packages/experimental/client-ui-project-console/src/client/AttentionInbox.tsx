@@ -122,6 +122,9 @@ export function AttentionInbox({
                   <span className={css.sessionId} title={item.sessionId}>{item.row.title ?? t('untitled')}</span>
                   <span className={css.meta}>{item.row.status === 'running' ? t('running') : t('idle')}</span>
                   <span className={css.chip}>{item.failed?.reason ?? t('failed')}</span>
+                  {item.row.changes === undefined
+                    ? null
+                    : <span className={css.chip}>{t('changesSummary', { n: item.row.changes.total, added: item.row.changes.added, deleted: item.row.changes.deleted })}</span>}
                 </div>
                 <div className={css.rowActions}>
                   <button type="button" className={css.select} onClick={() => { actions.open(item.sessionId) }}>{t('view')}</button>
@@ -137,6 +140,9 @@ export function AttentionInbox({
                   <span className={css.sessionId} title={item.sessionId}>{item.row.title ?? t('untitled')}</span>
                   <span className={css.meta}>{item.row.status === 'running' ? t('running') : t('idle')}</span>
                   <span className={css.chip}>{t('completedUnread')}</span>
+                  {item.row.changes === undefined
+                    ? null
+                    : <span className={css.chip}>{t('changesSummary', { n: item.row.changes.total, added: item.row.changes.added, deleted: item.row.changes.deleted })}</span>}
                 </div>
                 <div className={css.rowActions}>
                   <button type="button" className={css.select} onClick={() => { actions.open(item.sessionId) }}>{t('view')}</button>

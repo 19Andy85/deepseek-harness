@@ -13,6 +13,7 @@ import type {} from '@deepseek-ai/dsh-session-projection'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-title'
 import type {} from '@deepseek-ai/dsh-session-query'
+import type {} from '@deepseek-ai/dsh-workspace-changes'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import z from '@deepseek-ai/schemastery'
 import type { SessionActivity } from '@deepseek-ai/dsh-workspace'
@@ -171,8 +172,19 @@ export class SessionTasksController extends TypertRemoteService {
     const outcome = snapshot.values.sessionTaskOutcome
     const lastPromptAt = metadata?.lastPromptAt
     const relations = this.relationsOf(agent.session.id)
+    const summary = outcome?.changesSeq === undefined
+      ? undefined
+      : this.ctx.get('workspaceChanges')?.summary(agent.session.id, outcome.changesSeq)
+    const changes = summary === undefined
+      ? undefined
+      : {
+        total: summary.total,
+        added: summary.added,
+        deleted: summary.deleted,
+        files: summary.files.slice(0, 3).map(file => file.display),
+      }
     const empty = (title === undefined || title === null)
-      && metadata === undefined && outcome === undefined && relations === undefined
+      && metadata === undefined && outcome === undefined && relations === undefined && changes === undefined
     if (empty) return undefined
     return {
       ...title === undefined || title === null ? {} : { title },
@@ -181,6 +193,7 @@ export class SessionTasksController extends TypertRemoteService {
       ...outcome?.kind === undefined ? {} : { outcome: outcome.kind },
       ...outcome?.at === undefined ? {} : { outcomeAt: outcome.at },
       ...outcome?.reason === undefined ? {} : { outcomeReason: outcome.reason },
+      ...changes === undefined ? {} : { changes },
       ...relations === undefined ? {} : { relations },
     }
   }

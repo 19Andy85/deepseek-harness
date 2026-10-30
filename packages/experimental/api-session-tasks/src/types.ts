@@ -60,8 +60,22 @@ export interface SessionTaskMetadata {
   readonly outcomeAt?: number
   /** Failure message for a failed outcome. */
   readonly outcomeReason?: string
+  /** Changed files summarized for the latest finished turn, when the Host kept one. */
+  readonly changes?: SessionTaskChanges
   /** Durable derivation relations of this Session. */
   readonly relations?: SessionTaskRelations
+}
+
+/** Changed-file facts of the latest summarized turn. */
+export interface SessionTaskChanges {
+  /** Complete changed-file count. */
+  readonly total: number
+  /** Lines added across all changed files. */
+  readonly added: number
+  /** Lines deleted across all changed files. */
+  readonly deleted: number
+  /** Display paths of the first few changed files. */
+  readonly files?: readonly string[]
 }
 
 /** One live session of this Host with the activity families that still run for it. */
@@ -88,6 +102,8 @@ export interface SessionTaskView {
   readonly outcomeAt?: number
   /** Failure message for a failed outcome. */
   readonly outcomeReason?: string
+  /** Changed files summarized for the latest finished turn, when the Host kept one. */
+  readonly changes?: SessionTaskChanges
   /** Durable derivation relations of this Session. */
   readonly relations?: SessionTaskRelations
 }

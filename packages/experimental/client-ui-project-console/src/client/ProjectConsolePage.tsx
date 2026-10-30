@@ -278,6 +278,14 @@ export function ProjectConsolePage({
                           {session.outcome === 'failed'
                             ? <span className={css.chip} title={session.outcomeReason}>{t('failed')}{session.outcomeReason === undefined ? '' : ` · ${session.outcomeReason}`}</span>
                             : null}
+                          {session.changes === undefined
+                            ? null
+                            : (
+                              <>
+                                <span className={css.chip}>{t('changesSummary', { n: session.changes.total, added: session.changes.added, deleted: session.changes.deleted })}</span>
+                                <button type="button" className={css.select} onClick={() => { openSession(session.sessionId) }}>{t('viewChanges')}</button>
+                              </>
+                            )}
                           {session.stalled === true ? <span className={css.chip}>{t('stalled')}</span> : null}
                           {state.changes?.has(session.sessionId) === true ? <span className={css.chip}>{t('newBadge')}</span> : null}
                         </div>
@@ -377,6 +385,14 @@ export function ProjectConsolePage({
                 {focus.row?.outcome === 'failed'
                   ? <span className={css.chip} title={focus.row.outcomeReason}>{t('failed')}</span>
                   : null}
+                {focus.row?.changes === undefined
+                  ? null
+                  : (
+                    <>
+                      <span className={css.chip}>{t('changesSummary', { n: focus.row.changes.total, added: focus.row.changes.added, deleted: focus.row.changes.deleted })}</span>
+                      <button type="button" className={css.select} onClick={() => { openSession(focus.sessionId) }}>{t('viewChanges')}</button>
+                    </>
+                  )}
                 {focusPending === 0
                   ? null
                   : <span className={css.chip}>{t('needsYou')} {focusPending}</span>}

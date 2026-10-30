@@ -25,6 +25,11 @@ describe('sessionTaskOutcome projection', () => {
     expect(end({ kind: 'max-tokens' }, 13)).toMatchObject({ kind: 'truncated' })
   })
 
+  it('keeps the latest workspace-changes event sequence', () => {
+    const state = projection.apply({}, event('workspace/changes', 40, { turn: 1 }))
+    expect(state.changesSeq).toBe(1)
+  })
+
   it('clears the previous outcome when a new turn starts', () => {
     const finished = projection.apply({}, event('turn/end', 20, { turn: 1, reason: { kind: 'completed' } }))
     expect(projection.apply(finished, event('turn/start', 30, { turn: 2 }))).toEqual({ turn: 2, at: 30 })
