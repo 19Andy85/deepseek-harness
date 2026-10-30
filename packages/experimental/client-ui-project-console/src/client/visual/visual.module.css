@@ -270,3 +270,5 @@
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
+
+.segmentError { background: var(--dsw-alias-state-error-primary); }

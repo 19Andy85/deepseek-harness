@@ -123,8 +123,12 @@ export function ProjectConsolePage({
       },
     }
   }
-  const attention = attentionItems(rows, statusFacts, descriptorOf)
-  const health = healthCounts(rows, statusFacts, descriptorOf)
+  const failureOf = (sessionId: string): string | undefined => {
+    const row = rows.find(candidate => candidate.sessionId === sessionId)
+    return row?.outcome === 'failed' ? row.outcomeReason ?? t('failed') : undefined
+  }
+  const attention = attentionItems(rows, statusFacts, descriptorOf, failureOf)
+  const health = healthCounts(rows, statusFacts, descriptorOf, failureOf)
   const relations = relationHints(rows)
   const parentTitle = (sessionId: string): string | undefined => {
     const parentId = relations.parentOf.get(sessionId)
@@ -136,6 +140,7 @@ export function ProjectConsolePage({
     const status = statusFacts.get(row.sessionId)
     if (filter === 'running') return row.status === 'running'
     if (filter === 'needs') return descriptorOf(row.sessionId) !== undefined
+    if (filter === 'failed') return failureOf(row.sessionId) !== undefined
     if (filter === 'completed') return status?.completionUnread === true
     if (filter === 'idle') return row.status === 'idle' && status?.completionUnread !== true
     return true
@@ -260,7 +265,7 @@ export function ProjectConsolePage({
                         onClick={() => { focusSession(session.sessionId) }}
                       >
                         <div className={css.rowHead}>
-                          <StatusDot state={session.stalled === true ? 'error' : status?.completionUnread === true ? 'success' : session.status === 'running' ? 'running' : 'idle'} />
+                          <StatusDot state={session.stalled === true || session.outcome === 'failed' ? 'error' : status?.completionUnread === true ? 'success' : session.status === 'running' ? 'running' : 'idle'} />
                           <span className={css.sessionId} title={session.sessionId}>{session.title ?? t('untitled')}</span>
                           <span className={css.meta}>{statusText(session.status, t)}</span>
                           {session.lastPromptAt === undefined
@@ -270,6 +275,9 @@ export function ProjectConsolePage({
                           {parentTitle(session.sessionId) === undefined
                             ? null
                             : <span className={css.chip}>↳ {t('derivedFrom', { title: parentTitle(session.sessionId) })}</span>}
+                          {session.outcome === 'failed'
+                            ? <span className={css.chip} title={session.outcomeReason}>{t('failed')}{session.outcomeReason === undefined ? '' : ` · ${session.outcomeReason}`}</span>
+                            : null}
                           {session.stalled === true ? <span className={css.chip}>{t('stalled')}</span> : null}
                           {state.changes?.has(session.sessionId) === true ? <span className={css.chip}>{t('newBadge')}</span> : null}
                         </div>
@@ -353,7 +361,7 @@ export function ProjectConsolePage({
           : (
             <article className={`${css.row} ${focus.row === undefined ? css.rowIdle : focus.row.status === 'running' ? css.rowRunning : css.rowIdle}`}>
               <div className={css.rowHead}>
-                <StatusDot state={focus.row === undefined ? 'unknown' : focus.row.status === 'running' ? 'running' : 'idle'} />
+                <StatusDot state={focus.row === undefined ? 'unknown' : focus.row.outcome === 'failed' ? 'error' : focus.row.status === 'running' ? 'running' : 'idle'} />
                 <span className={css.sessionId} title={focus.sessionId}>
                   {focus.row === undefined ? t('untitled') : focus.row.title ?? t('untitled')}
                 </span>
@@ -366,6 +374,9 @@ export function ProjectConsolePage({
                 {focus.row === undefined || focus.row.cwd === undefined
                   ? null
                   : <span className={css.meta} title={focus.row.cwd}>{focus.row.cwd}</span>}
+                {focus.row?.outcome === 'failed'
+                  ? <span className={css.chip} title={focus.row.outcomeReason}>{t('failed')}</span>
+                  : null}
                 {focusPending === 0
                   ? null
                   : <span className={css.chip}>{t('needsYou')} {focusPending}</span>}

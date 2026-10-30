@@ -50,7 +50,21 @@ describe('healthCounts', () => {
       new Map([['done', { completionUnread: true }]]),
       descriptor,
     )
-    expect(counts).toEqual({ running: 1, needsYou: 1, completedUnread: 1, idle: 1 })
+    expect(counts).toEqual({ running: 1, needsYou: 1, failed: 0, completedUnread: 1, idle: 1 })
+  })
+})
+
+describe('attention failures', () => {
+  it('lists failed sessions after pending ones and counts them as failures', () => {
+    const items = attentionItems(
+      [row('failed', 'idle', { lastPromptAt: 100 }), row('pending', 'running'), row('idle', 'idle', { title: 'Idle' })],
+      new Map(),
+      sessionId => sessionId === 'pending' ? { kind: 'approval', toolName: 'bash', answerable: true } : undefined,
+      sessionId => sessionId === 'failed' ? 'boom' : undefined,
+    )
+    expect(items.map(item => item.sessionId)).toEqual(['pending', 'failed'])
+    expect(items[1]?.failed?.reason).toBe('boom')
+    expect(healthCounts([row('failed')], new Map(), () => undefined, () => 'boom')).toMatchObject({ failed: 1 })
   })
 })
 

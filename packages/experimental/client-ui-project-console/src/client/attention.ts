@@ -20,8 +20,10 @@ export interface AttentionItem {
   readonly sessionId: string
   /** The row the item belongs to. */
   readonly row: SessionTaskView
-  /** Pending interaction facts; absent means an unread completion. */
+  /** Pending interaction facts; absent with `failed` means an unread completion. */
   readonly pending?: AttentionDescriptor
+  /** Failure facts when the last finished turn failed. */
+  readonly failed?: { readonly reason?: string }
 }
 
 /** Session UI status facts the attention derivation reads. */
@@ -36,6 +38,8 @@ export interface HealthCounts {
   readonly running: number
   /** Sessions waiting for an answer or approval. */
   readonly needsYou: number
+  /** Sessions whose last finished turn failed. */
+  readonly failed: number
   /** Sessions that finished without acknowledgement and have no pending interaction. */
   readonly completedUnread: number
   /** Remaining idle Sessions without attention. */
@@ -53,6 +57,7 @@ export function attentionItems(
   rows: readonly SessionTaskView[],
   statuses: ReadonlyMap<string, AttentionStatus>,
   descriptorOf: (sessionId: string) => AttentionDescriptor | undefined,
+  failureOf: (sessionId: string) => string | undefined = () => undefined,
 ): AttentionItem[] {
   const items: AttentionItem[] = []
   for (const row of rows) {
@@ -61,14 +66,18 @@ export function attentionItems(
       items.push({ sessionId: row.sessionId, row, pending })
       continue
     }
+    const reason = failureOf(row.sessionId)
+    if (reason !== undefined) {
+      items.push({ sessionId: row.sessionId, row, failed: { reason } })
+      continue
+    }
     if (statuses.get(row.sessionId)?.completionUnread === true) {
       items.push({ sessionId: row.sessionId, row })
     }
   }
+  const rank = (item: AttentionItem) => item.pending !== undefined ? 0 : item.failed !== undefined ? 1 : 2
   return items.sort((left, right) => {
-    const leftRank = left.pending === undefined ? 1 : 0
-    const rightRank = right.pending === undefined ? 1 : 0
-    if (leftRank !== rightRank) return leftRank - rightRank
+    if (rank(left) !== rank(right)) return rank(left) - rank(right)
     return (right.row.lastPromptAt ?? 0) - (left.row.lastPromptAt ?? 0)
   })
 }
@@ -84,17 +93,20 @@ export function healthCounts(
   rows: readonly SessionTaskView[],
   statuses: ReadonlyMap<string, AttentionStatus>,
   descriptorOf: (sessionId: string) => AttentionDescriptor | undefined,
+  failureOf: (sessionId: string) => string | undefined = () => undefined,
 ): HealthCounts {
   let running = 0
   let needsYou = 0
+  let failed = 0
   let completedUnread = 0
   let idle = 0
   for (const row of rows) {
     const status = statuses.get(row.sessionId)
     if (descriptorOf(row.sessionId) !== undefined) needsYou += 1
+    else if (failureOf(row.sessionId) !== undefined) failed += 1
     else if (status?.completionUnread === true) completedUnread += 1
     else if (row.status === 'running') running += 1
     else idle += 1
   }
-  return { running, needsYou, completedUnread, idle }
+  return { running, needsYou, failed, completedUnread, idle }
 }

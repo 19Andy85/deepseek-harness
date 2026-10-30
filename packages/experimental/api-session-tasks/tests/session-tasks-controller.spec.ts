@@ -93,6 +93,15 @@ describe('collectSessionTasks', () => {
   })
 })
 
+describe('outcome metadata', () => {
+  it('projects a failed turn outcome onto the row', async () => {
+    const rows = await collectSessionTasks(host([agent('s', 'idle', '/work')], {}, {
+      s: { outcome: 'failed', outcomeAt: 500, outcomeReason: 'provider exploded' },
+    }), {}, never)
+    expect(rows[0]).toMatchObject({ outcome: 'failed', outcomeAt: 500, outcomeReason: 'provider exploded' })
+  })
+})
+
 describe('activity timing', () => {
   it('projects provider timestamps and flags a stalled running row', async () => {
     const rows = await collectSessionTasks(host([agent('s', 'running', '/work')], {

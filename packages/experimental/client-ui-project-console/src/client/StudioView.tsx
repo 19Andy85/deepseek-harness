@@ -47,7 +47,7 @@ export function StudioView({
         {rows.map((row) => {
           const pending = descriptorOf(row.sessionId) !== undefined
           const unread = statusFacts.get(row.sessionId)?.completionUnread === true
-          const lamp = row.stalled === true ? 'error'
+          const lamp = row.outcome === 'failed' || row.stalled === true ? 'error'
             : pending ? 'attention' : unread ? 'success' : row.status === 'running' ? 'running' : 'idle'
           const initials = (row.title ?? t('untitled')).slice(0, 2)
           return (
@@ -68,6 +68,7 @@ export function StudioView({
                     {pending ? ` · ${t('needsYou')}` : ''}
                     {unread ? ` · ${t('completedUnread')}` : ''}
                     {row.stalled === true ? ` · ${t('stalled')}` : ''}
+                    {row.outcome === 'failed' ? ` · ${t('failed')}` : ''}
                   </span>
                 </div>
                 <span className={`${css.lamp} ${css[`lamp_${lamp}`] ?? ''}`} aria-hidden="true" />

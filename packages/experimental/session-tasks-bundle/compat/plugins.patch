@@ -1,6 +1,6 @@
 
 --- a/packages/experimental/tool-session-tasks/package.json	2026-10-29 04:02:07
-+++ b/packages/experimental/tool-session-tasks/package.json	2026-10-31 00:50:07
++++ b/packages/experimental/tool-session-tasks/package.json	2026-10-31 01:14:43
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-tool-session-tasks",
@@ -21,7 +21,7 @@
    }
 
 --- a/packages/experimental/api-session-tasks/package.json	2026-10-30 01:12:54
-+++ b/packages/experimental/api-session-tasks/package.json	2026-10-31 00:50:07
++++ b/packages/experimental/api-session-tasks/package.json	2026-10-31 01:14:43
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-api-session-tasks",
@@ -32,8 +32,56 @@
      "access": "public"
    },
 
+--- a/packages/experimental/api-session-tasks/src/index.ts	2026-10-31 01:12:39
++++ b/packages/experimental/api-session-tasks/src/index.ts	2026-10-31 01:21:07
+@@ -73,8 +73,8 @@
+ 
+   protected async [Service.init](): Promise<void> {
+     const binding = this.ctx.inject(['sessionProjections'], async (projectionCtx) => {
+-      const handle = await projectionCtx.sessionProjections.register(sessionTaskOutcomeProjection)
+-      return () => { void handle.dispose() }
++      const dispose = await projectionCtx.sessionProjections.register(sessionTaskOutcomeProjection)
++      return () => { dispose() }
+     })
+     if (this.ctx.get('sessionProjections') !== undefined) await binding
+   }
+
+--- a/packages/experimental/api-session-tasks/src/outcome.ts	2026-10-31 01:12:18
++++ b/packages/experimental/api-session-tasks/src/outcome.ts	2026-10-31 01:21:07
+@@ -7,7 +7,6 @@
+ import { z } from 'zod'
+ import type { SessionEvent } from '@deepseek-ai/dsh-session'
+ import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
+-import type { SessionProjectionSummaryExcluded } from '@deepseek-ai/dsh-session-projection/types'
+ 
+ /** How the last finished turn ended. */
+ export type SessionTaskOutcomeKind = 'completed' | 'failed' | 'cancelled' | 'blocked' | 'truncated'
+@@ -27,9 +26,13 @@
+ }
+ 
+ declare module '@deepseek-ai/dsh-session-projection/types' {
++  interface SessionProjectionStateMap {
++    /** Last finished turn's outcome. */
++    sessionTaskOutcome: SessionTaskOutcome
++  }
+   interface SessionProjectionMap {
+-    /** Last finished turn's outcome; host-only, excluded from Session summaries. */
+-    sessionTaskOutcome: SessionProjectionSummaryExcluded<SessionTaskOutcome>
++    /** Last finished turn's outcome. */
++    sessionTaskOutcome: SessionTaskOutcome
+   }
+ }
+ 
+@@ -70,5 +73,5 @@
+   stateSchema: outcomeSchema,
+   init: (): SessionTaskOutcome => ({}),
+   apply: fold,
+-  wire: { viewSchema: outcomeSchema, view: (state: SessionTaskOutcome) => state, summary: false },
++  wire: { viewSchema: outcomeSchema, view: (state: SessionTaskOutcome) => state },
+ } satisfies ProjectionDefinition<'sessionTaskOutcome', SessionTaskOutcome>
+
 --- a/packages/experimental/client-ui-project-console/package.json	2026-10-29 07:21:12
-+++ b/packages/experimental/client-ui-project-console/package.json	2026-10-31 00:50:07
++++ b/packages/experimental/client-ui-project-console/package.json	2026-10-31 01:14:43
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-client-ui-project-console",
@@ -45,7 +93,7 @@
    },
 
 --- a/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-10-29 04:06:48
-+++ b/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-10-31 00:50:07
++++ b/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-10-31 01:14:43
 @@ -1,6 +1,5 @@
 -/** Workspace row menu entry that opens the project console on that Workspace. */
 +/** Session row menu entry that opens the project console for the row's workspace. */
@@ -92,7 +140,7 @@
        {t('openConsole')}
 
 --- a/packages/experimental/client-ui-project-console/src/client/index.ts	2026-10-31 00:04:10
-+++ b/packages/experimental/client-ui-project-console/src/client/index.ts	2026-10-31 00:50:07
++++ b/packages/experimental/client-ui-project-console/src/client/index.ts	2026-10-31 01:14:43
 @@ -22,7 +22,7 @@
  import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
  import { ProjectConsoleStore } from './ProjectConsoleStore.ts'
@@ -140,7 +188,7 @@
      id: PANEL_ID,
 
 --- a/packages/experimental/session-tasks-bundle/package.json	2026-10-29 04:02:07
-+++ b/packages/experimental/session-tasks-bundle/package.json	2026-10-31 00:50:07
++++ b/packages/experimental/session-tasks-bundle/package.json	2026-10-31 01:14:43
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-session-tasks-bundle",

@@ -32,7 +32,8 @@ export function AttentionInbox({
   readonly actions: AttentionInboxActions
 }) {
   const pendingItems = attention.filter(item => item.pending !== undefined)
-  const completedItems = attention.filter(item => item.pending === undefined)
+  const failedItems = attention.filter(item => item.failed !== undefined)
+  const completedItems = attention.filter(item => item.pending === undefined && item.failed === undefined)
   return (
     <section className={css.section} aria-label={t('needsYou')}>
       <h2 className={css.sectionTitle}>
@@ -110,6 +111,21 @@ export function AttentionInbox({
                           </>
                         )
                       })()}
+                </div>
+              </article>
+            ))}
+            {failedItems.length === 0 ? null : <h3 className={visualCss.bucketTitle}>{t('failedGroup')}</h3>}
+            {failedItems.map(item => (
+              <article key={item.sessionId} className={`${css.row} ${css.rowSuccess}`}>
+                <div className={css.rowHead}>
+                  <StatusDot state="error" />
+                  <span className={css.sessionId} title={item.sessionId}>{item.row.title ?? t('untitled')}</span>
+                  <span className={css.meta}>{item.row.status === 'running' ? t('running') : t('idle')}</span>
+                  <span className={css.chip}>{item.failed?.reason ?? t('failed')}</span>
+                </div>
+                <div className={css.rowActions}>
+                  <button type="button" className={css.select} onClick={() => { actions.open(item.sessionId) }}>{t('view')}</button>
+                  <button type="button" className={css.select} onClick={() => { actions.focus(item.sessionId) }}>{t('focusSession')}</button>
                 </div>
               </article>
             ))}

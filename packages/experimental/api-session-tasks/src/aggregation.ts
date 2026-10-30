@@ -134,6 +134,9 @@ async function readRow(
     ...metadata?.title === undefined ? {} : { title: metadata.title },
     ...metadata?.lastPromptAt === undefined ? {} : { lastPromptAt: metadata.lastPromptAt },
     ...metadata?.blank === undefined ? {} : { blank: metadata.blank },
+    ...metadata?.outcome === undefined ? {} : { outcome: metadata.outcome },
+    ...metadata?.outcomeAt === undefined ? {} : { outcomeAt: metadata.outcomeAt },
+    ...metadata?.outcomeReason === undefined ? {} : { outcomeReason: metadata.outcomeReason },
     activity,
     ...stalled === undefined ? {} : { stalled },
   }

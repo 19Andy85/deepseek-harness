@@ -28,6 +28,8 @@ export interface HealthCountsView {
   readonly running: number
   /** Sessions waiting for the user. */
   readonly needsYou: number
+  /** Sessions whose last finished turn failed. */
+  readonly failed: number
   /** Sessions finished but unread. */
   readonly completedUnread: number
   /** Remaining idle Sessions. */
@@ -35,7 +37,7 @@ export interface HealthCountsView {
 }
 
 /** Filter selected from the health segments. */
-export type HealthFilter = 'running' | 'needs' | 'completed' | 'idle' | undefined
+export type HealthFilter = 'running' | 'needs' | 'failed' | 'completed' | 'idle' | undefined
 
 /**
  * Render the proportional project state bar and its legend.
@@ -52,6 +54,7 @@ export function HealthSegments({
 }) {
   const segments = [
     { key: 'needs' as const, count: counts.needsYou, label: t('needsYou'), className: css.segmentAttention },
+    { key: 'failed' as const, count: counts.failed, label: t('failed'), className: css.segmentError },
     { key: 'running' as const, count: counts.running, label: t('running'), className: css.segmentRunning },
     { key: 'completed' as const, count: counts.completedUnread, label: t('completedUnread'), className: css.segmentSuccess },
     { key: 'idle' as const, count: counts.idle, label: t('idle'), className: css.segmentIdle },
@@ -80,8 +83,9 @@ export function HealthSegments({
             onClick={() => { onFilter(filter === segment.key ? undefined : segment.key) }}
           >
             <StatusDot state={segment.key === 'needs' ? 'attention'
-              : segment.key === 'running' ? 'running'
-                : segment.key === 'completed' ? 'success' : 'idle'} />
+              : segment.key === 'failed' ? 'error'
+                : segment.key === 'running' ? 'running'
+                  : segment.key === 'completed' ? 'success' : 'idle'} />
             <span>{segment.label}</span>
             <span className={css.legendCount}>{segment.count}</span>
           </button>

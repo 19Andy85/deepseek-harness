@@ -6,6 +6,7 @@
  */
 
 import type { SessionId, SessionHeader } from '@deepseek-ai/dsh-session'
+import type { SessionTaskOutcomeKind } from './outcome.ts'
 import type { SessionActivity } from '@deepseek-ai/dsh-workspace'
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
@@ -52,6 +53,12 @@ export interface SessionTaskMetadata {
   readonly lastPromptAt?: number
   /** Whether the Session has no turn yet (a placeholder not yet given work). */
   readonly blank?: boolean
+  /** Result of the last finished turn, when the outcome projection carries one. */
+  readonly outcome?: SessionTaskOutcomeKind
+  /** When that turn ended, epoch milliseconds. */
+  readonly outcomeAt?: number
+  /** Failure message for a failed outcome. */
+  readonly outcomeReason?: string
 }
 
 /** One live session of this Host with the activity families that still run for it. */
@@ -72,6 +79,12 @@ export interface SessionTaskView {
   readonly activity: readonly SessionTaskActivityViewEntry[]
   /** Whether the running Session has shown no observable change within the Host's stall threshold. */
   readonly stalled?: boolean
+  /** Result of the Session's last finished turn, when one is known. */
+  readonly outcome?: SessionTaskOutcomeKind
+  /** When that turn ended, epoch milliseconds. */
+  readonly outcomeAt?: number
+  /** Failure message for a failed outcome. */
+  readonly outcomeReason?: string
 }
 
 /** Request projected by one overview read. */

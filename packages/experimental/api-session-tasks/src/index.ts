@@ -6,7 +6,7 @@
  * @module @deepseek-ai/dsh-experimental-api-session-tasks
  */
 
-import type { Context } from '@deepseek-ai/cordis'
+import { Service, type Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type {} from '@deepseek-ai/dsh-session-projection'
@@ -16,6 +16,7 @@ import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import z from '@deepseek-ai/schemastery'
 import type { SessionActivity } from '@deepseek-ai/dsh-workspace'
 import { followSessionTask, observeActivity, readSessionTasks, type ObservedActivity } from './aggregation.ts'
+import { sessionTaskOutcomeProjection } from './outcome.ts'
 import type {
   SessionTaskFollowFrame, SessionTaskFollowRequest, SessionTaskHost, SessionTaskMetadata,
   SessionTasksRequest, SessionTasksSnapshot,
@@ -70,6 +71,14 @@ export class SessionTasksController extends TypertRemoteService {
     this.stallAfterMs = resolved.stallAfterMs
   }
 
+  protected async [Service.init](): Promise<void> {
+    const binding = this.ctx.inject(['sessionProjections'], async (projectionCtx) => {
+      const handle = await projectionCtx.sessionProjections.register(sessionTaskOutcomeProjection)
+      return () => { void handle.dispose() }
+    })
+    if (this.ctx.get('sessionProjections') !== undefined) await binding
+  }
+
   /**
    * Read the live sessions of one workspace, or of the whole Host when no
    * workspace is requested, together with their activity families.
@@ -115,15 +124,19 @@ export class SessionTasksController extends TypertRemoteService {
     const agent = this.ctx.agents.list().find(item => item.session.id === sessionId)
     const projections = this.ctx.get('sessionProjections')
     if (agent === undefined || projections === undefined) return undefined
-    const snapshot = projections.snapshot(agent.session, ['title', 'sessionListMetadata'])
+    const snapshot = projections.snapshot(agent.session, ['title', 'sessionListMetadata', 'sessionTaskOutcome'])
     const title = snapshot.values.title
     const metadata = snapshot.values.sessionListMetadata
+    const outcome = snapshot.values.sessionTaskOutcome
     const lastPromptAt = metadata?.lastPromptAt
-    if ((title === undefined || title === null) && metadata === undefined) return undefined
+    if ((title === undefined || title === null) && metadata === undefined && outcome === undefined) return undefined
     return {
       ...title === undefined || title === null ? {} : { title },
       ...lastPromptAt === null || lastPromptAt === undefined ? {} : { lastPromptAt },
       ...metadata === undefined ? {} : { blank: metadata.blank },
+      ...outcome?.kind === undefined ? {} : { outcome: outcome.kind },
+      ...outcome?.at === undefined ? {} : { outcomeAt: outcome.at },
+      ...outcome?.reason === undefined ? {} : { outcomeReason: outcome.reason },
     }
   }
 }
