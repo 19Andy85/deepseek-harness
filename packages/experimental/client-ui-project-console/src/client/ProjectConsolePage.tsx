@@ -1,16 +1,16 @@
-/** Workspace console page: live sessions and their running activity families. */
+/** Workspace console page: the attention inbox, the project state bar, and the session work surface. */
 import { useState, useSyncExternalStore } from 'react'
 import type { HostObservable, InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-user-questions/client'
 import type { QuestionAnswer } from '@deepseek-ai/dsh-client-ui-user-questions/client'
-import type { ConsoleFocusTimelineEntry, ConsoleState, ConsoleWorkspace } from './ProjectConsoleStore.ts'
-import {
-  attentionItems, healthCounts, type AttentionDescriptor,
-} from './attention.ts'
+import type { ConsoleState, ConsoleWorkspace } from './ProjectConsoleStore.ts'
+import { attentionItems, healthCounts, type AttentionDescriptor } from './attention.ts'
 import { visibleSessions } from './sessions-view.ts'
+import { HealthSegments, StatusDot, Timeline, type HealthFilter } from './visual/visual.tsx'
 import type { ProjectConsoleKey } from './locales.ts'
 import css from './ProjectConsolePage.module.css'
+import visualCss from './visual/visual.module.css'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -66,19 +66,18 @@ function relativeTime(at: number, t: (key: ProjectConsoleKey, params?: Record<st
   return t('daysAgo', { n: Math.floor(hours / 24) })
 }
 
-function activityLabel(entry: ConsoleState['sessions'][number]['activity'][number]): string {
-  const items = entry.items?.map(item => item.label ?? item.id).join(', ')
-  return items === undefined || items === '' ? entry.kind : `${entry.kind} · ${items}`
-}
-
-function timelineText(
-  entry: ConsoleFocusTimelineEntry,
+function statusText(
+  status: string | undefined,
   t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string,
 ): string {
-  if (entry.kind === 'baseline') return t('timelineBaseline', { status: entry.to ?? '' })
-  if (entry.kind === 'status') return t('timelineStatus', { from: entry.from ?? '', to: entry.to ?? '' })
-  if (entry.kind === 'activity') return t('timelineActivity', { value: entry.activity === '' ? t('noActivity') : entry.activity ?? '' })
-  return t('timelineEnded')
+  if (status === 'running') return t('running')
+  if (status === 'idle') return t('idle')
+  return t('unknown')
+}
+
+function activityText(entry: ConsoleState['sessions'][number]['activity'][number]): string {
+  const items = entry.items?.map(item => item.label ?? item.id).join(', ')
+  return items === undefined || items === '' ? entry.kind : `${entry.kind} · ${items}`
 }
 
 /**
@@ -93,6 +92,7 @@ export function ProjectConsolePage({
   const [prompt, setPrompt] = useState('')
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
+  const [filter, setFilter] = useState<HealthFilter>(undefined)
   const statuses = useSessionStatus(state => state)
   const state = useSyncExternalStore(
     listener => store.subscribe(listener),
@@ -101,8 +101,8 @@ export function ProjectConsolePage({
   const selected = selectedWorkspaceId()
   const workspaces = workspaceOptions()
   const rows = visibleSessions(state.sessions)
-  const pendingOf = (sessionId: string) => [...statuses]
-    .find(([id]) => String(id) === sessionId)?.[1].pendingInteraction
+  const statusFacts = new Map([...statuses].map(([id, status]) => [String(id), status]))
+  const pendingOf = (sessionId: string) => statusFacts.get(sessionId)?.pendingInteraction
   const descriptorOf = (sessionId: string): AttentionDescriptor | undefined => {
     const pending = pendingOf(sessionId)
     if (pending === undefined) return undefined
@@ -121,13 +121,23 @@ export function ProjectConsolePage({
       },
     }
   }
-  const statusFacts = new Map([...statuses].map(([id, status]) => [String(id), status]))
   const attention = attentionItems(rows, statusFacts, descriptorOf)
   const health = healthCounts(rows, statusFacts, descriptorOf)
   const attentionIds = new Set(attention.map(item => item.sessionId))
-  const workingRows = rows.filter(row => !attentionIds.has(row.sessionId))
-  const changes = state.changes?.size ?? 0
+  const pendingItems = attention.filter(item => item.pending !== undefined)
+  const completedItems = attention.filter(item => item.pending === undefined)
+  const workingRows = rows.filter(row => !attentionIds.has(row.sessionId)).filter((row) => {
+    const status = statusFacts.get(row.sessionId)
+    if (filter === 'running') return row.status === 'running'
+    if (filter === 'needs') return descriptorOf(row.sessionId) !== undefined
+    if (filter === 'completed') return status?.completionUnread === true
+    if (filter === 'idle') return row.status === 'idle' && status?.completionUnread !== true
+    return true
+  })
   const hasRows = rows.length > 0
+  const focus = state.focus
+  const focusPending = focus === undefined ? 0 : pendingItems.filter(item => item.sessionId === focus.sessionId).length
+  const actionBusy = state.busySessionId
 
   return (
     <section className={css.page}>
@@ -135,14 +145,7 @@ export function ProjectConsolePage({
         <h1 className={css.title}>{t('title')}</h1>
         <p className={css.subtitle}>{t('description')}</p>
         {state.status === 'ready' && hasRows
-          ? (
-            <div className={css.badges}>
-              <span className={css.chip}>{t('running')} {health.running}</span>
-              <span className={css.chip}>{t('needsYou')} {health.needsYou}</span>
-              <span className={css.chip}>{t('completedUnread')} {health.completedUnread}</span>
-              {changes === 0 ? null : <span className={css.chip}>{t('changedSinceVisit', { n: changes })}</span>}
-            </div>
-          )
+          ? <HealthSegments counts={health} filter={filter} t={t} onFilter={setFilter} />
           : null}
         <div className={css.toolbar}>
           <label className={css.meta} htmlFor="project-console-workspace">{t('workspace')}</label>
@@ -179,202 +182,88 @@ export function ProjectConsolePage({
           : null}
       </header>
       <div className={css.body}>
-        {state.focus === undefined
-          ? null
-          : (
-            <article className={css.row}>
-              <div className={css.rowHead}>
-                <span className={css.sessionId} title={state.focus.sessionId}>
-                  {state.focus.row === undefined ? t('untitled') : state.focus.row.title ?? t('untitled')}
-                </span>
-                {state.focus.row === undefined
-                  ? null
-                  : <span className={css.meta}>{state.focus.row.status === 'running' ? t('running') : t('idle')}</span>}
-                {state.focus.row === undefined || state.focus.row.lastPromptAt === undefined
-                  ? null
-                  : <span className={css.meta}>{relativeTime(state.focus.row.lastPromptAt, t)}</span>}
-                {state.focus.row === undefined || state.focus.row.cwd === undefined
-                  ? null
-                  : <span className={css.meta} title={state.focus.row.cwd}>{state.focus.row.cwd}</span>}
-              </div>
-              <div className={css.badges}>
-                {state.focus.row === undefined || state.focus.row.activity.length === 0
-                  ? <span className={css.chip}>{t('noActivity')}</span>
-                  : state.focus.row.activity.map(entry => (
-                    <span
-                      key={entry.kind}
-                      className={state.focus?.row?.status === 'running' ? `${css.chip} ${css.chipRunning}` : css.chip}
-                    >
-                      {activityLabel(entry)}
-                    </span>
-                  ))}
-              </div>
-              <div className={css.timeline}>
-                <h2 className={css.sectionTitle}>{t('timeline')}</h2>
-                {state.focus.timeline.map((entry, index) => (
-                  <p key={`${entry.at}-${index}`} className={css.meta}>{timelineText(entry, t)}</p>
-                ))}
-              </div>
-              {state.focus.phase === 'ended' || state.focus.phase === 'failed'
-                ? (
-                  <div className={css.notice} role={state.focus.phase === 'failed' ? 'alert' : 'status'}>
-                    <span className={css.noticeText}>
-                      {state.focus.phase === 'failed' ? t('focusFailed') : t('focusEnded')}
-                    </span>
-                  </div>
-                )
-                : null}
-              <div className={css.rowActions}>
-                <button type="button" className={css.select} onClick={() => { closeFocus() }}>{t('focusBack')}</button>
-                <button
-                  type="button"
-                  className={css.select}
-                  onClick={() => { if (state.focus === undefined) return; openSession(state.focus.sessionId) }}
-                >
-                  {t('openSession')}
-                </button>
-                {state.focus.row?.status === 'running'
-                  ? (
-                    <button
-                      type="button"
-                      className={css.select}
-                      disabled={state.busySessionId === state.focus.sessionId}
-                      onClick={() => {
-                        if (state.focus === undefined) return
-                        void cancelSession(state.focus.sessionId)
-                      }}
-                    >
-                      {t('interrupt')}
-                    </button>
-                  )
-                  : null}
-                <button
-                  type="button"
-                  className={css.select}
-                  onClick={() => {
-                    setReplyingTo(replyingTo === state.focus?.sessionId ? null : state.focus?.sessionId ?? null)
-                    setReplyText('')
-                  }}
-                >
-                  {t('sendPrompt')}
-                </button>
-              </div>
-              {state.focus.phase === 'connecting' && state.focus.row === undefined
-                ? <p className={css.meta}>{t('focusConnecting')}</p>
-                : null}
-              {replyingTo === state.focus.sessionId
-                ? (
-                  <div className={css.compose}>
-                    <textarea
-                      className={css.prompt}
-                      rows={2}
-                      value={replyText}
-                      placeholder={t('replyPlaceholder')}
-                      onChange={(event) => { setReplyText(event.currentTarget.value) }}
-                    />
-                    <button
-                      type="button"
-                      className={css.select}
-                      disabled={replyText.trim() === '' || state.busySessionId === state.focus.sessionId}
-                      onClick={() => {
-                        if (state.focus === undefined) return
-                        const sessionId = state.focus.sessionId
-                        void sendToSession(sessionId, replyText, 'queue').then((accepted) => {
-                          if (!accepted) return
-                          setReplyingTo(null)
-                          setReplyText('')
-                        })
-                      }}
-                    >
-                      {t('sendQueue')}
-                    </button>
-                    <button type="button" className={css.select} onClick={() => { setReplyingTo(null); setReplyText('') }}>
-                      {t('cancel')}
-                    </button>
-                  </div>
-                )
-                : null}
-            </article>
-          )}
-        {state.focus === undefined
+        {state.status === 'error' && !hasRows
+          ? <div className={css.empty}>{t('error')}</div>
+          : null}
+        {state.status === 'error' && hasRows
+          ? <div className={css.notice} role="alert">
+            <span className={css.noticeText}>{t('error')}</span>
+            <button type="button" className={css.select} onClick={() => { refresh() }}>{t('retry')}</button>
+          </div>
+          : null}
+        {state.status === 'loading' && !hasRows
+          ? ['a', 'b', 'c'].map(key => <div key={key} className={css.skeleton} />)
+          : null}
+        {state.status === 'ready' && !hasRows
+          ? <div className={css.empty}>{t('empty')}</div>
+          : null}
+
+        {state.status === 'ready' && hasRows
           ? (
-            <>
-              {state.status === 'error' && !hasRows
-                ? <div className={css.empty}>{t('error')}</div>
-                : null}
-              {state.status === 'error' && hasRows
-                ? <div className={css.notice} role="alert">
-                  <span className={css.noticeText}>{t('error')}</span>
-                  <button type="button" className={css.select} onClick={() => { refresh() }}>{t('retry')}</button>
-                </div>
-                : null}
-              {state.status === 'loading' && !hasRows
-                ? ['a', 'b', 'c'].map(key => <div key={key} className={css.skeleton} />)
-                : null}
-              {state.status === 'ready' && !hasRows
-                ? <div className={css.empty}>{t('empty')}</div>
-                : null}
+            <section className={css.section} aria-label={t('needsYou')}>
+              <h2 className={css.sectionTitle}>
+                {t('needsYou')}
+                {attention.length === 0 ? null : ` (${String(attention.length)})`}
+              </h2>
               {attention.length === 0
-                ? null
+                ? <div className={visualCss.emptyAttention}>{t('noPending')}</div>
                 : (
-                  <section className={css.section}>
-                    <h2 className={css.sectionTitle}>{t('needsYou')}</h2>
-                    {attention.map(item => (
+                  <>
+                    {pendingItems.length === 0 ? null : <h3 className={visualCss.bucketTitle}>{t('waitingGroup')}</h3>}
+                    {pendingItems.map(item => (
                       <article key={item.sessionId} className={css.row}>
                         <div className={css.rowHead}>
+                          <StatusDot state="attention" />
                           <span className={css.sessionId} title={item.sessionId}>{item.row.title ?? t('untitled')}</span>
-                          <span className={css.meta}>{item.row.status === 'running' ? t('running') : t('idle')}</span>
-                          {item.pending === undefined ? <span className={css.chip}>{t('completedUnread')}</span> : null}
+                          <span className={css.meta}>{statusText(item.row.status, t)}</span>
+                          {item.row.lastPromptAt === undefined
+                            ? null
+                            : <span className={css.meta}>{relativeTime(item.row.lastPromptAt, t)}</span>}
                         </div>
                         <div className={css.rowActions}>
-                          {item.pending === undefined
-                            ? <button type="button" className={css.select} onClick={() => { openSession(item.sessionId) }}>{t('view')}</button>
-                            : item.pending.kind === 'approval'
-                              ? (
-                                <>
-                                  <span className={css.chip}>{t('pendingApproval')} · {item.pending.toolName}</span>
-                                  <button
-                                    type="button"
-                                    className={css.select}
-                                    disabled={state.busySessionId === item.sessionId || !item.pending.answerable}
-                                    onClick={() => { void answerApproval(item.sessionId, 'allowed-once') }}
-                                  >
-                                    {t('allowOnce')}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className={css.select}
-                                    disabled={state.busySessionId === item.sessionId || !item.pending.answerable}
-                                    onClick={() => { void answerApproval(item.sessionId, 'rejected') }}
-                                  >
-                                    {t('rejectApproval')}
-                                  </button>
-                                </>
-                              )
+                          {item.pending?.kind === 'approval'
+                            ? (
+                              <>
+                                <span className={css.chip}>{t('pendingApproval')} · {item.pending.toolName}</span>
+                                <button
+                                  type="button"
+                                  className={css.select}
+                                  disabled={actionBusy === item.sessionId || !item.pending.answerable}
+                                  onClick={() => { void answerApproval(item.sessionId, 'allowed-once') }}
+                                >
+                                  {t('allowOnce')}
+                                </button>
+                                <button
+                                  type="button"
+                                  className={css.select}
+                                  disabled={actionBusy === item.sessionId || !item.pending.answerable}
+                                  onClick={() => { void answerApproval(item.sessionId, 'rejected') }}
+                                >
+                                  {t('rejectApproval')}
+                                </button>
+                              </>
+                            )
+                            : item.pending === undefined
+                              ? <button type="button" className={css.select} onClick={() => { openSession(item.sessionId) }}>{t('view')}</button>
                               : (() => {
-                                const question = item.pending
-                                const first = question.firstQuestion
-                                const options = first.multiSelect !== true && first.options !== undefined && first.options.length > 0
+                                const first = item.pending.firstQuestion
+                                const options = item.pending.kind === 'plan-review' || first.multiSelect !== true
                                   ? first.options : undefined
                                 return (
                                   <>
                                     <span className={css.chip}>
-                                      {question.kind === 'plan-review' ? t('planReviewPending') : t('questionPending')}
+                                      {item.pending.kind === 'plan-review' ? t('planReviewPending') : t('questionPending')}
                                       {' · '}
                                       {first.question}
                                     </span>
-                                    {options === undefined
-                                      ? (
-                                        <button type="button" className={css.select} onClick={() => { openSession(item.sessionId) }}>
-                                          {t('goToConversation')}
-                                        </button>
-                                      )
+                                    {options === undefined || options.length === 0
+                                      ? <button type="button" className={css.select} onClick={() => { openSession(item.sessionId) }}>{t('goToConversation')}</button>
                                       : options.map(option => (
                                         <button
                                           key={option.label}
                                           type="button"
                                           className={css.select}
-                                          disabled={state.busySessionId === item.sessionId}
+                                          disabled={actionBusy === item.sessionId}
                                           onClick={() => {
                                             void answerQuestion(item.sessionId, {
                                               answers: [{ id: first.id, selected: [option.label] }],
@@ -390,22 +279,38 @@ export function ProjectConsolePage({
                         </div>
                       </article>
                     ))}
-                  </section>
+                    {completedItems.length === 0 ? null : <h3 className={visualCss.bucketTitle}>{t('completedGroup')}</h3>}
+                    {completedItems.map(item => (
+                      <article key={item.sessionId} className={css.row}>
+                        <div className={css.rowHead}>
+                          <StatusDot state="success" />
+                          <span className={css.sessionId} title={item.sessionId}>{item.row.title ?? t('untitled')}</span>
+                          <span className={css.meta}>{statusText(item.row.status, t)}</span>
+                          {item.row.lastPromptAt === undefined
+                            ? null
+                            : <span className={css.meta}>{relativeTime(item.row.lastPromptAt, t)}</span>}
+                          <span className={css.chip}>{t('completedUnread')}</span>
+                        </div>
+                        <div className={css.rowActions}>
+                          <button type="button" className={css.select} onClick={() => { openSession(item.sessionId) }}>{t('view')}</button>
+                          <button type="button" className={css.select} onClick={() => { focusSession(item.sessionId) }}>{t('focusSession')}</button>
+                        </div>
+                      </article>
+                    ))}
+                  </>
                 )}
-              {attention.length === 0 || workingRows.length === 0
+            </section>
+          )
+          : null}
+
+        {focus === undefined
+          ? (
+            <>
+              {workingRows.length === 0 || (state.status !== 'ready' || !hasRows)
                 ? null
                 : <h2 className={css.sectionTitle}>{t('working')}</h2>}
               {workingRows.map((session) => {
-                const pending = [...statuses].find(([sessionId]) => sessionId === session.sessionId)?.[1].pendingInteraction
-                const approval = pending?.kind === 'approval' ? pending : undefined
-                const question = pending?.kind === 'question' || pending?.kind === 'plan-review' ? pending : undefined
-                const firstQuestion = question?.questions[0]
-                const simpleOptions = firstQuestion !== undefined
-            && firstQuestion.multiSelect !== true
-            && firstQuestion.options !== undefined
-            && firstQuestion.options.length > 0
-                  ? firstQuestion.options
-                  : undefined
+                const status = statusFacts.get(session.sessionId)
                 return (
                   <article key={session.sessionId} className={css.row}>
                     <button
@@ -415,12 +320,14 @@ export function ProjectConsolePage({
                       onClick={() => { focusSession(session.sessionId) }}
                     >
                       <div className={css.rowHead}>
+                        <StatusDot state={status?.completionUnread === true ? 'success' : session.status === 'running' ? 'running' : 'idle'} />
                         <span className={css.sessionId} title={session.sessionId}>{session.title ?? t('untitled')}</span>
-                        <span className={css.meta}>{session.status === 'running' ? t('running') : t('idle')}</span>
+                        <span className={css.meta}>{statusText(session.status, t)}</span>
                         {session.lastPromptAt === undefined
                           ? null
                           : <span className={css.meta}>{relativeTime(session.lastPromptAt, t)}</span>}
                         {session.cwd === undefined ? null : <span className={css.meta} title={session.cwd}>{session.cwd}</span>}
+                        {state.changes?.has(session.sessionId) === true ? <span className={css.chip}>{t('newBadge')}</span> : null}
                       </div>
                       <div className={css.badges}>
                         {session.activity.length === 0
@@ -430,7 +337,7 @@ export function ProjectConsolePage({
                               key={entry.kind}
                               className={session.status === 'running' ? `${css.chip} ${css.chipRunning}` : css.chip}
                             >
-                              {activityLabel(entry)}
+                              {activityText(entry)}
                             </span>
                           ))}
                       </div>
@@ -451,7 +358,7 @@ export function ProjectConsolePage({
                           <button
                             type="button"
                             className={css.select}
-                            disabled={state.busySessionId === session.sessionId}
+                            disabled={actionBusy === session.sessionId}
                             onClick={() => { void cancelSession(session.sessionId) }}
                           >
                             {t('interrupt')}
@@ -459,61 +366,6 @@ export function ProjectConsolePage({
                         )
                         : null}
                     </div>
-                    {approval === undefined
-                      ? null
-                      : (
-                        <div className={css.rowActions}>
-                          <span className={css.chip}>{t('pendingApproval')} · {approval.toolName}</span>
-                          <button
-                            type="button"
-                            className={css.select}
-                            disabled={state.busySessionId === session.sessionId || !approval.answerable}
-                            onClick={() => { void answerApproval(session.sessionId, 'allowed-once') }}
-                          >
-                            {t('allowOnce')}
-                          </button>
-                          <button
-                            type="button"
-                            className={css.select}
-                            disabled={state.busySessionId === session.sessionId || !approval.answerable}
-                            onClick={() => { void answerApproval(session.sessionId, 'rejected') }}
-                          >
-                            {t('rejectApproval')}
-                          </button>
-                        </div>
-                      )}
-                    {question === undefined || firstQuestion === undefined
-                      ? null
-                      : (
-                        <div className={css.rowActions}>
-                          <span className={css.chip}>
-                            {question.kind === 'plan-review' ? t('planReviewPending') : t('questionPending')}
-                            {' · '}
-                            {firstQuestion.question}
-                          </span>
-                          {simpleOptions === undefined
-                            ? (
-                              <button type="button" className={css.select} onClick={() => { openSession(session.sessionId) }}>
-                                {t('goToConversation')}
-                              </button>
-                            )
-                            : simpleOptions.map(option => (
-                              <button
-                                key={option.label}
-                                type="button"
-                                className={css.select}
-                                disabled={state.busySessionId === session.sessionId}
-                                onClick={() => {
-                                  void answerQuestion(session.sessionId, {
-                                    answers: [{ id: firstQuestion.id, selected: [option.label] }],
-                                  })
-                                }}
-                              >
-                                {option.label}
-                              </button>
-                            ))}
-                        </div>
-                      )}
                     {replyingTo === session.sessionId
                       ? (
                         <div className={css.compose}>
@@ -527,7 +379,7 @@ export function ProjectConsolePage({
                           <button
                             type="button"
                             className={css.select}
-                            disabled={replyText.trim() === '' || state.busySessionId === session.sessionId}
+                            disabled={replyText.trim() === '' || actionBusy === session.sessionId}
                             onClick={() => {
                               void sendToSession(session.sessionId, replyText, 'queue').then((accepted) => {
                                 if (!accepted) return
@@ -537,20 +389,6 @@ export function ProjectConsolePage({
                             }}
                           >
                             {t('sendQueue')}
-                          </button>
-                          <button
-                            type="button"
-                            className={css.select}
-                            disabled={replyText.trim() === '' || state.busySessionId === session.sessionId}
-                            onClick={() => {
-                              void sendToSession(session.sessionId, replyText, 'steer').then((accepted) => {
-                                if (!accepted) return
-                                setReplyingTo(null)
-                                setReplyText('')
-                              })
-                            }}
-                          >
-                            {t('sendSteer')}
                           </button>
                           <button type="button" className={css.select} onClick={() => { setReplyingTo(null); setReplyText('') }}>
                             {t('cancel')}
@@ -563,7 +401,117 @@ export function ProjectConsolePage({
               })}
             </>
           )
-          : null}
+          : (
+            <article className={css.row}>
+              <div className={css.rowHead}>
+                <StatusDot state={focus.row === undefined ? 'unknown' : focus.row.status === 'running' ? 'running' : 'idle'} />
+                <span className={css.sessionId} title={focus.sessionId}>
+                  {focus.row === undefined ? t('untitled') : focus.row.title ?? t('untitled')}
+                </span>
+                {focus.row === undefined
+                  ? null
+                  : <span className={css.meta}>{statusText(focus.row.status, t)}</span>}
+                {focus.row === undefined || focus.row.lastPromptAt === undefined
+                  ? null
+                  : <span className={css.meta}>{relativeTime(focus.row.lastPromptAt, t)}</span>}
+                {focus.row === undefined || focus.row.cwd === undefined
+                  ? null
+                  : <span className={css.meta} title={focus.row.cwd}>{focus.row.cwd}</span>}
+                {focusPending === 0
+                  ? null
+                  : <span className={css.chip}>{t('needsYou')} {focusPending}</span>}
+              </div>
+              <div className={css.badges}>
+                {focus.row === undefined || focus.row.activity.length === 0
+                  ? <span className={css.chip}>{t('noActivity')}</span>
+                  : focus.row.activity.map(entry => (
+                    <span
+                      key={entry.kind}
+                      className={focus.row?.status === 'running' ? `${css.chip} ${css.chipRunning}` : css.chip}
+                    >
+                      {activityText(entry)}
+                    </span>
+                  ))}
+              </div>
+              {focus.row === undefined ? null : (
+                <h2 className={css.sectionTitle}>{t('timeline')}</h2>
+              )}
+              <Timeline
+                entries={focus.timeline}
+                startedAt={focus.startedAt}
+                now={Date.now()}
+                t={t}
+              />
+              {focus.phase === 'ended' || focus.phase === 'failed'
+                ? (
+                  <div className={css.notice} role={focus.phase === 'failed' ? 'alert' : 'status'}>
+                    <span className={css.noticeText}>
+                      {focus.phase === 'failed' ? t('focusFailed') : t('focusEnded')}
+                    </span>
+                  </div>
+                )
+                : null}
+              <div className={css.rowActions}>
+                <button type="button" className={css.select} onClick={() => { closeFocus() }}>{t('focusBack')}</button>
+                <button type="button" className={css.select} onClick={() => { openSession(focus.sessionId) }}>{t('openSession')}</button>
+                {focus.row?.status === 'running'
+                  ? (
+                    <button
+                      type="button"
+                      className={css.select}
+                      disabled={actionBusy === focus.sessionId}
+                      onClick={() => { void cancelSession(focus.sessionId) }}
+                    >
+                      {t('interrupt')}
+                    </button>
+                  )
+                  : null}
+                <button
+                  type="button"
+                  className={css.select}
+                  onClick={() => {
+                    setReplyingTo(replyingTo === focus.sessionId ? null : focus.sessionId)
+                    setReplyText('')
+                  }}
+                >
+                  {t('sendPrompt')}
+                </button>
+              </div>
+              {focus.phase === 'connecting' && focus.row === undefined
+                ? <p className={css.meta}>{t('focusConnecting')}</p>
+                : null}
+              {replyingTo === focus.sessionId
+                ? (
+                  <div className={css.compose}>
+                    <textarea
+                      className={css.prompt}
+                      rows={2}
+                      value={replyText}
+                      placeholder={t('replyPlaceholder')}
+                      onChange={(event) => { setReplyText(event.currentTarget.value) }}
+                    />
+                    <button
+                      type="button"
+                      className={css.select}
+                      disabled={replyText.trim() === '' || actionBusy === focus.sessionId}
+                      onClick={() => {
+                        void sendToSession(focus.sessionId, replyText, 'queue').then((accepted) => {
+                          if (!accepted) return
+                          setReplyingTo(null)
+                          setReplyText('')
+                        })
+                      }}
+                    >
+                      {t('sendQueue')}
+                    </button>
+                    <button type="button" className={css.select} onClick={() => { setReplyingTo(null); setReplyText('') }}>
+                      {t('cancel')}
+                    </button>
+                  </div>
+                )
+                : null}
+            </article>
+          )}
       </div>
     </section>
   )

@@ -37,6 +37,8 @@ export interface ConsoleFocusTimelineEntry {
 export interface ConsoleFocus {
   /** Followed Session identity. */
   readonly sessionId: string
+  /** When this console started following the Session. */
+  readonly startedAt: number
   /** Stream lifecycle. */
   readonly phase: ConsoleFocusPhase
   /** Latest row reported by the follow stream. */
@@ -292,7 +294,7 @@ export class ProjectConsoleStore {
     const abort = new AbortController()
     this.focusAbort = abort
     const run = ++this.focusRun
-    this.state = { ...this.state, focus: { sessionId, phase: 'connecting', timeline: [] } }
+    this.state = { ...this.state, focus: { sessionId, startedAt: Date.now(), phase: 'connecting', timeline: [] } }
     this.emit()
     void (async () => {
       try {
@@ -316,8 +318,8 @@ export class ProjectConsoleStore {
           this.state = {
             ...this.state,
             focus: row === undefined
-              ? { sessionId, phase: 'ended', timeline: timeline.slice(-20) }
-              : { sessionId, phase: 'live', row, timeline: timeline.slice(-20) },
+              ? { sessionId, startedAt: previous?.startedAt ?? Date.now(), phase: 'ended', timeline: timeline.slice(-20) }
+              : { sessionId, startedAt: previous?.startedAt ?? Date.now(), phase: 'live', row, timeline: timeline.slice(-20) },
           }
           this.emit()
           if (row === undefined) return
@@ -327,7 +329,7 @@ export class ProjectConsoleStore {
         this.state = {
           ...this.state,
           focus: {
-            sessionId, phase: 'failed',
+            sessionId, startedAt: this.state.focus?.startedAt ?? Date.now(), phase: 'failed',
             ...this.state.focus?.row === undefined ? {} : { row: this.state.focus.row },
             timeline: this.state.focus?.timeline ?? [],
           },

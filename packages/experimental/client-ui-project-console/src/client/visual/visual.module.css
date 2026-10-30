@@ -1,0 +1,175 @@
+/* Visual language primitives: state semantics, health segments, timeline axis. */
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--dsw-alias-state-idle-primary);
+}
+
+.dotRunning {
+  background: var(--dsw-alias-state-business-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dsw-alias-state-business-primary) 18%, transparent);
+}
+
+.dotAttention {
+  background: var(--dsw-alias-state-warn-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dsw-alias-state-warn-primary) 20%, transparent);
+}
+
+.dotSuccess {
+  background: var(--dsw-alias-state-success-primary);
+}
+
+.dotError {
+  background: var(--dsw-alias-state-error-primary);
+}
+
+.dotUnknown {
+  background: transparent;
+  border: 1px dashed var(--dsw-alias-label-tertiary);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+  background: var(--dsw-alias-bg-skeleton);
+}
+
+.pillAttention {
+  color: var(--dsw-alias-state-warn-label);
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 14%, transparent);
+}
+
+.health {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.healthBar {
+  display: flex;
+  height: 12px;
+  width: 100%;
+  max-width: 720px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-skeleton);
+}
+
+.segment {
+  height: 100%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.segmentRunning { background: var(--dsw-alias-state-business-primary); }
+.segmentAttention { background: var(--dsw-alias-state-warn-primary); }
+.segmentSuccess { background: var(--dsw-alias-state-success-primary); }
+.segmentIdle { background: var(--dsw-alias-state-idle-primary); }
+
+.segmentSelected {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: -2px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.legendCount {
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary);
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 12px;
+}
+
+.timeLine {
+  display: grid;
+  grid-template-columns: 96px 12px 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+  min-height: 22px;
+}
+
+.time {
+  font-variant-numeric: tabular-nums;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.eventDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  align-self: center;
+  background: var(--dsw-alias-state-idle-primary);
+}
+
+.eventDotStatus { background: var(--dsw-alias-state-business-primary); }
+.eventDotAttention { background: var(--dsw-alias-state-warn-primary); }
+.eventDotSuccess { background: var(--dsw-alias-state-success-primary); }
+.eventDotError { background: var(--dsw-alias-state-error-primary); }
+
+.eventText {
+  color: var(--dsw-alias-label-primary);
+}
+
+.duration {
+  color: var(--dsw-alias-label-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.emptyAttention {
+  padding: 12px 14px;
+  border: 1px dashed var(--dsw-alias-settings-card-stroke);
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.bucket {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.bucketTitle {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-secondary);
+}
