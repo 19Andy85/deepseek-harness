@@ -212,3 +212,26 @@
 .rowRunning::before { background: var(--dsw-alias-state-business-primary); }
 .rowAttention::before { background: var(--dsw-alias-state-warn-primary); }
 .rowSuccess::before { background: var(--dsw-alias-state-success-primary); }
+
+.viewToggle {
+  display: inline-flex;
+  border: 1px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.viewButton {
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  background: var(--dsw-alias-settings-card-fill);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.viewButtonActive {
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 16%, transparent);
+  color: var(--dsw-alias-label-primary);
+  box-shadow: inset 0 0 0 1px var(--dsw-alias-brand-primary);
+}

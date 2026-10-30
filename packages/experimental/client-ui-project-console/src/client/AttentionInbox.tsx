@@ -1,0 +1,135 @@
+/** The always-on Needs you inbox shared by the canvas and studio views. */
+import type { QuestionAnswer } from '@deepseek-ai/dsh-client-ui-user-questions/client'
+import type { AttentionItem } from './attention.ts'
+import type { ProjectConsoleKey } from './locales.ts'
+import { StatusDot } from './visual/visual.tsx'
+import css from './ProjectConsolePage.module.css'
+import visualCss from './visual/visual.module.css'
+
+/** Actions the inbox can dispatch. */
+export interface AttentionInboxActions {
+  /** Open the Session conversation. */
+  readonly open: (sessionId: string) => void
+  /** Follow the Session inside the console. */
+  readonly focus: (sessionId: string) => void
+  /** Answer a pending approval. */
+  readonly approve: (sessionId: string, decision: 'allowed-once' | 'rejected') => void
+  /** Answer a pending question or plan review. */
+  readonly answer: (sessionId: string, answer: QuestionAnswer) => void
+}
+
+/**
+ * Render the attention inbox.
+ * @param props - attention items, the busy Session, the dictionary, and actions.
+ * @returns the inbox section.
+ */
+export function AttentionInbox({
+  attention, busySessionId, t, actions,
+}: {
+  readonly attention: readonly AttentionItem[]
+  readonly busySessionId: string | undefined
+  readonly t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string
+  readonly actions: AttentionInboxActions
+}) {
+  const pendingItems = attention.filter(item => item.pending !== undefined)
+  const completedItems = attention.filter(item => item.pending === undefined)
+  return (
+    <section className={css.section} aria-label={t('needsYou')}>
+      <h2 className={css.sectionTitle}>
+        {t('needsYou')}
+        {attention.length === 0 ? null : ` (${String(attention.length)})`}
+      </h2>
+      {attention.length === 0
+        ? <div className={visualCss.emptyAttention}>{t('noPending')}</div>
+        : (
+          <>
+            {pendingItems.length === 0 ? null : <h3 className={visualCss.bucketTitle}>{t('waitingGroup')}</h3>}
+            {pendingItems.map(item => (
+              <article key={item.sessionId} className={`${css.row} ${css.rowAttention}`}>
+                <div className={css.rowHead}>
+                  <StatusDot state="attention" />
+                  <span className={css.sessionId} title={item.sessionId}>{item.row.title ?? t('untitled')}</span>
+                  <span className={css.meta}>{item.row.status === 'running' ? t('running') : t('idle')}</span>
+                  {item.row.lastPromptAt === undefined
+                    ? null
+                    : <span className={css.meta}>{new Date(item.row.lastPromptAt).toLocaleTimeString(undefined, { hour12: false })}</span>}
+                </div>
+                <div className={css.rowActions}>
+                  {item.pending?.kind === 'approval'
+                    ? (
+                      <>
+                        <span className={css.chip}>{t('pendingApproval')} · {item.pending.toolName}</span>
+                        <button
+                          type="button"
+                          className={css.select}
+                          disabled={busySessionId === item.sessionId || !item.pending.answerable}
+                          onClick={() => { actions.approve(item.sessionId, 'allowed-once') }}
+                        >
+                          {t('allowOnce')}
+                        </button>
+                        <button
+                          type="button"
+                          className={css.select}
+                          disabled={busySessionId === item.sessionId || !item.pending.answerable}
+                          onClick={() => { actions.approve(item.sessionId, 'rejected') }}
+                        >
+                          {t('rejectApproval')}
+                        </button>
+                      </>
+                    )
+                    : item.pending === undefined
+                      ? <button type="button" className={css.select} onClick={() => { actions.open(item.sessionId) }}>{t('view')}</button>
+                      : (() => {
+                        const first = item.pending.firstQuestion
+                        const options = item.pending.kind === 'plan-review' || first.multiSelect !== true
+                          ? first.options : undefined
+                        return (
+                          <>
+                            <span className={css.chip}>
+                              {item.pending.kind === 'plan-review' ? t('planReviewPending') : t('questionPending')}
+                              {' · '}
+                              {first.question}
+                            </span>
+                            {options === undefined || options.length === 0
+                              ? <button type="button" className={css.select} onClick={() => { actions.open(item.sessionId) }}>{t('goToConversation')}</button>
+                              : options.map(option => (
+                                <button
+                                  key={option.label}
+                                  type="button"
+                                  className={css.select}
+                                  disabled={busySessionId === item.sessionId}
+                                  onClick={() => {
+                                    actions.answer(item.sessionId, {
+                                      answers: [{ id: first.id, selected: [option.label] }],
+                                    })
+                                  }}
+                                >
+                                  {option.label}
+                                </button>
+                              ))}
+                          </>
+                        )
+                      })()}
+                </div>
+              </article>
+            ))}
+            {completedItems.length === 0 ? null : <h3 className={visualCss.bucketTitle}>{t('completedGroup')}</h3>}
+            {completedItems.map(item => (
+              <article key={item.sessionId} className={`${css.row} ${css.rowSuccess}`}>
+                <div className={css.rowHead}>
+                  <StatusDot state="success" />
+                  <span className={css.sessionId} title={item.sessionId}>{item.row.title ?? t('untitled')}</span>
+                  <span className={css.meta}>{item.row.status === 'running' ? t('running') : t('idle')}</span>
+                  <span className={css.chip}>{t('completedUnread')}</span>
+                </div>
+                <div className={css.rowActions}>
+                  <button type="button" className={css.select} onClick={() => { actions.open(item.sessionId) }}>{t('view')}</button>
+                  <button type="button" className={css.select} onClick={() => { actions.focus(item.sessionId) }}>{t('focusSession')}</button>
+                </div>
+              </article>
+            ))}
+          </>
+        )}
+    </section>
+  )
+}
