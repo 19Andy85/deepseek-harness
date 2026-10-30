@@ -32,8 +32,8 @@
      "access": "public"
    },
 
---- a/packages/experimental/api-session-tasks/src/index.ts	2026-10-31 01:31:38
-+++ b/packages/experimental/api-session-tasks/src/index.ts	2026-10-31 01:33:10
+--- a/packages/experimental/api-session-tasks/src/index.ts	2026-10-31 01:42:19
++++ b/packages/experimental/api-session-tasks/src/index.ts	2026-10-31 01:42:35
 @@ -86,8 +86,8 @@
  
    protected async [Service.init](): Promise<void> {
