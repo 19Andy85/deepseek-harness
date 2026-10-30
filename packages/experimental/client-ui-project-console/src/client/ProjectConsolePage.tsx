@@ -1,5 +1,5 @@
 /** Workspace console page: the attention inbox, the project state bar, and the session work surface. */
-import { useState, useSyncExternalStore } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { HostObservable, InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-user-questions/client'
@@ -75,9 +75,17 @@ function statusText(
   return t('unknown')
 }
 
-function activityText(entry: ConsoleState['sessions'][number]['activity'][number]): string {
+function activityText(
+  entry: ConsoleState['sessions'][number]['activity'][number],
+  t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string,
+): string {
+  const kind = entry.kind === 'turn' ? t('activityTurn')
+    : entry.kind === 'job' ? t('activityJob')
+      : entry.kind === 'subagent' ? t('activitySubagent')
+        : entry.kind === 'schedule' ? t('activitySchedule')
+          : entry.kind
   const items = entry.items?.map(item => item.label ?? item.id).join(', ')
-  return items === undefined || items === '' ? entry.kind : `${entry.kind} · ${items}`
+  return items === undefined || items === '' ? kind : `${kind} · ${items}`
 }
 
 /**
@@ -89,6 +97,7 @@ export function ProjectConsolePage({
   t, store, workspaceOptions, selectedWorkspaceId, selectWorkspace, refresh, openSession, focusSession,
   closeFocus, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus,
 }: ProjectConsolePageProps) {
+  const [now, setNow] = useState(() => Date.now())
   const [prompt, setPrompt] = useState('')
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
@@ -136,6 +145,11 @@ export function ProjectConsolePage({
   })
   const hasRows = rows.length > 0
   const focus = state.focus
+  useEffect(() => {
+    if (focus === undefined) return
+    const timer = setInterval(() => { setNow(Date.now()) }, 1_000)
+    return () => { clearInterval(timer) }
+  }, [focus?.sessionId])
   const focusPending = focus === undefined ? 0 : pendingItems.filter(item => item.sessionId === focus.sessionId).length
   const actionBusy = state.busySessionId
 
@@ -337,7 +351,7 @@ export function ProjectConsolePage({
                               key={entry.kind}
                               className={session.status === 'running' ? `${css.chip} ${css.chipRunning}` : css.chip}
                             >
-                              {activityText(entry)}
+                              {activityText(entry, t)}
                             </span>
                           ))}
                       </div>
@@ -429,7 +443,7 @@ export function ProjectConsolePage({
                       key={entry.kind}
                       className={focus.row?.status === 'running' ? `${css.chip} ${css.chipRunning}` : css.chip}
                     >
-                      {activityText(entry)}
+                      {activityText(entry, t)}
                     </span>
                   ))}
               </div>
@@ -439,7 +453,7 @@ export function ProjectConsolePage({
               <Timeline
                 entries={focus.timeline}
                 startedAt={focus.startedAt}
-                now={Date.now()}
+                now={now}
                 t={t}
               />
               {focus.phase === 'ended' || focus.phase === 'failed'

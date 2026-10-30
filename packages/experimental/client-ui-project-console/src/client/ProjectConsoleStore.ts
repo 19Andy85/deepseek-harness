@@ -313,7 +313,9 @@ export class ProjectConsoleStore {
             }
             const before = previous.row.activity.map(entry => entry.kind).join(',')
             const after = row.activity.map(entry => entry.kind).join(',')
-            if (before !== after) timeline.push({ at: Date.now(), kind: 'activity', activity: after })
+            const lastEntry = timeline.at(-1)
+            const churning = lastEntry?.kind === 'activity' && Date.now() - lastEntry.at < 1_500
+            if (before !== after && !churning) timeline.push({ at: Date.now(), kind: 'activity', activity: after })
           }
           this.state = {
             ...this.state,
