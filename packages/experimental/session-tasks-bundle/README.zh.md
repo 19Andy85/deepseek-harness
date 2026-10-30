@@ -39,6 +39,18 @@ kind: "package-bundle"
 - `session_tasks` 工具，按 `visibleScope` 授权（默认 `same-cwd`）。
 - 三行共用一个开关：禁用 bundle 行即可同时移除页面、Remote 与工具。
 
+### 不重启 profile 迭代客户端
+
+Host 的 Web 服务器会对每个被服务的客户端 bundle 做 stat 轮询，发现重写后广播 rebuilt 帧，因此运行中的 profile 会热更新客户端改动。只重建客户端 bundle：
+
+```sh
+node packages/experimental/session-tasks-bundle/scripts/rebuild-client.mjs
+# A linked compatibility build: point the rebuild at that checkout.
+node packages/experimental/session-tasks-bundle/scripts/rebuild-client.mjs --repo ~/dsh-builds/dsh-0.2.1-rc.3
+```
+
+页面会自动更新；若未出现，刷新页面。Host 侧改动（控制器、流、profile 条目）仍需重建产物并重启 profile。
+
 ### 为已发布版本构建兼容包
 
 运行旧版 app 的 profile 需要与**该 app 依赖一致**的构建，而不是本 workspace 的依赖。本 bundle 提供 `dsh-v0.2.1-rc.3` 线的可复现兼容构建：

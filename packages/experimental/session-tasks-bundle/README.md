@@ -39,6 +39,18 @@ Install and enable `@deepseek-ai/dsh-experimental-session-tasks-bundle` in a Web
 - The `session_tasks` tool, scoped by `visibleScope` (default `same-cwd`).
 - One switch for all three rows: disable the bundle row to remove the page, the Remote, and the tool together.
 
+### Iterate on the client without restarting the profile
+
+The Host's webserver stat-polls every client bundle it serves and broadcasts a rebuilt frame when one is rewritten, so a running profile hot-reloads client changes. Rebuild only the client bundles:
+
+```sh
+node packages/experimental/session-tasks-bundle/scripts/rebuild-client.mjs
+# A linked compatibility build: point the rebuild at that checkout.
+node packages/experimental/session-tasks-bundle/scripts/rebuild-client.mjs --repo ~/dsh-builds/dsh-0.2.1-rc.3
+```
+
+The page updates on its own; refresh it if the reload did not appear. Host-side changes (controllers, streams, profile entries) still need a rebuilt artifact tree and a profile restart.
+
 ### Build for a shipped release line
 
 A profile that runs an older app needs packages built against that app's dependencies, not this workspace's. The bundle ships a reproducible compatibility build for the `dsh-v0.2.1-rc.3` line:
