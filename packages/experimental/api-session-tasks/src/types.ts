@@ -7,6 +7,7 @@
 
 import type { SessionId, SessionHeader } from '@deepseek-ai/dsh-session'
 import type { SessionTaskOutcomeKind } from './outcome.ts'
+import type { SessionTaskRelations } from './relations.ts'
 import type { SessionActivity } from '@deepseek-ai/dsh-workspace'
 
 declare module '@deepseek-ai/dsh-typert-protocol' {
@@ -59,6 +60,8 @@ export interface SessionTaskMetadata {
   readonly outcomeAt?: number
   /** Failure message for a failed outcome. */
   readonly outcomeReason?: string
+  /** Durable derivation relations of this Session. */
+  readonly relations?: SessionTaskRelations
 }
 
 /** One live session of this Host with the activity families that still run for it. */
@@ -85,6 +88,8 @@ export interface SessionTaskView {
   readonly outcomeAt?: number
   /** Failure message for a failed outcome. */
   readonly outcomeReason?: string
+  /** Durable derivation relations of this Session. */
+  readonly relations?: SessionTaskRelations
 }
 
 /** Request projected by one overview read. */

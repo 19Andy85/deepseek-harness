@@ -390,6 +390,19 @@ export function ProjectConsolePage({
               {focus.row === undefined ? null : (
                 <h2 className={css.sectionTitle}>{t('timeline')}</h2>
               )}
+              {focus.row?.relations?.children === undefined || focus.row.relations.children.length === 0
+                ? null
+                : (
+                  <div className={css.section}>
+                    <h2 className={css.sectionTitle}>{t('subagentsTitle')}</h2>
+                    {focus.row.relations.children.map(child => (
+                      <div key={child.sessionId} className={css.rowActions}>
+                        <span className={css.chip}>{child.sessionId.slice(0, 8)}{child.live === true ? ` · ${t('running')}` : ''}</span>
+                        <button type="button" className={css.select} onClick={() => { openSession(child.sessionId) }}>{t('openSession')}</button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               <Timeline
                 entries={focus.timeline}
                 startedAt={focus.startedAt}

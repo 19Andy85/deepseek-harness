@@ -12,11 +12,13 @@ import type {} from '@deepseek-ai/dsh-api-session-controller'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-title'
+import type {} from '@deepseek-ai/dsh-session-query'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import z from '@deepseek-ai/schemastery'
 import type { SessionActivity } from '@deepseek-ai/dsh-workspace'
 import { followSessionTask, observeActivity, readSessionTasks, type ObservedActivity } from './aggregation.ts'
 import { sessionTaskOutcomeProjection } from './outcome.ts'
+import { buildChildRelations, type SessionRelationChild } from './relations.ts'
 import type {
   SessionTaskFollowFrame, SessionTaskFollowRequest, SessionTaskHost, SessionTaskMetadata,
   SessionTasksRequest, SessionTasksSnapshot,
@@ -31,6 +33,9 @@ const DEFAULT_FOLLOW_INTERVAL_MS = 750
 /** Default running-without-observable-change threshold for the stalled judgement. */
 const DEFAULT_STALL_AFTER_MS = 900_000
 
+/** Default refresh cadence of the durable derivation relation cache. */
+const DEFAULT_RELATIONS_REFRESH_MS = 5_000
+
 declare module '@deepseek-ai/cordis' {
   interface Context {
     /** Host session task overview Remote namespace owner. */
@@ -44,6 +49,8 @@ export interface Config {
   readonly followIntervalMs?: number
   /** Running-without-observable-change threshold for the stalled flag, in milliseconds (default 900000). */
   readonly stallAfterMs?: number
+  /** Refresh cadence of the durable derivation relation cache, in milliseconds (default 5000). */
+  readonly relationsRefreshMs?: number
 }
 
 /** Host service backing the generated `ctx.remote.sessionTasks` namespace. */
@@ -53,11 +60,16 @@ export class SessionTasksController extends TypertRemoteService {
   static Config: z<Config> = z.object({
     followIntervalMs: z.natural().min(100).default(DEFAULT_FOLLOW_INTERVAL_MS),
     stallAfterMs: z.natural().min(60_000).default(DEFAULT_STALL_AFTER_MS),
+    relationsRefreshMs: z.natural().min(1_000).default(DEFAULT_RELATIONS_REFRESH_MS),
   })
 
   private readonly followIntervalMs: number
   private readonly stallAfterMs: number
+  private readonly relationsRefreshMs: number
   private readonly observed = new Map<string, ObservedActivity>()
+  private relationsByParent = new Map<string, SessionRelationChild[]>()
+  private readonly relationsByChild = new Map<string, string>()
+  private lastRelationsRefresh = 0
 
   /**
    * @param ctx - Host context carrying the live Agent registry and workspace registry.
@@ -69,6 +81,7 @@ export class SessionTasksController extends TypertRemoteService {
     const resolved = config as Required<Config>
     this.followIntervalMs = resolved.followIntervalMs
     this.stallAfterMs = resolved.stallAfterMs
+    this.relationsRefreshMs = resolved.relationsRefreshMs
   }
 
   protected async [Service.init](): Promise<void> {
@@ -87,6 +100,7 @@ export class SessionTasksController extends TypertRemoteService {
    */
   @Remote('snapshot')
   async snapshot(request: SessionTasksRequest): Promise<SessionTasksSnapshot> {
+    await this.refreshRelations()
     const workspaceRegistry = this.ctx.get('workspaceRegistry')
     return readSessionTasks(this.host(), request, workspaceRegistry, new AbortController().signal, {
       stallAfterMs: this.stallAfterMs,
@@ -102,9 +116,36 @@ export class SessionTasksController extends TypertRemoteService {
    */
   @Remote({ mode: 'stream' })
   follow(request: SessionTaskFollowRequest, signal: AbortSignal): AsyncIterable<SessionTaskFollowFrame> {
+    void this.refreshRelations()
     return followSessionTask(this.host(), request, this.followIntervalMs, signal, {
       stallAfterMs: this.stallAfterMs,
     })
+  }
+
+  private async refreshRelations(): Promise<void> {
+    const query = this.ctx.get('sessionQuery')
+    if (query === undefined || Date.now() - this.lastRelationsRefresh < this.relationsRefreshMs) return
+    this.lastRelationsRefresh = Date.now()
+    try {
+      const records = await query.listSessions()
+      this.relationsByParent = buildChildRelations(records)
+      this.relationsByChild.clear()
+      for (const [parentId, children] of this.relationsByParent) {
+        for (const child of children) this.relationsByChild.set(child.sessionId, parentId)
+      }
+    } catch (error) {
+      this.ctx.logger?.warn?.(error)
+    }
+  }
+
+  private relationsOf(sessionId: SessionId): { parent?: { sessionId: string }; children?: readonly SessionRelationChild[] } | undefined {
+    const parentId = this.relationsByChild.get(sessionId)
+    const children = this.relationsByParent.get(sessionId)
+    if (parentId === undefined && children === undefined) return undefined
+    return {
+      ...parentId === undefined ? {} : { parent: { sessionId: parentId } },
+      ...children === undefined ? {} : { children: children.slice(0, 10) },
+    }
   }
 
   private host(): SessionTaskHost {
@@ -129,7 +170,10 @@ export class SessionTasksController extends TypertRemoteService {
     const metadata = snapshot.values.sessionListMetadata
     const outcome = snapshot.values.sessionTaskOutcome
     const lastPromptAt = metadata?.lastPromptAt
-    if ((title === undefined || title === null) && metadata === undefined && outcome === undefined) return undefined
+    const relations = this.relationsOf(agent.session.id)
+    const empty = (title === undefined || title === null)
+      && metadata === undefined && outcome === undefined && relations === undefined
+    if (empty) return undefined
     return {
       ...title === undefined || title === null ? {} : { title },
       ...lastPromptAt === null || lastPromptAt === undefined ? {} : { lastPromptAt },
@@ -137,6 +181,7 @@ export class SessionTasksController extends TypertRemoteService {
       ...outcome?.kind === undefined ? {} : { outcome: outcome.kind },
       ...outcome?.at === undefined ? {} : { outcomeAt: outcome.at },
       ...outcome?.reason === undefined ? {} : { outcomeReason: outcome.reason },
+      ...relations === undefined ? {} : { relations },
     }
   }
 }

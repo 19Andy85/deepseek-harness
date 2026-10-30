@@ -137,6 +137,7 @@ async function readRow(
     ...metadata?.outcome === undefined ? {} : { outcome: metadata.outcome },
     ...metadata?.outcomeAt === undefined ? {} : { outcomeAt: metadata.outcomeAt },
     ...metadata?.outcomeReason === undefined ? {} : { outcomeReason: metadata.outcomeReason },
+    ...metadata?.relations === undefined ? {} : { relations: metadata.relations },
     activity,
     ...stalled === undefined ? {} : { stalled },
   }
