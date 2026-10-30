@@ -26,6 +26,273 @@ index 519afe060d..27407afb0b 100644
    TOOL_GOAL: 2400,
    TOOL_WORKFLOW: 2600,
    TOOL_RALPH: 2700,
+diff --git a/packages/workspace/workspace/src/types.ts b/packages/workspace/workspace/src/types.ts
+index 1b09bef969..6d68208f38 100644
+--- a/packages/workspace/workspace/src/types.ts
++++ b/packages/workspace/workspace/src/types.ts
+@@ -47,6 +47,8 @@ export interface SessionActivityItem {
+   readonly id: string
+   /** Display label when the family carries one (a job label, a subagent label). */
+   readonly label?: string
++  /** When this item started, when the provider can report it. */
++  readonly startedAt?: number
+ }
+ 
+ /**
+@@ -55,6 +57,10 @@ export interface SessionActivityItem {
+  */
+ export interface SessionActivity {
+   readonly kind: SessionActivityKind
++  /** When this family became active, when the provider can report it. */
++  readonly startedAt?: number
++  /** Most recent activity within this family, when the provider can report it. */
++  readonly lastActivityAt?: number
+   /** Active items of the family; absent for a family without per-item identity (`turn`). */
+   readonly items?: readonly SessionActivityItem[]
+ }
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index d6df9aae42..7096cf9f3e 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -35,6 +35,9 @@ importers:
+       '@deepseek-ai/dsh-cua':
+         specifier: workspace:*
+         version: link:packages/experimental/cua
++      '@deepseek-ai/dsh-experimental-api-session-tasks':
++        specifier: workspace:*
++        version: link:packages/experimental/api-session-tasks
+       '@deepseek-ai/dsh-experimental-browser-use-chrome-devtools-mcp':
+         specifier: workspace:*
+         version: link:packages/experimental/browser-use-chrome-devtools-mcp
+@@ -50,6 +53,9 @@ importers:
+       '@deepseek-ai/dsh-experimental-claude-code-mods':
+         specifier: workspace:*
+         version: link:packages/experimental/claude-code-mods
++      '@deepseek-ai/dsh-experimental-client-ui-project-console':
++        specifier: workspace:*
++        version: link:packages/experimental/client-ui-project-console
+       '@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp':
+         specifier: workspace:*
+         version: link:packages/experimental/computer-use-cua-driver-mcp
+@@ -59,6 +65,12 @@ importers:
+       '@deepseek-ai/dsh-experimental-cua-macos':
+         specifier: workspace:*
+         version: link:packages/experimental/cua-macos
++      '@deepseek-ai/dsh-experimental-session-tasks-bundle':
++        specifier: workspace:*
++        version: link:packages/experimental/session-tasks-bundle
++      '@deepseek-ai/dsh-experimental-tool-session-tasks':
++        specifier: workspace:*
++        version: link:packages/experimental/tool-session-tasks
+       '@deepseek-ai/dsh-experimental-tool-worktree':
+         specifier: workspace:*
+         version: link:packages/experimental/tool-worktree
+@@ -7703,6 +7715,43 @@ importers:
+         specifier: ^4.3.2
+         version: 4.3.2
+ 
++  packages/experimental/api-session-tasks:
++    dependencies:
++      '@deepseek-ai/dsh-brand':
++        specifier: workspace:*
++        version: link:../../util/brand
++      '@deepseek-ai/dsh-typert-protocol':
++        specifier: workspace:*
++        version: link:../../typert/protocol
++      '@deepseek-ai/schemastery':
++        specifier: link:../../../vendor/schemastery
++        version: link:../../../vendor/schemastery
++      zod:
++        specifier: 4.4.3
++        version: 4.4.3
++    devDependencies:
++      '@deepseek-ai/cordis':
++        specifier: workspace:~
++        version: link:../../../vendor/cordis
++      '@deepseek-ai/dsh-agent':
++        specifier: workspace:*
++        version: link:../../core/agent
++      '@deepseek-ai/dsh-api-session-controller':
++        specifier: workspace:*
++        version: link:../../api/session-controller
++      '@deepseek-ai/dsh-session':
++        specifier: workspace:*
++        version: link:../../core/session
++      '@deepseek-ai/dsh-session-projection':
++        specifier: workspace:*
++        version: link:../../session/session-projection
++      '@deepseek-ai/dsh-session-title':
++        specifier: workspace:*
++        version: link:../../session/session-title
++      '@deepseek-ai/dsh-workspace':
++        specifier: workspace:*
++        version: link:../../workspace/workspace
++
+   packages/experimental/api-speech-to-text:
+     dependencies:
+       '@deepseek-ai/schemastery':
+@@ -8339,6 +8388,64 @@ importers:
+         specifier: ^18.2.0
+         version: 18.3.1(react@18.3.1)
+ 
++  packages/experimental/client-ui-project-console:
++    dependencies:
++      '@deepseek-ai/dsh-experimental-api-session-tasks':
++        specifier: workspace:*
++        version: link:../api-session-tasks
++    devDependencies:
++      '@deepseek-ai/cordis':
++        specifier: workspace:~
++        version: link:../../../vendor/cordis
++      '@deepseek-ai/dsh-api-session-controller':
++        specifier: workspace:*
++        version: link:../../api/session-controller
++      '@deepseek-ai/dsh-api-workspace-controller':
++        specifier: workspace:*
++        version: link:../../api/workspace-controller
++      '@deepseek-ai/dsh-brand':
++        specifier: workspace:*
++        version: link:../../util/brand
++      '@deepseek-ai/dsh-client-locale':
++        specifier: workspace:*
++        version: link:../../client/locale
++      '@deepseek-ai/dsh-client-ui-approval':
++        specifier: workspace:*
++        version: link:../../client/ui-approval
++      '@deepseek-ai/dsh-client-ui-layout':
++        specifier: workspace:*
++        version: link:../../client/ui-layout
++      '@deepseek-ai/dsh-client-ui-primitives':
++        specifier: workspace:*
++        version: link:../../client/ui-primitives
++      '@deepseek-ai/dsh-client-ui-renderer':
++        specifier: workspace:*
++        version: link:../../client/ui-renderer
++      '@deepseek-ai/dsh-client-ui-session':
++        specifier: workspace:*
++        version: link:../../client/ui-session
++      '@deepseek-ai/dsh-client-ui-sidebar':
++        specifier: workspace:*
++        version: link:../../client/ui-sidebar
++      '@deepseek-ai/dsh-client-ui-slots':
++        specifier: workspace:*
++        version: link:../../client/ui-slots
++      '@deepseek-ai/dsh-client-ui-user-questions':
++        specifier: workspace:*
++        version: link:../../client/ui-user-questions
++      '@deepseek-ai/dsh-client-ui-workspace':
++        specifier: workspace:*
++        version: link:../../client/ui-workspace
++      '@deepseek-ai/dsh-session':
++        specifier: workspace:*
++        version: link:../../core/session
++      '@deepseek-ai/dsh-typert-protocol':
++        specifier: workspace:*
++        version: link:../../typert/protocol
++      '@deepseek-ai/dsh-util-crypto':
++        specifier: workspace:*
++        version: link:../../util/crypto
++
+   packages/experimental/client-ui-voice-input:
+     devDependencies:
+       '@deepseek-ai/cordis':
+@@ -9093,6 +9200,28 @@ importers:
+         specifier: workspace:~
+         version: link:../../../vendor/cordis
+ 
++  packages/experimental/session-tasks-bundle:
++    dependencies:
++      '@deepseek-ai/dsh-experimental-api-session-tasks':
++        specifier: workspace:*
++        version: link:../api-session-tasks
++      '@deepseek-ai/dsh-experimental-client-ui-project-console':
++        specifier: workspace:*
++        version: link:../client-ui-project-console
++      '@deepseek-ai/dsh-experimental-tool-session-tasks':
++        specifier: workspace:*
++        version: link:../tool-session-tasks
++    devDependencies:
++      '@deepseek-ai/cordis':
++        specifier: workspace:~
++        version: link:../../../vendor/cordis
++      '@deepseek-ai/cordis-plugin-include':
++        specifier: workspace:~
++        version: link:../../../vendor/include
++      js-yaml:
++        specifier: ^4.3.2
++        version: 4.3.2
++
+   packages/experimental/session-title-all-prompts-llm:
+     dependencies:
+       '@deepseek-ai/dsh-util-values':
+@@ -9383,6 +9512,67 @@ importers:
+         specifier: workspace:*
+         version: link:../../core/tools
+ 
++  packages/experimental/tool-session-tasks:
++    dependencies:
++      '@deepseek-ai/dsh-brand':
++        specifier: workspace:*
++        version: link:../../util/brand
++      '@deepseek-ai/dsh-experimental-api-session-tasks':
++        specifier: workspace:*
++        version: link:../api-session-tasks
++      '@deepseek-ai/schemastery':
++        specifier: link:../../../vendor/schemastery
++        version: link:../../../vendor/schemastery
++    devDependencies:
++      '@deepseek-ai/cordis':
++        specifier: workspace:~
++        version: link:../../../vendor/cordis
++      '@deepseek-ai/cordis-plugin-include':
++        specifier: workspace:~
++        version: link:../../../vendor/include
++      '@deepseek-ai/cordis-plugin-loader':
++        specifier: workspace:~
++        version: link:../../../vendor/loader
++      '@deepseek-ai/dsh-agent':
++        specifier: workspace:*
++        version: link:../../core/agent
++      '@deepseek-ai/dsh-agent-loop':
++        specifier: workspace:*
++        version: link:../../core/agent-loop
++      '@deepseek-ai/dsh-fs-local':
++        specifier: workspace:*
++        version: link:../../fs/fs-local
++      '@deepseek-ai/dsh-llm':
++        specifier: workspace:*
++        version: link:../../llm/llm
++      '@deepseek-ai/dsh-sandbox-local':
++        specifier: workspace:*
++        version: link:../../sandbox/sandbox-local
++      '@deepseek-ai/dsh-sandbox-policy':
++        specifier: workspace:*
++        version: link:../../sandbox/sandbox-policy
++      '@deepseek-ai/dsh-session':
++        specifier: workspace:*
++        version: link:../../core/session
++      '@deepseek-ai/dsh-session-projection':
++        specifier: workspace:*
++        version: link:../../session/session-projection
++      '@deepseek-ai/dsh-subprocess-local':
++        specifier: workspace:*
++        version: link:../../subprocess/subprocess-local
++      '@deepseek-ai/dsh-system-prompt':
++        specifier: workspace:*
++        version: link:../../core/system-prompt
++      '@deepseek-ai/dsh-tools':
++        specifier: workspace:*
++        version: link:../../core/tools
++      '@deepseek-ai/dsh-working-directory':
++        specifier: workspace:*
++        version: link:../../session/working-directory
++      '@deepseek-ai/dsh-workspace':
++        specifier: workspace:*
++        version: link:../../workspace/workspace
++
+   packages/experimental/tool-terminal:
+     dependencies:
+       '@deepseek-ai/schemastery':
 diff --git a/tsconfig.base.json b/tsconfig.base.json
 index f083f9b35e..85c90c6b8b 100644
 --- a/tsconfig.base.json
