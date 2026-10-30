@@ -7,6 +7,7 @@ import type {
 } from '@deepseek-ai/dsh-experimental-api-session-tasks/types'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ProjectConsoleStore, type ConsoleWorkspace, type ProjectConsoleHost } from '../src/client/ProjectConsoleStore.ts'
+import type { VisitMemory } from '../src/client/visit-memory.ts'
 
 function row(sessionId: string, status: SessionTaskView['status'] = 'running'): SessionTaskView {
   return { sessionId, status, activity: [] }
@@ -28,6 +29,7 @@ function hostOf(
   readonly cancelled: string[]
   readonly responses: [string, 'allowed-once' | 'rejected'][]
   readonly answered: [string, QuestionAnswer][]
+  readonly visits: [string, VisitMemory][]
   failCreate: boolean
   failPrompt: boolean
   failCancel: boolean
@@ -41,6 +43,7 @@ function hostOf(
   const cancelled: string[] = []
   const responses: [string, 'allowed-once' | 'rejected'][] = []
   const answered: [string, QuestionAnswer][] = []
+  const visits: [string, VisitMemory][] = []
   let listener: (() => void) | undefined
   const host = {
     reads,
@@ -55,7 +58,10 @@ function hostOf(
     failAnswer: false,
     responses,
     answered,
+    visits,
     follow: follow ?? (() => (async function* () {})()),
+    readVisit: () => undefined,
+    writeVisit: (workspaceId: string, memory: VisitMemory) => { visits.push([workspaceId, memory]) },
     listWorkspaces: () => workspaces,
     subscribeWorkspaces: (next: () => void) => { listener = next; return () => { listener = undefined } },
     snapshot: async (workspaceId?: string) => {
@@ -115,6 +121,7 @@ describe('ProjectConsoleStore focus', () => {
     })
     release()
     await vi.waitFor(() => { expect(store.getSnapshot().focus?.phase).toBe('ended') })
+    expect(store.getSnapshot().focus?.timeline.map(entry => entry.kind)).toEqual(['baseline', 'ended'])
     store.dispose()
   })
 
@@ -340,5 +347,27 @@ describe('ProjectConsoleStore', () => {
     store.dispose()
     await store.refresh()
     expect(listener).not.toHaveBeenCalled()
+  })
+})
+
+describe('ProjectConsoleStore visit memory', () => {
+  it('summarizes changes against the previous visit and records the next baseline', async () => {
+    const host = hostOf(
+      [{ id: 'ws', title: 'Workspace', path: '/work' }],
+      async () => snapshot('ws', [row('finished', 'idle'), row('new-row')]),
+    )
+    host.readVisit = (): VisitMemory => ({
+      lastSeenAt: 1_700_000_000_000,
+      rows: { finished: { status: 'running', activityKey: '' } },
+    })
+    const store = new ProjectConsoleStore(host)
+    await store.selectWorkspace('ws')
+    const state = store.getSnapshot()
+    expect(state.lastSeenAt).toBe(1_700_000_000_000)
+    expect(Object.fromEntries(state.changes ?? [])).toEqual({ 'new-row': 'appeared', finished: 'finished' })
+    const writes = host.visits.filter(([workspaceId]) => workspaceId === 'ws')
+    expect(writes.length).toBeGreaterThan(0)
+    expect(writes.at(-1)?.[1].rows['new-row']?.status).toBe('running')
+    store.dispose()
   })
 })

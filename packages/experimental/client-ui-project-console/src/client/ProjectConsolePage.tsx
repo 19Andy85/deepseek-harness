@@ -4,8 +4,11 @@ import type { HostObservable, InjectFace, PropsLocale, PropsRuntime } from '@dee
 import type { SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-user-questions/client'
 import type { QuestionAnswer } from '@deepseek-ai/dsh-client-ui-user-questions/client'
-import type { ConsoleState, ConsoleWorkspace } from './ProjectConsoleStore.ts'
-import { runningCount, visibleSessions } from './sessions-view.ts'
+import type { ConsoleFocusTimelineEntry, ConsoleState, ConsoleWorkspace } from './ProjectConsoleStore.ts'
+import {
+  attentionItems, healthCounts, type AttentionDescriptor,
+} from './attention.ts'
+import { visibleSessions } from './sessions-view.ts'
 import type { ProjectConsoleKey } from './locales.ts'
 import css from './ProjectConsolePage.module.css'
 
@@ -68,6 +71,16 @@ function activityLabel(entry: ConsoleState['sessions'][number]['activity'][numbe
   return items === undefined || items === '' ? entry.kind : `${entry.kind} · ${items}`
 }
 
+function timelineText(
+  entry: ConsoleFocusTimelineEntry,
+  t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string,
+): string {
+  if (entry.kind === 'baseline') return t('timelineBaseline', { status: entry.to ?? '' })
+  if (entry.kind === 'status') return t('timelineStatus', { from: entry.from ?? '', to: entry.to ?? '' })
+  if (entry.kind === 'activity') return t('timelineActivity', { value: entry.activity === '' ? t('noActivity') : entry.activity ?? '' })
+  return t('timelineEnded')
+}
+
 /**
  * Render the console page.
  * @param props - framework props, the page dictionary, and injected state/actions.
@@ -88,8 +101,33 @@ export function ProjectConsolePage({
   const selected = selectedWorkspaceId()
   const workspaces = workspaceOptions()
   const rows = visibleSessions(state.sessions)
+  const pendingOf = (sessionId: string) => [...statuses]
+    .find(([id]) => String(id) === sessionId)?.[1].pendingInteraction
+  const descriptorOf = (sessionId: string): AttentionDescriptor | undefined => {
+    const pending = pendingOf(sessionId)
+    if (pending === undefined) return undefined
+    if (pending.kind === 'approval') {
+      return { kind: 'approval', toolName: pending.toolName, answerable: pending.answerable }
+    }
+    const first = pending.questions[0]
+    if (first === undefined) return undefined
+    return {
+      kind: pending.kind === 'plan-review' ? 'plan-review' : 'question',
+      firstQuestion: {
+        id: first.id,
+        question: first.question,
+        ...first.multiSelect === undefined ? {} : { multiSelect: first.multiSelect },
+        ...first.options === undefined ? {} : { options: first.options },
+      },
+    }
+  }
+  const statusFacts = new Map([...statuses].map(([id, status]) => [String(id), status]))
+  const attention = attentionItems(rows, statusFacts, descriptorOf)
+  const health = healthCounts(rows, statusFacts, descriptorOf)
+  const attentionIds = new Set(attention.map(item => item.sessionId))
+  const workingRows = rows.filter(row => !attentionIds.has(row.sessionId))
+  const changes = state.changes?.size ?? 0
   const hasRows = rows.length > 0
-  const running = runningCount(rows)
 
   return (
     <section className={css.page}>
@@ -97,7 +135,14 @@ export function ProjectConsolePage({
         <h1 className={css.title}>{t('title')}</h1>
         <p className={css.subtitle}>{t('description')}</p>
         {state.status === 'ready' && hasRows
-          ? <p className={css.meta}>{t('summary', { total: rows.length, running })}</p>
+          ? (
+            <div className={css.badges}>
+              <span className={css.chip}>{t('running')} {health.running}</span>
+              <span className={css.chip}>{t('needsYou')} {health.needsYou}</span>
+              <span className={css.chip}>{t('completedUnread')} {health.completedUnread}</span>
+              {changes === 0 ? null : <span className={css.chip}>{t('changedSinceVisit', { n: changes })}</span>}
+            </div>
+          )
           : null}
         <div className={css.toolbar}>
           <label className={css.meta} htmlFor="project-console-workspace">{t('workspace')}</label>
@@ -163,6 +208,12 @@ export function ProjectConsolePage({
                       {activityLabel(entry)}
                     </span>
                   ))}
+              </div>
+              <div className={css.timeline}>
+                <h2 className={css.sectionTitle}>{t('timeline')}</h2>
+                {state.focus.timeline.map((entry, index) => (
+                  <p key={`${entry.at}-${index}`} className={css.meta}>{timelineText(entry, t)}</p>
+                ))}
               </div>
               {state.focus.phase === 'ended' || state.focus.phase === 'failed'
                 ? (
@@ -263,7 +314,88 @@ export function ProjectConsolePage({
               {state.status === 'ready' && !hasRows
                 ? <div className={css.empty}>{t('empty')}</div>
                 : null}
-              {rows.map((session) => {
+              {attention.length === 0
+                ? null
+                : (
+                  <section className={css.section}>
+                    <h2 className={css.sectionTitle}>{t('needsYou')}</h2>
+                    {attention.map(item => (
+                      <article key={item.sessionId} className={css.row}>
+                        <div className={css.rowHead}>
+                          <span className={css.sessionId} title={item.sessionId}>{item.row.title ?? t('untitled')}</span>
+                          <span className={css.meta}>{item.row.status === 'running' ? t('running') : t('idle')}</span>
+                          {item.pending === undefined ? <span className={css.chip}>{t('completedUnread')}</span> : null}
+                        </div>
+                        <div className={css.rowActions}>
+                          {item.pending === undefined
+                            ? <button type="button" className={css.select} onClick={() => { openSession(item.sessionId) }}>{t('view')}</button>
+                            : item.pending.kind === 'approval'
+                              ? (
+                                <>
+                                  <span className={css.chip}>{t('pendingApproval')} · {item.pending.toolName}</span>
+                                  <button
+                                    type="button"
+                                    className={css.select}
+                                    disabled={state.busySessionId === item.sessionId || !item.pending.answerable}
+                                    onClick={() => { void answerApproval(item.sessionId, 'allowed-once') }}
+                                  >
+                                    {t('allowOnce')}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={css.select}
+                                    disabled={state.busySessionId === item.sessionId || !item.pending.answerable}
+                                    onClick={() => { void answerApproval(item.sessionId, 'rejected') }}
+                                  >
+                                    {t('rejectApproval')}
+                                  </button>
+                                </>
+                              )
+                              : (() => {
+                                const question = item.pending
+                                const first = question.firstQuestion
+                                const options = first.multiSelect !== true && first.options !== undefined && first.options.length > 0
+                                  ? first.options : undefined
+                                return (
+                                  <>
+                                    <span className={css.chip}>
+                                      {question.kind === 'plan-review' ? t('planReviewPending') : t('questionPending')}
+                                      {' · '}
+                                      {first.question}
+                                    </span>
+                                    {options === undefined
+                                      ? (
+                                        <button type="button" className={css.select} onClick={() => { openSession(item.sessionId) }}>
+                                          {t('goToConversation')}
+                                        </button>
+                                      )
+                                      : options.map(option => (
+                                        <button
+                                          key={option.label}
+                                          type="button"
+                                          className={css.select}
+                                          disabled={state.busySessionId === item.sessionId}
+                                          onClick={() => {
+                                            void answerQuestion(item.sessionId, {
+                                              answers: [{ id: first.id, selected: [option.label] }],
+                                            })
+                                          }}
+                                        >
+                                          {option.label}
+                                        </button>
+                                      ))}
+                                  </>
+                                )
+                              })()}
+                        </div>
+                      </article>
+                    ))}
+                  </section>
+                )}
+              {attention.length === 0 || workingRows.length === 0
+                ? null
+                : <h2 className={css.sectionTitle}>{t('working')}</h2>}
+              {workingRows.map((session) => {
                 const pending = [...statuses].find(([sessionId]) => sessionId === session.sessionId)?.[1].pendingInteraction
                 const approval = pending?.kind === 'approval' ? pending : undefined
                 const question = pending?.kind === 'question' || pending?.kind === 'plan-review' ? pending : undefined

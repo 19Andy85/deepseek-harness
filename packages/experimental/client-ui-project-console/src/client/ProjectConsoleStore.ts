@@ -1,6 +1,7 @@
 /** Live project console state: workspace selection, one session snapshot, and refresh scheduling. */
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import type { QuestionAnswer } from '@deepseek-ai/dsh-client-ui-user-questions/client'
+import { compareVisit, rememberVisit, type VisitChange, type VisitMemory } from './visit-memory.ts'
 import type {
   SessionTaskFollowFrame, SessionTaskView, SessionTasksSnapshot,
 } from '@deepseek-ai/dsh-experimental-api-session-tasks/types'
@@ -18,6 +19,20 @@ export interface ConsoleWorkspace {
 /** Follow lifecycle of the focused Session. */
 export type ConsoleFocusPhase = 'connecting' | 'live' | 'ended' | 'failed'
 
+/** One observed change of the focused Session. */
+export interface ConsoleFocusTimelineEntry {
+  /** Observation time. */
+  readonly at: number
+  /** Kind of change. */
+  readonly kind: 'baseline' | 'status' | 'activity' | 'ended'
+  /** Previous status for a status change. */
+  readonly from?: string
+  /** Current status for a status change or baseline. */
+  readonly to?: string
+  /** Current activity family kinds for an activity change. */
+  readonly activity?: string
+}
+
 /** One focused Session followed inside the console. */
 export interface ConsoleFocus {
   /** Followed Session identity. */
@@ -26,6 +41,8 @@ export interface ConsoleFocus {
   readonly phase: ConsoleFocusPhase
   /** Latest row reported by the follow stream. */
   readonly row?: SessionTaskView
+  /** Changes observed while this console followed the Session, oldest first. */
+  readonly timeline: readonly ConsoleFocusTimelineEntry[]
 }
 
 /** Observable page state. */
@@ -48,6 +65,10 @@ export interface ConsoleState {
   readonly actionFailed?: true | undefined
   /** Session followed inside the console, when the overview is replaced by it. */
   readonly focus?: ConsoleFocus | undefined
+  /** Rows that changed since the previous visit, mapped to the first change seen. */
+  readonly changes?: ReadonlyMap<string, VisitChange> | undefined
+  /** Start time of the previous visit, when one is remembered. */
+  readonly lastSeenAt?: number | undefined
 }
 
 /** Host ports the store reads; tests can provide them without a browser. */
@@ -72,6 +93,10 @@ export interface ProjectConsoleHost {
   answerQuestion(sessionId: string, answer: QuestionAnswer): Promise<void>
   /** Follow one Session's row updates until it stops being live. */
   follow(sessionId: string, signal: AbortSignal): AsyncIterable<SessionTaskFollowFrame>
+  /** Read the baseline recorded by a previous visit of one Workspace. */
+  readVisit(workspaceId: string): VisitMemory | undefined
+  /** Record the current rows as the baseline of the next visit. */
+  writeVisit(workspaceId: string, memory: VisitMemory): void
 }
 
 /** Default coalescing window before an event-triggered re-read. */
@@ -88,6 +113,9 @@ export class ProjectConsoleStore {
   private tail: Promise<void> = Promise.resolve()
   private focusAbort: AbortController | undefined
   private focusRun = 0
+  private memoryWorkspace: string | undefined
+  private currentRows: readonly SessionTaskView[] = []
+  private lastMemoryWrite = 0
   private readonly stopWorkspaces: () => void
 
   /** @param host - Workspace and Remote ports. */
@@ -264,23 +292,46 @@ export class ProjectConsoleStore {
     const abort = new AbortController()
     this.focusAbort = abort
     const run = ++this.focusRun
-    this.state = { ...this.state, focus: { sessionId, phase: 'connecting' } }
+    this.state = { ...this.state, focus: { sessionId, phase: 'connecting', timeline: [] } }
     this.emit()
     void (async () => {
       try {
         for await (const frame of this.host.follow(sessionId, abort.signal)) {
           if (this.disposed || run !== this.focusRun) return
           const row = frame.row
+          const previous = this.state.focus
+          const timeline = [...previous?.timeline ?? []]
+          if (previous?.row === undefined) {
+            if (row !== undefined) timeline.push({ at: Date.now(), kind: 'baseline', to: row.status })
+          } else if (row === undefined) {
+            timeline.push({ at: Date.now(), kind: 'ended' })
+          } else if (previous.row !== undefined && row !== undefined) {
+            if (previous.row.status !== row.status) {
+              timeline.push({ at: Date.now(), kind: 'status', from: previous.row.status, to: row.status })
+            }
+            const before = previous.row.activity.map(entry => entry.kind).join(',')
+            const after = row.activity.map(entry => entry.kind).join(',')
+            if (before !== after) timeline.push({ at: Date.now(), kind: 'activity', activity: after })
+          }
           this.state = {
             ...this.state,
-            focus: row === undefined ? { sessionId, phase: 'ended' } : { sessionId, phase: 'live', row },
+            focus: row === undefined
+              ? { sessionId, phase: 'ended', timeline: timeline.slice(-20) }
+              : { sessionId, phase: 'live', row, timeline: timeline.slice(-20) },
           }
           this.emit()
           if (row === undefined) return
         }
       } catch {
         if (this.disposed || run !== this.focusRun || abort.signal.aborted) return
-        this.state = { ...this.state, focus: { sessionId, phase: 'failed' } }
+        this.state = {
+          ...this.state,
+          focus: {
+            sessionId, phase: 'failed',
+            ...this.state.focus?.row === undefined ? {} : { row: this.state.focus.row },
+            timeline: this.state.focus?.timeline ?? [],
+          },
+        }
         this.emit()
       }
     })()
@@ -339,9 +390,25 @@ export class ProjectConsoleStore {
       try {
         const result = await this.host.snapshot(workspaceId)
         if (this.disposed || this.panelId !== workspaceId) return
-        this.state = result.ok
-          ? { ...this.state, status: 'ready', workspaceId, sessions: result.value.sessions, error: undefined }
-          : { ...this.state, status: 'error', workspaceId, error: result.error.message }
+        if (result.ok) {
+          const rows = result.value.sessions
+          this.currentRows = rows
+          const firstVisit = this.memoryWorkspace !== workspaceId
+          const previous = firstVisit ? this.host.readVisit(workspaceId) : undefined
+          this.memoryWorkspace = workspaceId
+          if (Date.now() - this.lastMemoryWrite > 30_000) {
+            this.host.writeVisit(workspaceId, rememberVisit(rows, Date.now()))
+            this.lastMemoryWrite = Date.now()
+          }
+          this.state = {
+            ...this.state, status: 'ready', workspaceId, sessions: rows, error: undefined,
+            ...firstVisit
+              ? { changes: compareVisit(previous, rows), ...previous === undefined ? {} : { lastSeenAt: previous.lastSeenAt } }
+              : {},
+          }
+        } else {
+          this.state = { ...this.state, status: 'error', workspaceId, error: result.error.message }
+        }
       } catch (error) {
         if (this.disposed || this.panelId !== workspaceId) return
         this.state = {
@@ -358,6 +425,9 @@ export class ProjectConsoleStore {
   /** Stop timers, subscriptions, and pending publication. */
   dispose(): void {
     this.disposed = true
+    if (this.memoryWorkspace !== undefined) {
+      this.host.writeVisit(this.memoryWorkspace, rememberVisit(this.currentRows, Date.now()))
+    }
     this.focusAbort?.abort()
     this.focusAbort = undefined
     if (this.timer !== undefined) clearTimeout(this.timer)

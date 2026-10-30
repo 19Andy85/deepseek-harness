@@ -21,10 +21,24 @@ import { ProjectConsoleMenuItem, type ProjectConsoleMenuInjected } from './Proje
 import { ProjectConsolePage, type ProjectConsoleInjected } from './ProjectConsolePage.tsx'
 import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
 import { ProjectConsoleStore } from './ProjectConsoleStore.ts'
+import type { VisitMemory } from './visit-memory.ts'
 import { de, en, es, fr, ja, pt, ru, zh } from './locales.ts'
 
 /** Locale namespace of the page copy. */
 export const NS = 'projectConsole'
+
+/** localStorage prefix of one Workspace's previous visit baseline. */
+const VISIT_KEY = 'dsh.project-console.visit.v1:'
+
+function readVisitMemory(workspaceId: string): VisitMemory | undefined {
+  try {
+    const raw = globalThis.localStorage?.getItem(VISIT_KEY + workspaceId)
+    return raw === null || raw === undefined ? undefined : JSON.parse(raw) as VisitMemory
+  } catch (error) {
+    void error
+    return undefined
+  }
+}
 
 /** The id shared by the sidebar entry and the main panel it opens. */
 export const PANEL_ID = 'project-console' as MainPanelId
@@ -86,6 +100,14 @@ function registerUi(ctx: Context): void {
       await pending.answer(answer)
     },
     follow: (sessionId, signal) => ctx.remote.sessionTasks.follow({ sessionId }, signal),
+    readVisit: readVisitMemory,
+    writeVisit: (workspaceId, memory) => {
+      try {
+        globalThis.localStorage?.setItem(VISIT_KEY + workspaceId, JSON.stringify(memory))
+      } catch (error) {
+        void error
+      }
+    },
     respondApproval: async (sessionId, decision) => {
       const pending = ctx.uiSession.sessionStatus.getSnapshot().get(brandString<SessionId>(sessionId))?.pendingInteraction
       if (pending === undefined || pending.kind !== 'approval') throw new Error('no pending approval')
