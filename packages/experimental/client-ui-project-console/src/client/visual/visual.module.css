@@ -173,3 +173,63 @@
   font-weight: 500;
   color: var(--dsw-alias-label-secondary);
 }
+
+.track {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.trackGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-skeleton);
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+}
+
+.trackLead {
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+}
+
+.trackRunning {
+  color: var(--dsw-alias-state-business-primary);
+}
+
+.trackLabel {
+  font-weight: 500;
+}
+
+.trackItem {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary) 6%, transparent);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trackAction {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--dsw-alias-settings-card-stroke);
+  background: var(--dsw-alias-settings-card-fill);
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.trackEmpty {
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+}

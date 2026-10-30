@@ -7,7 +7,8 @@ import type { QuestionAnswer } from '@deepseek-ai/dsh-client-ui-user-questions/c
 import type { ConsoleState, ConsoleWorkspace } from './ProjectConsoleStore.ts'
 import { attentionItems, healthCounts, type AttentionDescriptor } from './attention.ts'
 import { visibleSessions } from './sessions-view.ts'
-import { HealthSegments, StatusDot, Timeline, type HealthFilter } from './visual/visual.tsx'
+import { relationHints } from './relations.ts'
+import { ActivityTrack, HealthSegments, StatusDot, Timeline, type HealthFilter } from './visual/visual.tsx'
 import type { ProjectConsoleKey } from './locales.ts'
 import css from './ProjectConsolePage.module.css'
 import visualCss from './visual/visual.module.css'
@@ -75,19 +76,6 @@ function statusText(
   return t('unknown')
 }
 
-function activityText(
-  entry: ConsoleState['sessions'][number]['activity'][number],
-  t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string,
-): string {
-  const kind = entry.kind === 'turn' ? t('activityTurn')
-    : entry.kind === 'job' ? t('activityJob')
-      : entry.kind === 'subagent' ? t('activitySubagent')
-        : entry.kind === 'schedule' ? t('activitySchedule')
-          : entry.kind
-  const items = entry.items?.map(item => item.label ?? item.id).join(', ')
-  return items === undefined || items === '' ? kind : `${kind} · ${items}`
-}
-
 /**
  * Render the console page.
  * @param props - framework props, the page dictionary, and injected state/actions.
@@ -132,6 +120,11 @@ export function ProjectConsolePage({
   }
   const attention = attentionItems(rows, statusFacts, descriptorOf)
   const health = healthCounts(rows, statusFacts, descriptorOf)
+  const relations = relationHints(rows)
+  const parentTitle = (sessionId: string): string | undefined => {
+    const parentId = relations.parentOf.get(sessionId)
+    return parentId === undefined ? undefined : rows.find(row => row.sessionId === parentId)?.title ?? parentId
+  }
   const attentionIds = new Set(attention.map(item => item.sessionId))
   const pendingItems = attention.filter(item => item.pending !== undefined)
   const completedItems = attention.filter(item => item.pending === undefined)
@@ -225,7 +218,7 @@ export function ProjectConsolePage({
                   <>
                     {pendingItems.length === 0 ? null : <h3 className={visualCss.bucketTitle}>{t('waitingGroup')}</h3>}
                     {pendingItems.map(item => (
-                      <article key={item.sessionId} className={css.row}>
+                      <article key={item.sessionId} className={`${css.row} ${css.rowAttention}`}>
                         <div className={css.rowHead}>
                           <StatusDot state="attention" />
                           <span className={css.sessionId} title={item.sessionId}>{item.row.title ?? t('untitled')}</span>
@@ -295,7 +288,7 @@ export function ProjectConsolePage({
                     ))}
                     {completedItems.length === 0 ? null : <h3 className={visualCss.bucketTitle}>{t('completedGroup')}</h3>}
                     {completedItems.map(item => (
-                      <article key={item.sessionId} className={css.row}>
+                      <article key={item.sessionId} className={`${css.row} ${css.rowSuccess}`}>
                         <div className={css.rowHead}>
                           <StatusDot state="success" />
                           <span className={css.sessionId} title={item.sessionId}>{item.row.title ?? t('untitled')}</span>
@@ -325,8 +318,10 @@ export function ProjectConsolePage({
                 : <h2 className={css.sectionTitle}>{t('working')}</h2>}
               {workingRows.map((session) => {
                 const status = statusFacts.get(session.sessionId)
+                const lane = status?.completionUnread === true ? css.rowSuccess
+                  : session.status === 'running' ? css.rowRunning : css.rowIdle
                 return (
-                  <article key={session.sessionId} className={css.row}>
+                  <article key={session.sessionId} className={`${css.row} ${lane}`}>
                     <button
                       type="button"
                       className={css.rowMain}
@@ -341,20 +336,16 @@ export function ProjectConsolePage({
                           ? null
                           : <span className={css.meta}>{relativeTime(session.lastPromptAt, t)}</span>}
                         {session.cwd === undefined ? null : <span className={css.meta} title={session.cwd}>{session.cwd}</span>}
+                        {parentTitle(session.sessionId) === undefined
+                          ? null
+                          : <span className={css.chip}>↳ {t('derivedFrom', { title: parentTitle(session.sessionId) })}</span>}
                         {state.changes?.has(session.sessionId) === true ? <span className={css.chip}>{t('newBadge')}</span> : null}
                       </div>
-                      <div className={css.badges}>
-                        {session.activity.length === 0
-                          ? <span className={css.chip}>{t('noActivity')}</span>
-                          : session.activity.map(entry => (
-                            <span
-                              key={entry.kind}
-                              className={session.status === 'running' ? `${css.chip} ${css.chipRunning}` : css.chip}
-                            >
-                              {activityText(entry, t)}
-                            </span>
-                          ))}
-                      </div>
+                      <ActivityTrack
+                        activity={session.activity}
+                        t={t}
+                        running={session.status === 'running'}
+                      />
                     </button>
                     <div className={css.rowActions}>
                       <button
@@ -416,7 +407,7 @@ export function ProjectConsolePage({
             </>
           )
           : (
-            <article className={css.row}>
+            <article className={`${css.row} ${focus.row === undefined ? css.rowIdle : focus.row.status === 'running' ? css.rowRunning : css.rowIdle}`}>
               <div className={css.rowHead}>
                 <StatusDot state={focus.row === undefined ? 'unknown' : focus.row.status === 'running' ? 'running' : 'idle'} />
                 <span className={css.sessionId} title={focus.sessionId}>
@@ -435,18 +426,11 @@ export function ProjectConsolePage({
                   ? null
                   : <span className={css.chip}>{t('needsYou')} {focusPending}</span>}
               </div>
-              <div className={css.badges}>
-                {focus.row === undefined || focus.row.activity.length === 0
-                  ? <span className={css.chip}>{t('noActivity')}</span>
-                  : focus.row.activity.map(entry => (
-                    <span
-                      key={entry.kind}
-                      className={focus.row?.status === 'running' ? `${css.chip} ${css.chipRunning}` : css.chip}
-                    >
-                      {activityText(entry, t)}
-                    </span>
-                  ))}
-              </div>
+              <ActivityTrack
+                activity={focus.row === undefined ? [] : focus.row.activity}
+                t={t}
+                running={focus.row?.status === 'running'}
+              />
               {focus.row === undefined ? null : (
                 <h2 className={css.sectionTitle}>{t('timeline')}</h2>
               )}

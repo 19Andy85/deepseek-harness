@@ -1,5 +1,6 @@
 /** Visual-language primitives shared by the project console views. */
 import { Fragment } from 'react'
+import type { SessionTaskView } from '@deepseek-ai/dsh-experimental-api-session-tasks/types'
 import type { ConsoleFocusTimelineEntry } from '../ProjectConsoleStore.ts'
 import type { ProjectConsoleKey } from '../locales.ts'
 import css from './visual.module.css'
@@ -90,6 +91,67 @@ export function HealthSegments({
   )
 }
 
+/** Display label of one activity family. */
+export function activityKindLabel(
+  kind: string,
+  t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string,
+): string {
+  if (kind === 'turn') return t('activityTurn')
+  if (kind === 'job') return t('activityJob')
+  if (kind === 'subagent') return t('activitySubagent')
+  if (kind === 'schedule') return t('activitySchedule')
+  return kind
+}
+
+/** Marker that distinguishes a relation-bearing activity family. */
+export function activitySymbol(kind: string): string {
+  if (kind === 'turn') return '▶'
+  if (kind === 'job') return '▣'
+  if (kind === 'subagent') return '↳'
+  if (kind === 'schedule') return '⏱'
+  return '•'
+}
+
+/**
+ * Render one Session's running activity families as an activity track.
+ * @param props - activity families, the dictionary, and whether the row runs.
+ * @returns the activity track.
+ */
+export function ActivityTrack({
+  activity, t, running, onFocus,
+}: {
+  readonly activity: SessionTaskView['activity']
+  readonly t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string
+  readonly running: boolean
+  readonly onFocus?: () => void
+}) {
+  if (activity.length === 0) {
+    return <div className={css.trackEmpty}>{t('noActivity')}</div>
+  }
+  return (
+    <div className={css.track}>
+      {activity.map((entry) => {
+        const items = entry.items?.map(item => item.label ?? item.id) ?? []
+        return (
+          <div key={entry.kind} className={css.trackGroup}>
+            <span className={running ? `${css.trackLead} ${css.trackRunning}` : css.trackLead} aria-hidden="true">
+              {activitySymbol(entry.kind)}
+            </span>
+            <span className={css.trackLabel}>{activityKindLabel(entry.kind, t)}</span>
+            {items.slice(0, 3).map(item => (
+              <span key={item} className={css.trackItem} title={item}>{item}</span>
+            ))}
+            {items.length > 3 ? <span className={css.trackItem}>+{items.length - 3}</span> : null}
+          </div>
+        )
+      })}
+      {onFocus === undefined ? null : (
+        <button type="button" className={css.trackAction} onClick={onFocus}>{t('focusSession')}</button>
+      )}
+    </div>
+  )
+}
+
 function dotOfEntry(kind: ConsoleFocusTimelineEntry['kind']): string | undefined {
   if (kind === 'status') return css.eventDotStatus
   if (kind === 'ended') return css.eventDotError
@@ -121,7 +183,12 @@ export function Timeline({
   const text = (entry: ConsoleFocusTimelineEntry) => {
     if (entry.kind === 'baseline') return t('timelineBaseline', { status: statusLabel(entry.to) })
     if (entry.kind === 'status') return t('timelineStatus', { from: statusLabel(entry.from), to: statusLabel(entry.to) })
-    if (entry.kind === 'activity') return t('timelineActivity', { value: entry.activity === '' ? t('noActivity') : entry.activity ?? '' })
+    if (entry.kind === 'activity') {
+      const kinds = entry.activity === undefined || entry.activity === ''
+        ? t('noActivity')
+        : entry.activity.split(',').map(kind => `${activitySymbol(kind)} ${activityKindLabel(kind, t)}`).join(' + ')
+      return t('timelineActivity', { value: kinds })
+    }
     return t('timelineEnded')
   }
   return (

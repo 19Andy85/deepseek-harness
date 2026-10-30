@@ -190,3 +190,25 @@
   gap: 4px;
   margin-top: 8px;
 }
+
+.row {
+  position: relative;
+}
+
+.rowRunning::before,
+.rowAttention::before,
+.rowSuccess::before,
+.rowIdle::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--dsw-alias-state-idle-primary);
+}
+
+.rowRunning::before { background: var(--dsw-alias-state-business-primary); }
+.rowAttention::before { background: var(--dsw-alias-state-warn-primary); }
+.rowSuccess::before { background: var(--dsw-alias-state-success-primary); }
