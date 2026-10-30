@@ -137,6 +137,7 @@ function registerUi(ctx: Context): void {
       openSession: (sessionId) => { store.openSession(sessionId) },
       focusSession: (sessionId) => { store.focusSession(sessionId) },
       closeFocus: () => { store.closeFocus() },
+      resetShift: () => { store.resetShift() },
       dispatch: prompt => store.dispatch(prompt),
       sendToSession: (sessionId, prompt, mode) => store.sendToSession(sessionId, prompt, mode),
       cancelSession: sessionId => store.cancelSession(sessionId),

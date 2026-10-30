@@ -43,6 +43,8 @@ export interface ProjectConsoleInjected {
   readonly focusSession: (sessionId: string) => void
   /** Leave the focused Session. */
   readonly closeFocus: () => void
+  /** Clear today's observed counters. */
+  readonly resetShift: () => void
   /** Start a new Session with its first prompt; resolves to whether it was created and accepted. */
   readonly dispatch: (prompt: string) => Promise<boolean>
   /** Send one prompt into an existing Session. */
@@ -85,7 +87,7 @@ function statusText(
  */
 export function ProjectConsolePage({
   t, store, workspaceOptions, selectedWorkspaceId, selectWorkspace, refresh, openSession, focusSession,
-  closeFocus, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus,
+  closeFocus, resetShift, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus,
 }: ProjectConsolePageProps) {
   const [now, setNow] = useState(() => Date.now())
   const [prompt, setPrompt] = useState('')
@@ -341,8 +343,10 @@ export function ProjectConsolePage({
                 rows={rows}
                 statusFacts={statusFacts}
                 descriptorOf={descriptorOf}
+                shift={state.shift}
                 t={t}
                 onFocus={focusSession}
+                onResetShift={resetShift}
               />
             ))
           : (

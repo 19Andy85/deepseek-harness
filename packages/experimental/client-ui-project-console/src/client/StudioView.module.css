@@ -163,3 +163,72 @@
     animation: none;
   }
 }
+
+/* Shift summary: observed events only, with a reset. */
+.shift {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--dsw-alias-settings-card-stroke);
+}
+
+.shiftHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.shiftTitle {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.shiftSince {
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.shiftReset {
+  margin-left: auto;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: 6px;
+  background: var(--dsw-alias-settings-card-fill);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.shiftCounters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.shiftCounter {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.shiftCount {
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-primary);
+}
+
+.shiftEmpty {
+  font-size: 12px;
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.shiftHint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
+}

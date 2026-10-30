@@ -371,3 +371,42 @@ describe('ProjectConsoleStore visit memory', () => {
     store.dispose()
   })
 })
+
+function memoryStorage() {
+  const data = new Map<string, string>()
+  return {
+    getItem: (key: string) => data.get(key) ?? null,
+    setItem: (key: string, value: string) => { data.set(key, value) },
+    removeItem: (key: string) => { data.delete(key) },
+    clear: () => { data.clear() },
+    key: (index: number) => [...data.keys()][index] ?? null,
+    get length() { return data.size },
+  }
+}
+
+describe('ProjectConsoleStore shift counters', () => {
+  afterEach(() => { vi.unstubAllGlobals() })
+
+  it('counts dispatched, interrupted, answered, appeared, and observed completion events', async () => {
+    vi.stubGlobal('localStorage', memoryStorage())
+    let current = [row('a', 'running')]
+    const store = new ProjectConsoleStore(hostOf(
+      [{ id: 'ws', title: 'Workspace', path: '/work' }],
+      async () => snapshot('ws', current),
+    ))
+    await store.selectWorkspace('ws')
+    await store.dispatch('hello')
+    await store.cancelSession('a')
+    await store.answerApproval('a', 'allowed-once')
+    current = [row('a', 'idle'), row('b', 'running')]
+    await store.refresh()
+    expect(store.getSnapshot().shift).toMatchObject({
+      dispatched: 1,
+      interrupted: 1,
+      approvals: 1,
+      completed: 1,
+      newSession: 1,
+    })
+    store.dispose()
+  })
+})

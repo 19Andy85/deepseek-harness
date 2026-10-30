@@ -1,6 +1,7 @@
 /** Live project console state: workspace selection, one session snapshot, and refresh scheduling. */
 import type { RemoteResult } from '@deepseek-ai/dsh-typert-protocol'
 import type { QuestionAnswer } from '@deepseek-ai/dsh-client-ui-user-questions/client'
+import { readShiftStats, recordShiftEvents, resetShiftStats, type ShiftEvent, type ShiftStats } from './day-stats.ts'
 import { compareVisit, rememberVisit, type VisitChange, type VisitMemory } from './visit-memory.ts'
 import type {
   SessionTaskFollowFrame, SessionTaskView, SessionTasksSnapshot,
@@ -71,6 +72,8 @@ export interface ConsoleState {
   readonly changes?: ReadonlyMap<string, VisitChange> | undefined
   /** Start time of the previous visit, when one is remembered. */
   readonly lastSeenAt?: number | undefined
+  /** Today's observed counters shown in the shift summary. */
+  readonly shift?: ShiftStats | undefined
 }
 
 /** Host ports the store reads; tests can provide them without a browser. */
@@ -117,11 +120,14 @@ export class ProjectConsoleStore {
   private focusRun = 0
   private memoryWorkspace: string | undefined
   private currentRows: readonly SessionTaskView[] = []
+  private readonly previousStatus = new Map<string, SessionTaskView['status']>()
+  private readonly knownSessions = new Set<string>()
   private lastMemoryWrite = 0
   private readonly stopWorkspaces: () => void
 
   /** @param host - Workspace and Remote ports. */
   constructor(private readonly host: ProjectConsoleHost) {
+    this.state = { ...this.state, shift: readShiftStats() }
     this.workspaces = host.listWorkspaces()
     this.stopWorkspaces = host.subscribeWorkspaces(() => {
       this.workspaces = host.listWorkspaces()
@@ -182,6 +188,7 @@ export class ProjectConsoleStore {
       await this.host.promptSession(sessionId, text, 'queue')
       this.host.openSession(sessionId)
       this.state = { ...this.state, dispatch: 'idle', dispatchFailed: undefined }
+      this.recordShift(['dispatched'])
       this.emit()
       return true
     } catch {
@@ -228,6 +235,7 @@ export class ProjectConsoleStore {
     try {
       await this.host.cancelSession(sessionId)
       this.state = { ...this.state, busySessionId: undefined, actionFailed: undefined }
+      this.recordShift(['interrupted'])
       this.emit()
       this.scheduleRefresh()
       return true
@@ -251,6 +259,7 @@ export class ProjectConsoleStore {
     try {
       await this.host.respondApproval(sessionId, decision)
       this.state = { ...this.state, busySessionId: undefined, actionFailed: undefined }
+      this.recordShift(['approvals'])
       this.emit()
       this.scheduleRefresh()
       return true
@@ -274,6 +283,7 @@ export class ProjectConsoleStore {
     try {
       await this.host.answerQuestion(sessionId, answer)
       this.state = { ...this.state, busySessionId: undefined, actionFailed: undefined }
+      this.recordShift(['questions'])
       this.emit()
       this.scheduleRefresh()
       return true
@@ -364,6 +374,22 @@ export class ProjectConsoleStore {
     return this.refresh()
   }
 
+  /**
+   * Record observed events into today's counters and publish the summary.
+   * @param events - events observed by the store.
+   */
+  private recordShift(events: readonly ShiftEvent[]): void {
+    this.state = { ...this.state, shift: recordShiftEvents(events) }
+    this.emit()
+  }
+
+  /** Clear today's observed counters. */
+  resetShift(): void {
+    if (this.disposed) return
+    this.state = { ...this.state, shift: resetShiftStats() }
+    this.emit()
+  }
+
   /** Coalesce event-triggered re-reads of the selected Workspace. */
   scheduleRefresh(): void {
     if (this.disposed || this.timer !== undefined) return
@@ -397,6 +423,19 @@ export class ProjectConsoleStore {
         if (result.ok) {
           const rows = result.value.sessions
           this.currentRows = rows
+          const observed: ShiftEvent[] = []
+          if (this.knownSessions.size > 0) {
+            for (const row of rows) {
+              if (!this.knownSessions.has(row.sessionId)) observed.push('newSession')
+              else if (this.previousStatus.get(row.sessionId) === 'running' && row.status === 'idle') observed.push('completed')
+            }
+          }
+          this.knownSessions.clear()
+          for (const row of rows) {
+            this.knownSessions.add(row.sessionId)
+            this.previousStatus.set(row.sessionId, row.status)
+          }
+          if (observed.length > 0) this.recordShift(observed)
           const firstVisit = this.memoryWorkspace !== workspaceId
           const previous = firstVisit ? this.host.readVisit(workspaceId) : undefined
           this.memoryWorkspace = workspaceId
