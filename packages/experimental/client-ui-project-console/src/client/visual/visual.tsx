@@ -91,6 +91,22 @@ export function HealthSegments({
   )
 }
 
+/**
+ * Format a duration for the console.
+ * @param ms - duration in milliseconds.
+ * @param t - page dictionary.
+ * @returns compact duration text.
+ */
+export function formatDuration(
+  ms: number,
+  t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string,
+): string {
+  const minutes = Math.floor(ms / 60_000)
+  return minutes < 1
+    ? t('durationSeconds', { n: Math.max(1, Math.round(ms / 1_000)) })
+    : t('durationMinutes', { n: minutes })
+}
+
 /** Display label of one activity family. */
 export function activityKindLabel(
   kind: string,
@@ -118,11 +134,12 @@ export function activitySymbol(kind: string): string {
  * @returns the activity track.
  */
 export function ActivityTrack({
-  activity, t, running, onFocus,
+  activity, t, running, now, onFocus,
 }: {
   readonly activity: SessionTaskView['activity']
   readonly t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string
   readonly running: boolean
+  readonly now?: number
   readonly onFocus?: () => void
 }) {
   if (activity.length === 0) {
@@ -138,6 +155,9 @@ export function ActivityTrack({
               {activitySymbol(entry.kind)}
             </span>
             <span className={css.trackLabel}>{activityKindLabel(entry.kind, t)}</span>
+            {entry.startedAt === undefined || now === undefined
+              ? null
+              : <span className={css.trackAge}>{t('activityAge', { duration: formatDuration(now - entry.startedAt, t) })}</span>}
             {items.slice(0, 3).map(item => (
               <span key={item} className={css.trackItem} title={item}>{item}</span>
             ))}
@@ -175,11 +195,6 @@ export function Timeline({
   const statusLabel = (status: string | undefined) => status === 'running' ? t('running')
     : status === 'idle' ? t('idle') : (status ?? t('unknown'))
   const formatTime = (at: number) => new Date(at).toLocaleTimeString(undefined, { hour12: false })
-  const formatDuration = (ms: number) => {
-    const minutes = Math.floor(ms / 60_000)
-    return minutes < 1 ? t('durationSeconds', { n: Math.max(1, Math.round(ms / 1000)) })
-      : t('durationMinutes', { n: minutes })
-  }
   const text = (entry: ConsoleFocusTimelineEntry) => {
     if (entry.kind === 'baseline') return t('timelineBaseline', { status: statusLabel(entry.to) })
     if (entry.kind === 'status') return t('timelineStatus', { from: statusLabel(entry.from), to: statusLabel(entry.to) })
@@ -203,7 +218,7 @@ export function Timeline({
               <span className={`${css.eventDot} ${dotOfEntry(entry.kind) ?? ''}`} aria-hidden="true" />
               <span className={css.eventText}>{text(entry)}</span>
               <span className={css.duration}>
-                {entry.kind === 'ended' ? '' : formatDuration(Math.max(0, until - entry.at))}
+                {entry.kind === 'ended' ? '' : formatDuration(Math.max(0, until - entry.at), t)}
               </span>
             </div>
           </Fragment>

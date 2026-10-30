@@ -31,6 +31,7 @@ Mount the controller in a Host composition whose browser pages need a live task 
 
 - `sessionTasks.snapshot({ workspaceId? })` — one consistent read: the requested workspace identity and path when scoped, plus each live session's `sessionId`, optional `title`, optional `lastPromptAt`, `cwd`, `status` (`running` or `idle`), and provider activity families.
 - `sessionTasks.follow({ sessionId })` — a stream of that session's row: one frame on open, one whenever the row changes, and a final frame without a row once the session stops being live. An unknown or non-live session fails with `session-tasks/session-not-found`. Frames are produced by comparing the row at `followIntervalMs` (default 750, minimum 100).
+- Activity entries carry optional `startedAt` and `lastActivityAt`; when a provider does not report them the controller stamps its first sighting and refreshes the change time only when the family's items change. A running Session whose timed activity has not changed within `stallAfterMs` (default 900000, minimum 60000) is reported with `stalled: true`; without timed activity the judgement stays absent rather than guessing.
 - Omit `workspaceId` to read every live session of the Host; running sessions are listed first, then ordered by session id.
 - A follow stream compares the projected row instead of subscribing to individual Host events; a change that flips twice between comparisons is observed as its latest row.
 
@@ -49,7 +50,7 @@ The controller owns the browser projection only. Aggregation is a pure function 
 
 ### Source map
 
-- `src/index.ts` — `SessionTasksController`, the `sessionTasks` namespace, the `snapshot` method, the polling `follow` stream, and its `followIntervalMs` config.
+- `src/index.ts` — `SessionTasksController`, the `sessionTasks` namespace, the `snapshot` method, the polling `follow` stream, its `followIntervalMs` config, and the observed-timing store behind `startedAt`/`lastActivityAt`/`stalled` (`stallAfterMs`).
 - `src/aggregation.ts` — pure collection, workspace projection, and the two Remote error codes.
 - `src/types.ts` — wire value types, Host ports, and the `RemoteErrorDetailsMap` declarations.
 

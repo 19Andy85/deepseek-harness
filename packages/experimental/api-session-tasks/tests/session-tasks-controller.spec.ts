@@ -6,7 +6,7 @@
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionActivity } from '@deepseek-ai/dsh-workspace'
 import { describe, expect, it } from 'vitest'
-import { collectSessionTasks, followSessionTask, readSessionTasks, type WorkspaceLookup } from '../src/aggregation.ts'
+import { collectSessionTasks, followSessionTask, observeActivity, readSessionTasks, type WorkspaceLookup } from '../src/aggregation.ts'
 import type { SessionTaskAgent, SessionTaskHost } from '../src/types.ts'
 
 function agent(id: string, status: SessionTaskAgent['status'], cwd?: string): SessionTaskAgent {
@@ -90,6 +90,34 @@ describe('collectSessionTasks', () => {
     const pending = collectSessionTasks(host([agent('a', 'running', '/work'), agent('b', 'idle', '/work')]), {}, controller.signal)
     controller.abort(new Error('cancelled by caller'))
     await expect(pending).rejects.toThrow('cancelled by caller')
+  })
+})
+
+describe('activity timing', () => {
+  it('projects provider timestamps and flags a stalled running row', async () => {
+    const rows = await collectSessionTasks(host([agent('s', 'running', '/work')], {
+      s: [{ kind: 'job', startedAt: 100, lastActivityAt: 100, items: [{ id: 'job-1', startedAt: 100 }] }],
+    }), {}, never, { now: 1_000, stallAfterMs: 500 })
+    expect(rows[0]?.activity[0]).toMatchObject({ kind: 'job', startedAt: 100, lastActivityAt: 100 })
+    expect(rows[0]?.activity[0]?.items?.[0]).toMatchObject({ id: 'job-1', startedAt: 100 })
+    expect(rows[0]?.stalled).toBe(true)
+  })
+
+  it('does not flag a row without timed activity', async () => {
+    const rows = await collectSessionTasks(host([agent('s', 'running', '/work')], {
+      s: [{ kind: 'turn' }],
+    }), {}, never, { now: 10_000, stallAfterMs: 100 })
+    expect(rows[0]?.stalled).toBeUndefined()
+  })
+
+  it('keeps the first sighting and refreshes the change time when items change', () => {
+    const observed = new Map<string, import('../src/aggregation.ts').ObservedActivity>()
+    const first = observeActivity(observed, 's', [{ kind: 'job', items: [{ id: 'a' }] }], 1_000)
+    const same = observeActivity(observed, 's', [{ kind: 'job', items: [{ id: 'a' }] }], 2_000)
+    const changed = observeActivity(observed, 's', [{ kind: 'job', items: [{ id: 'a' }, { id: 'b' }] }], 3_000)
+    expect(first[0]).toMatchObject({ startedAt: 1_000, lastActivityAt: 1_000 })
+    expect(same[0]).toMatchObject({ startedAt: 1_000, lastActivityAt: 1_000 })
+    expect(changed[0]).toMatchObject({ startedAt: 1_000, lastActivityAt: 3_000 })
   })
 })
 

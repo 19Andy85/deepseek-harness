@@ -906,13 +906,15 @@ export interface Config {
 ## `@deepseek-ai/dsh-experimental-api-session-tasks`
 
 - `inject`: `typert` · `agents`
-- `source`: [`packages/experimental/api-session-tasks/src/index.ts:38`](../packages/experimental/api-session-tasks/src/index.ts)
+- `source`: [`packages/experimental/api-session-tasks/src/index.ts:41`](../packages/experimental/api-session-tasks/src/index.ts)
 
 ```ts config-catalog
 /** Session task controller deployment policy. */
 export interface Config {
   /** Comparison cadence of a focused session follow stream, in milliseconds (default 750). */
   readonly followIntervalMs?: number
+  /** Running-without-observable-change threshold for the stalled flag, in milliseconds (default 900000). */
+  readonly stallAfterMs?: number
 }
 ```
 <!-- END GENERATED config-catalog:@deepseek-ai/dsh-experimental-api-session-tasks -->

@@ -31,6 +31,7 @@ kind: "package-reference"
 
 - `sessionTasks.snapshot({ workspaceId? })`——一次一致性读取：按范围请求时返回工作区身份与路径，以及每个活跃会话的 `sessionId`、可选 `title`、可选 `lastPromptAt`、`cwd`、`status`（`running` 或 `idle`）和提供方活动家族。
 - `sessionTasks.follow({ sessionId })`——该会话行的流：打开时一帧，行发生变化时一帧，会话不再是活跃会话时一帧不含行的结束帧。未知或非活跃会话以 `session-tasks/session-not-found` 失败。帧通过按 `followIntervalMs`（默认 750，最小 100）比较行产生。
+- 活动条目可带可选的 `startedAt` 与 `lastActivityAt`；提供方未提供时，控制器以首次观察到的时间打点，并只在条目集合变化时刷新变化时间。运行中的会话若带时间的活动超过 `stallAfterMs`（默认 900000，最小 60000）没有变化，会带 `stalled: true`；没有带时间的活动时不做猜测。
 - 省略 `workspaceId` 时读取本 Host 的全部活跃会话；运行中的会话排在前面，其次按会话 id 排序。
 - 跟随流通过比较投影行而不是订阅单个 Host 事件实现；两次比较之间翻转两次的变化只会观察到最新行。
 

@@ -47,6 +47,8 @@ export interface SessionActivityItem {
   readonly id: string
   /** Display label when the family carries one (a job label, a subagent label). */
   readonly label?: string
+  /** When this item started, when the provider can report it. */
+  readonly startedAt?: number
 }
 
 /**
@@ -55,6 +57,10 @@ export interface SessionActivityItem {
  */
 export interface SessionActivity {
   readonly kind: SessionActivityKind
+  /** When this family became active, when the provider can report it. */
+  readonly startedAt?: number
+  /** Most recent activity within this family, when the provider can report it. */
+  readonly lastActivityAt?: number
   /** Active items of the family; absent for a family without per-item identity (`turn`). */
   readonly items?: readonly SessionActivityItem[]
 }

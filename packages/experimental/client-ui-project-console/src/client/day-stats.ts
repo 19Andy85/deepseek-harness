@@ -26,8 +26,17 @@ export interface ShiftStats {
 /** localStorage key prefix of one day's counters. */
 const DAY_KEY = 'dsh.project-console.shift.v1:'
 
-/** In-process fallback so counters survive while storage is unavailable. */
+/** In-process fallback used only while storage itself is unavailable. */
 const memory = new Map<string, ShiftStats>()
+
+function storage(): Storage | undefined {
+  try {
+    return globalThis.localStorage
+  } catch (error) {
+    void error
+    return undefined
+  }
+}
 
 function dayOf(at: number): string {
   const date = new Date(at)
@@ -49,11 +58,13 @@ function emptyStats(at: number): ShiftStats {
  * @returns the stored counters, or a zeroed summary for this day.
  */
 export function readShiftStats(at: number = Date.now()): ShiftStats {
+  const store = storage()
+  if (store === undefined) return memory.get(dayOf(at)) ?? emptyStats(at)
   try {
-    const raw = globalThis.localStorage?.getItem(DAY_KEY + dayOf(at))
-    if (raw === null || raw === undefined) return memory.get(dayOf(at)) ?? emptyStats(at)
+    const raw = store.getItem(DAY_KEY + dayOf(at))
+    if (raw === null) return emptyStats(at)
     const parsed = JSON.parse(raw) as ShiftStats
-    return parsed.day === dayOf(at) ? parsed : memory.get(dayOf(at)) ?? emptyStats(at)
+    return parsed.day === dayOf(at) ? parsed : emptyStats(at)
   } catch (error) {
     void error
     return memory.get(dayOf(at)) ?? emptyStats(at)
@@ -79,10 +90,13 @@ export function recordShiftEvents(events: readonly ShiftEvent[], at: number = Da
   for (const event of events) counts[event] += 1
   const next: ShiftStats = { ...current, ...counts }
   memory.set(next.day, next)
-  try {
-    globalThis.localStorage?.setItem(DAY_KEY + next.day, JSON.stringify(next))
-  } catch (error) {
-    void error
+  const store = storage()
+  if (store !== undefined) {
+    try {
+      store.setItem(DAY_KEY + next.day, JSON.stringify(next))
+    } catch (error) {
+      void error
+    }
   }
   return next
 }

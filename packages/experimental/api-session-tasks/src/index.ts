@@ -15,7 +15,7 @@ import type {} from '@deepseek-ai/dsh-session-title'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import z from '@deepseek-ai/schemastery'
 import type { SessionActivity } from '@deepseek-ai/dsh-workspace'
-import { followSessionTask, readSessionTasks } from './aggregation.ts'
+import { followSessionTask, observeActivity, readSessionTasks, type ObservedActivity } from './aggregation.ts'
 import type {
   SessionTaskFollowFrame, SessionTaskFollowRequest, SessionTaskHost, SessionTaskMetadata,
   SessionTasksRequest, SessionTasksSnapshot,
@@ -26,6 +26,9 @@ export { collectSessionTasks, followSessionTask, readSessionTasks } from './aggr
 
 /** Default polling cadence of one focused session follow stream. */
 const DEFAULT_FOLLOW_INTERVAL_MS = 750
+
+/** Default running-without-observable-change threshold for the stalled judgement. */
+const DEFAULT_STALL_AFTER_MS = 900_000
 
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -38,6 +41,8 @@ declare module '@deepseek-ai/cordis' {
 export interface Config {
   /** Comparison cadence of a focused session follow stream, in milliseconds (default 750). */
   readonly followIntervalMs?: number
+  /** Running-without-observable-change threshold for the stalled flag, in milliseconds (default 900000). */
+  readonly stallAfterMs?: number
 }
 
 /** Host service backing the generated `ctx.remote.sessionTasks` namespace. */
@@ -46,9 +51,12 @@ export class SessionTasksController extends TypertRemoteService {
 
   static Config: z<Config> = z.object({
     followIntervalMs: z.natural().min(100).default(DEFAULT_FOLLOW_INTERVAL_MS),
+    stallAfterMs: z.natural().min(60_000).default(DEFAULT_STALL_AFTER_MS),
   })
 
   private readonly followIntervalMs: number
+  private readonly stallAfterMs: number
+  private readonly observed = new Map<string, ObservedActivity>()
 
   /**
    * @param ctx - Host context carrying the live Agent registry and workspace registry.
@@ -56,8 +64,10 @@ export class SessionTasksController extends TypertRemoteService {
    */
   constructor(ctx: Context, config: Config) {
     super(ctx, 'sessionTasks', { namespace: 'sessionTasks' })
-    // schemastery (the exported Config schema) already filled the defaulted field.
-    this.followIntervalMs = (config as Required<Config>).followIntervalMs
+    // schemastery (the exported Config schema) already filled the defaulted fields.
+    const resolved = config as Required<Config>
+    this.followIntervalMs = resolved.followIntervalMs
+    this.stallAfterMs = resolved.stallAfterMs
   }
 
   /**
@@ -69,7 +79,9 @@ export class SessionTasksController extends TypertRemoteService {
   @Remote('snapshot')
   async snapshot(request: SessionTasksRequest): Promise<SessionTasksSnapshot> {
     const workspaceRegistry = this.ctx.get('workspaceRegistry')
-    return readSessionTasks(this.host(), request, workspaceRegistry, new AbortController().signal)
+    return readSessionTasks(this.host(), request, workspaceRegistry, new AbortController().signal, {
+      stallAfterMs: this.stallAfterMs,
+    })
   }
 
   /**
@@ -81,15 +93,20 @@ export class SessionTasksController extends TypertRemoteService {
    */
   @Remote({ mode: 'stream' })
   follow(request: SessionTaskFollowRequest, signal: AbortSignal): AsyncIterable<SessionTaskFollowFrame> {
-    return followSessionTask(this.host(), request, this.followIntervalMs, signal)
+    return followSessionTask(this.host(), request, this.followIntervalMs, signal, {
+      stallAfterMs: this.stallAfterMs,
+    })
   }
 
   private host(): SessionTaskHost {
     return {
       agents: this.ctx.agents,
-      activityOf: (sessionId: SessionId): Promise<readonly SessionActivity[]> => this.ctx.waterfall(
-        'workspace/session-activity', { sessionId }, () => Promise.resolve([]),
-      ),
+      activityOf: async (sessionId: SessionId): Promise<readonly SessionActivity[]> => {
+        const entries = await this.ctx.waterfall(
+          'workspace/session-activity', { sessionId }, () => Promise.resolve([]),
+        )
+        return observeActivity(this.observed, sessionId, entries, Date.now())
+      },
       metadataOf: (sessionId: SessionId): SessionTaskMetadata | undefined => this.metadataOf(sessionId),
     }
   }

@@ -25,6 +25,8 @@ export interface SessionTaskActivityView {
   readonly id: string
   /** Display label when the family carries one. */
   readonly label?: string
+  /** When this item started, when the Host can report it. */
+  readonly startedAt?: number
 }
 
 /** One activity item of a family that carries per-item identity. */
@@ -34,6 +36,10 @@ export type SessionTaskItem = SessionTaskActivityView
 export interface SessionTaskActivityViewEntry {
   /** Activity family: `turn`, `job`, `subagent`, or `schedule` in the shipped composition. */
   readonly kind: string
+  /** When this family became active, when the Host can report it. */
+  readonly startedAt?: number
+  /** Most recent observed change of this family; used for the stalled judgement. */
+  readonly lastActivityAt?: number
   /** Active items of the family, absent for a family without per-item identity. */
   readonly items?: readonly SessionTaskActivityView[]
 }
@@ -64,6 +70,8 @@ export interface SessionTaskView {
   readonly blank?: boolean
   /** Activity families still running for this session, in provider order. */
   readonly activity: readonly SessionTaskActivityViewEntry[]
+  /** Whether the running Session has shown no observable change within the Host's stall threshold. */
+  readonly stalled?: boolean
 }
 
 /** Request projected by one overview read. */

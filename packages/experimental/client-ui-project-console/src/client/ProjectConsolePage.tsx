@@ -143,10 +143,9 @@ export function ProjectConsolePage({
   const hasRows = rows.length > 0
   const focus = state.focus
   useEffect(() => {
-    if (focus === undefined) return
     const timer = setInterval(() => { setNow(Date.now()) }, 1_000)
     return () => { clearInterval(timer) }
-  }, [focus?.sessionId])
+  }, [])
   const focusPending = focus === undefined ? 0 : pendingItems.filter(item => item.sessionId === focus.sessionId).length
   const actionBusy = state.busySessionId
 
@@ -261,7 +260,7 @@ export function ProjectConsolePage({
                         onClick={() => { focusSession(session.sessionId) }}
                       >
                         <div className={css.rowHead}>
-                          <StatusDot state={status?.completionUnread === true ? 'success' : session.status === 'running' ? 'running' : 'idle'} />
+                          <StatusDot state={session.stalled === true ? 'error' : status?.completionUnread === true ? 'success' : session.status === 'running' ? 'running' : 'idle'} />
                           <span className={css.sessionId} title={session.sessionId}>{session.title ?? t('untitled')}</span>
                           <span className={css.meta}>{statusText(session.status, t)}</span>
                           {session.lastPromptAt === undefined
@@ -271,6 +270,7 @@ export function ProjectConsolePage({
                           {parentTitle(session.sessionId) === undefined
                             ? null
                             : <span className={css.chip}>↳ {t('derivedFrom', { title: parentTitle(session.sessionId) })}</span>}
+                          {session.stalled === true ? <span className={css.chip}>{t('stalled')}</span> : null}
                           {state.changes?.has(session.sessionId) === true ? <span className={css.chip}>{t('newBadge')}</span> : null}
                         </div>
                         <ActivityTrack
@@ -344,6 +344,7 @@ export function ProjectConsolePage({
                 statusFacts={statusFacts}
                 descriptorOf={descriptorOf}
                 shift={state.shift}
+                now={now}
                 t={t}
                 onFocus={focusSession}
                 onResetShift={resetShift}
@@ -373,6 +374,7 @@ export function ProjectConsolePage({
                 activity={focus.row === undefined ? [] : focus.row.activity}
                 t={t}
                 running={focus.row?.status === 'running'}
+                now={now}
               />
               {focus.row === undefined ? null : (
                 <h2 className={css.sectionTitle}>{t('timeline')}</h2>

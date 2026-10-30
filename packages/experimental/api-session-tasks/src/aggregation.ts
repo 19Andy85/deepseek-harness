@@ -15,6 +15,51 @@ import type {
   SessionTasksRequest, SessionTasksSnapshot,
 } from './types.ts'
 
+/** Read options that control time-dependent judgements. */
+export interface SessionTasksReadOptions {
+  /** Reference time for the stalled judgement; defaults to now. */
+  readonly now?: number
+  /** Running-without-change threshold; omission disables the stalled judgement. */
+  readonly stallAfterMs?: number
+}
+
+/** One activity family's observed timing. */
+export interface ObservedActivity {
+  /** First time this family was observed. */
+  readonly startedAt: number
+  /** Most recent observed change of this family. */
+  readonly lastActivityAt: number
+  /** Item-identity signature compared between observations. */
+  readonly signature: string
+}
+
+/**
+ * Stamp provider activities with observed timing, retaining the first sighting
+ * as the start and only refreshing `lastActivityAt` when the family's items change.
+ * @param observed - per family timing retained by the caller.
+ * @param sessionId - Session the activities belong to.
+ * @param entries - provider-reported activities.
+ * @param now - observation time.
+ * @returns activities carrying observed timestamps.
+ */
+export function observeActivity(
+  observed: Map<string, ObservedActivity>,
+  sessionId: string,
+  entries: readonly SessionActivity[],
+  now: number,
+): SessionActivity[] {
+  return entries.map((entry) => {
+    const key = `${sessionId}:${entry.kind}`
+    const signature = (entry.items ?? []).map(item => item.id).join(',')
+    const previous = observed.get(key)
+    const next: ObservedActivity = previous === undefined
+      ? { startedAt: now, lastActivityAt: now, signature }
+      : { startedAt: previous.startedAt, lastActivityAt: previous.signature === signature ? previous.lastActivityAt : now, signature }
+    observed.set(key, next)
+    return { ...entry, startedAt: next.startedAt, lastActivityAt: next.lastActivityAt }
+  })
+}
+
 /** One workspace record the overview scope needs. */
 export interface WorkspaceScope {
   /** Stable record id. */
@@ -37,8 +82,33 @@ function projectActivity(activity: SessionActivity): SessionTaskActivityViewEntr
   const items: SessionTaskActivityView[] | undefined = activity.items?.map(item => ({
     id: item.id,
     ...item.label === undefined ? {} : { label: item.label },
+    ...item.startedAt === undefined ? {} : { startedAt: item.startedAt },
   }))
-  return { kind: activity.kind, ...items === undefined ? {} : { items } }
+  return {
+    kind: activity.kind,
+    ...activity.startedAt === undefined ? {} : { startedAt: activity.startedAt },
+    ...activity.lastActivityAt === undefined ? {} : { lastActivityAt: activity.lastActivityAt },
+    ...items === undefined ? {} : { items },
+  }
+}
+
+/**
+ * Decide whether a running Session showed no observable change within the threshold.
+ * @param status - Session lifecycle state.
+ * @param activity - projected activity families.
+ * @param options - reference time and threshold; an omitted threshold disables the judgement.
+ * @returns true when every timed family is older than the threshold.
+ */
+function isStalled(
+  status: 'idle' | 'running',
+  activity: readonly SessionTaskActivityViewEntry[],
+  options: SessionTasksReadOptions,
+): boolean | undefined {
+  if (status !== 'running' || options.stallAfterMs === undefined) return undefined
+  const times = activity.map(entry => entry.lastActivityAt).filter((at): at is number => at !== undefined)
+  if (times.length === 0) return undefined
+  const latest = Math.max(...times)
+  return (options.now ?? Date.now()) - latest > options.stallAfterMs
 }
 
 function keepActivity(activity: SessionActivity, include: readonly string[] | undefined): boolean {
@@ -50,11 +120,13 @@ async function readRow(
   agent: ReturnType<SessionTaskHost['agents']['list']>[number],
   options: CollectSessionTasksOptions,
   signal: AbortSignal,
+  readOptions: SessionTasksReadOptions,
 ): Promise<SessionTaskView> {
   const cwd = agent.session.header.cwd
-  const activity = await host.activityOf(agent.session.id)
   signal.throwIfAborted()
   const metadata = host.metadataOf?.(agent.session.id)
+  const activity = (await host.activityOf(agent.session.id)).filter(entry => keepActivity(entry, options.include)).map(projectActivity)
+  const stalled = isStalled(agent.status, activity, readOptions)
   return {
     sessionId: agent.session.id,
     ...cwd === undefined ? {} : { cwd },
@@ -62,7 +134,8 @@ async function readRow(
     ...metadata?.title === undefined ? {} : { title: metadata.title },
     ...metadata?.lastPromptAt === undefined ? {} : { lastPromptAt: metadata.lastPromptAt },
     ...metadata?.blank === undefined ? {} : { blank: metadata.blank },
-    activity: activity.filter(entry => keepActivity(entry, options.include)).map(projectActivity),
+    activity,
+    ...stalled === undefined ? {} : { stalled },
   }
 }
 
@@ -77,13 +150,14 @@ export async function collectSessionTasks(
   host: SessionTaskHost,
   options: CollectSessionTasksOptions,
   signal: AbortSignal,
+  readOptions: SessionTasksReadOptions = {},
 ): Promise<SessionTaskView[]> {
   const rows: SessionTaskView[] = []
   for (const agent of host.agents.list()) {
     signal.throwIfAborted()
     const cwd = agent.session.header.cwd
     if (options.cwd !== undefined && cwd !== options.cwd) continue
-    rows.push(await readRow(host, agent, options, signal))
+    rows.push(await readRow(host, agent, options, signal, readOptions))
   }
   return rows.sort((left, right) => {
     if (left.status !== right.status) return left.status === 'running' ? -1 : 1
@@ -113,6 +187,7 @@ export async function* followSessionTask(
   request: SessionTaskFollowRequest,
   intervalMs: number,
   signal: AbortSignal,
+  readOptions: SessionTasksReadOptions = {},
 ): AsyncIterable<SessionTaskFollowFrame> {
   let seen: string | undefined
   let started = false
@@ -124,7 +199,7 @@ export async function* followSessionTask(
         `session task follow: session "${request.sessionId}" is not live in this Host`, {})
     }
     started = true
-    const row = agent === undefined ? undefined : await readRow(host, agent, {}, signal)
+    const row = agent === undefined ? undefined : await readRow(host, agent, {}, signal, readOptions)
     const key = row === undefined ? '' : JSON.stringify(row)
     if (key !== seen) {
       seen = key
@@ -149,6 +224,7 @@ export async function readSessionTasks(
   request: SessionTasksRequest,
   lookup: WorkspaceLookup | undefined,
   signal: AbortSignal,
+  readOptions: SessionTasksReadOptions = {},
 ): Promise<SessionTasksSnapshot> {
   let workspace: WorkspaceScope | undefined
   if (request.workspaceId !== undefined) {
@@ -162,7 +238,7 @@ export async function readSessionTasks(
         `session task overview: workspace "${request.workspaceId}" is not registered`, {})
     }
   }
-  const sessions = await collectSessionTasks(host, { ...workspace === undefined ? {} : { cwd: workspace.path } }, signal)
+  const sessions = await collectSessionTasks(host, { ...workspace === undefined ? {} : { cwd: workspace.path } }, signal, readOptions)
   return {
     ...workspace === undefined ? {} : { workspaceId: workspace.id, workspacePath: workspace.path },
     sessions,

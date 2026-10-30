@@ -232,3 +232,8 @@
   font-size: 11px;
   color: var(--dsw-alias-label-tertiary);
 }
+
+.lamp_error {
+  background: var(--dsw-alias-state-error-primary);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--dsw-alias-state-error-primary) 40%, transparent);
+}

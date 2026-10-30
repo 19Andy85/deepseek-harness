@@ -18,12 +18,13 @@ export interface StudioSessionStatus {
  * @returns the studio floor.
  */
 export function StudioView({
-  rows, statusFacts, descriptorOf, shift, t, onFocus, onResetShift,
+  rows, statusFacts, descriptorOf, shift, now, t, onFocus, onResetShift,
 }: {
   readonly rows: readonly SessionTaskView[]
   readonly statusFacts: ReadonlyMap<string, StudioSessionStatus>
   readonly descriptorOf: (sessionId: string) => AttentionDescriptor | undefined
   readonly shift: ShiftStats | undefined
+  readonly now: number
   readonly t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string
   readonly onFocus: (sessionId: string) => void
   readonly onResetShift: () => void
@@ -46,7 +47,8 @@ export function StudioView({
         {rows.map((row) => {
           const pending = descriptorOf(row.sessionId) !== undefined
           const unread = statusFacts.get(row.sessionId)?.completionUnread === true
-          const lamp = pending ? 'attention' : unread ? 'success' : row.status === 'running' ? 'running' : 'idle'
+          const lamp = row.stalled === true ? 'error'
+            : pending ? 'attention' : unread ? 'success' : row.status === 'running' ? 'running' : 'idle'
           const initials = (row.title ?? t('untitled')).slice(0, 2)
           return (
             <button
@@ -65,12 +67,13 @@ export function StudioView({
                     {row.status === 'running' ? t('running') : t('idle')}
                     {pending ? ` · ${t('needsYou')}` : ''}
                     {unread ? ` · ${t('completedUnread')}` : ''}
+                    {row.stalled === true ? ` · ${t('stalled')}` : ''}
                   </span>
                 </div>
                 <span className={`${css.lamp} ${css[`lamp_${lamp}`] ?? ''}`} aria-hidden="true" />
               </div>
               <div className={css.deskBody}>
-                <ActivityTrack activity={row.activity} t={t} running={row.status === 'running'} />
+                <ActivityTrack activity={row.activity} t={t} running={row.status === 'running'} now={now} />
               </div>
               {row.lastPromptAt === undefined ? null : (
                 <span className={css.deskFoot}>
