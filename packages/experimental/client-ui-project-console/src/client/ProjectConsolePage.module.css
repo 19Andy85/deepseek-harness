@@ -235,3 +235,21 @@
   color: var(--dsw-alias-label-primary);
   box-shadow: inset 0 0 0 1px var(--dsw-alias-brand-primary);
 }
+
+/* Attention arrivals fade in once; status rails keep their colour static. */
+@keyframes consoleNoticeIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: none; }
+}
+
+.rowAttention,
+.rowSuccess {
+  animation: consoleNoticeIn 160ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rowAttention,
+  .rowSuccess {
+    animation: none;
+  }
+}

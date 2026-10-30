@@ -132,3 +132,34 @@
   font-size: 13px;
   color: var(--dsw-alias-label-tertiary);
 }
+
+/* Motion: lamps express live state; completion glows once on arrival. */
+@keyframes studioLampPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes studioCompletionGlow {
+  from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--dsw-alias-state-success-primary) 55%, transparent); }
+  to { box-shadow: 0 0 0 8px transparent; }
+}
+
+.lamp_running {
+  animation: studioLampPulse 2s ease-in-out infinite;
+}
+
+.lamp_attention {
+  animation: studioLampPulse 1.4s ease-in-out infinite;
+}
+
+.lamp_success {
+  animation: studioCompletionGlow 700ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lamp_running,
+  .lamp_attention,
+  .lamp_success {
+    animation: none;
+  }
+}
