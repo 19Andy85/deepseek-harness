@@ -14,14 +14,20 @@ import type { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-title'
 import type {} from '@deepseek-ai/dsh-session-query'
 import type {} from '@deepseek-ai/dsh-workspace-changes'
+import type { Domain } from '@deepseek-ai/dsh-storage-domain'
+import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import z from '@deepseek-ai/schemastery'
 import type { SessionActivity } from '@deepseek-ai/dsh-workspace'
 import { followSessionTask, observeActivity, readSessionTasks, type ObservedActivity } from './aggregation.ts'
 import { sessionTaskOutcomeProjection } from './outcome.ts'
 import { buildChildRelations, type SessionRelationChild } from './relations.ts'
+import {
+  changedSessionIds, seenRowsOf, sessionTasksSeenDomain, type SeenState,
+} from './seen-state.ts'
 import type {
   SessionTaskFollowFrame, SessionTaskFollowRequest, SessionTaskHost, SessionTaskMetadata,
+  SessionTasksAcknowledgeRequest, SessionTasksAcknowledgeValue,
   SessionTasksRequest, SessionTasksSnapshot,
 } from './types.ts'
 
@@ -68,6 +74,7 @@ export class SessionTasksController extends TypertRemoteService {
   private readonly stallAfterMs: number
   private readonly relationsRefreshMs: number
   private readonly observed = new Map<string, ObservedActivity>()
+  private seenDomain: Domain<typeof sessionTasksSeenDomain> | undefined
   private relationsByParent = new Map<string, SessionRelationChild[]>()
   private readonly relationsByChild = new Map<string, string>()
   private lastRelationsRefresh = 0
@@ -86,6 +93,12 @@ export class SessionTasksController extends TypertRemoteService {
   }
 
   protected async [Service.init](): Promise<void> {
+    const seenBinding = this.ctx.inject(['storageDomain'], async (storageCtx) => {
+      const domain = await storageCtx.storageDomain.open(sessionTasksSeenDomain)
+      this.seenDomain = domain
+      return () => { this.seenDomain = undefined; void domain.close() }
+    })
+    if (this.ctx.get('storageDomain') !== undefined) await seenBinding
     const binding = this.ctx.inject(['sessionProjections'], async (projectionCtx) => {
       const handle = await projectionCtx.sessionProjections.register(sessionTaskOutcomeProjection)
       return () => { void handle.dispose() }
@@ -103,9 +116,43 @@ export class SessionTasksController extends TypertRemoteService {
   async snapshot(request: SessionTasksRequest): Promise<SessionTasksSnapshot> {
     await this.refreshRelations()
     const workspaceRegistry = this.ctx.get('workspaceRegistry')
-    return readSessionTasks(this.host(), request, workspaceRegistry, new AbortController().signal, {
+    const snapshot = await readSessionTasks(this.host(), request, workspaceRegistry, new AbortController().signal, {
       stallAfterMs: this.stallAfterMs,
     })
+    const workspaceId = request.workspaceId
+    const seen = this.seenDomain?.global.get() as SeenState | undefined
+    const previous = workspaceId === undefined ? undefined : seen?.workspaces[workspaceId]
+    return previous === undefined
+      ? snapshot
+      : { ...snapshot, lastSeenAt: previous.lastSeenAt, changes: changedSessionIds(previous, snapshot.sessions) }
+  }
+
+  /**
+   * Acknowledge the current rows of one workspace as read, replacing its
+   * server-side baseline.
+   * @param request - workspace whose baseline to replace.
+   * @returns the acknowledgement time.
+   * @throws RemoteError when no storage domain is mounted.
+   */
+  @Remote('acknowledge')
+  async acknowledge(request: SessionTasksAcknowledgeRequest): Promise<SessionTasksAcknowledgeValue> {
+    if (this.seenDomain === undefined) {
+      throw new RemoteError('session-tasks/seen-unavailable',
+        'session task read state requires a mounted storage domain', {})
+    }
+    const snapshot = await readSessionTasks(
+      this.host(), { workspaceId: request.workspaceId }, this.ctx.get('workspaceRegistry'),
+      new AbortController().signal, { stallAfterMs: this.stallAfterMs },
+    )
+    const state = this.seenDomain.global.get() as SeenState
+    const lastSeenAt = Date.now()
+    await this.seenDomain.global.set({
+      workspaces: {
+        ...state.workspaces,
+        [request.workspaceId]: { lastSeenAt, rows: seenRowsOf(snapshot.sessions) },
+      },
+    })
+    return { lastSeenAt }
   }
 
   /**

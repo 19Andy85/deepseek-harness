@@ -45,7 +45,7 @@ Mount the page in a Web composition that also mounts a Host controller serving t
 - Switch between **Canvas** and **Studio** in the toolbar; the choice is remembered locally. Studio shows one desk per visible Session with a status lamp, avatar, activity track, and last prompt time, and clicking a desk follows that Session in the console.
 - Re-read automatically after a session status or activity event, coalescing bursts into one read; **Refresh** reads on demand.
 - While a session is focused, its row comes from the follow stream, a **Since you started watching** timeline lists observed status and activity changes with clock times and durations, and the same **Interrupt**, **Reply in this session**, and **Open session** actions stay available; the Needs you section stays visible above the focus card.
-- The previous visit is remembered per Workspace in local storage, so a reopened console marks changed rows with **New** and counts the changes in the header; cross-device consistency is deferred.
+- The previous visit is remembered per Workspace in local storage, and when the Host mounts its storage domain the console prefers the durable acknowledged baseline (`changes`/`lastSeenAt` from `snapshot`) and acknowledges on hide and dispose, so **New** markers stay consistent across devices; without the storage domain it falls back to the local baseline.
 - A failed read keeps the last rows visible and shows a compact retry notice; the full error state appears only when no rows were ever read.
 
 ### Failures and recovery

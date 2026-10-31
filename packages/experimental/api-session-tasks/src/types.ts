@@ -18,6 +18,8 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'session-tasks/workspace-unavailable': Record<string, never>
     /** The followed Session is not live in this Host. */
     'session-tasks/session-not-found': Record<string, never>
+    /** Server-side read state is unavailable because no storage domain is mounted. */
+    'session-tasks/seen-unavailable': Record<string, never>
   }
 }
 
@@ -131,6 +133,18 @@ export interface SessionTaskFollowFrame {
   readonly row?: SessionTaskView
 }
 
+/** Request to acknowledge the current rows of one workspace as read. */
+export interface SessionTasksAcknowledgeRequest {
+  /** Workspace whose baseline to replace. */
+  readonly workspaceId: string
+}
+
+/** Result of acknowledging one workspace. */
+export interface SessionTasksAcknowledgeValue {
+  /** Epoch milliseconds of the acknowledgement. */
+  readonly lastSeenAt: number
+}
+
 /** One consistent overview read for a browser. */
 export interface SessionTasksSnapshot {
   /** Requested workspace identity, echoed when the read was scoped to one. */
@@ -139,6 +153,10 @@ export interface SessionTasksSnapshot {
   readonly workspacePath?: string
   /** Live sessions visible for the requested scope, running sessions first. */
   readonly sessions: readonly SessionTaskView[]
+  /** Sessions changed since the last acknowledgement, when stored read state exists. */
+  readonly changes?: readonly string[]
+  /** Epoch milliseconds of the last acknowledgement, when stored read state exists. */
+  readonly lastSeenAt?: number
 }
 
 /** The parts of one live agent the overview reads. */

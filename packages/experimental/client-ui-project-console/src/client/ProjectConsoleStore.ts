@@ -102,6 +102,8 @@ export interface ProjectConsoleHost {
   readVisit(workspaceId: string): VisitMemory | undefined
   /** Record the current rows as the baseline of the next visit. */
   writeVisit(workspaceId: string, memory: VisitMemory): void
+  /** Acknowledge the current rows as read in the Host's durable read state. */
+  acknowledge(workspaceId: string): Promise<void>
 }
 
 /** Default coalescing window before an event-triggered re-read. */
@@ -383,6 +385,12 @@ export class ProjectConsoleStore {
     this.emit()
   }
 
+  /** Acknowledge the visible Workspace as read in the Host's durable read state. */
+  acknowledge(): void {
+    if (this.disposed || this.memoryWorkspace === undefined) return
+    void this.host.acknowledge(this.memoryWorkspace).catch(() => {})
+  }
+
   /** Clear today's observed counters. */
   resetShift(): void {
     if (this.disposed) return
@@ -443,11 +451,17 @@ export class ProjectConsoleStore {
             this.host.writeVisit(workspaceId, rememberVisit(rows, Date.now()))
             this.lastMemoryWrite = Date.now()
           }
+          const serverChanges = result.value.changes
+          const serverSeenAt = result.value.lastSeenAt
+          const localChanges = firstVisit && serverChanges === undefined ? compareVisit(previous, rows) : undefined
           this.state = {
             ...this.state, status: 'ready', workspaceId, sessions: rows, error: undefined,
-            ...firstVisit
-              ? { changes: compareVisit(previous, rows), ...previous === undefined ? {} : { lastSeenAt: previous.lastSeenAt } }
-              : {},
+            ...serverChanges === undefined
+              ? localChanges === undefined ? {} : { changes: localChanges }
+              : { changes: new Map(serverChanges.map(sessionId => [sessionId, 'updated' as VisitChange])) },
+            ...serverSeenAt !== undefined
+              ? { lastSeenAt: serverSeenAt }
+              : previous === undefined || !firstVisit ? {} : { lastSeenAt: previous.lastSeenAt },
           }
         } else {
           this.state = { ...this.state, status: 'error', workspaceId, error: result.error.message }
@@ -467,10 +481,11 @@ export class ProjectConsoleStore {
 
   /** Stop timers, subscriptions, and pending publication. */
   dispose(): void {
-    this.disposed = true
     if (this.memoryWorkspace !== undefined) {
       this.host.writeVisit(this.memoryWorkspace, rememberVisit(this.currentRows, Date.now()))
+      void this.host.acknowledge(this.memoryWorkspace).catch(() => {})
     }
+    this.disposed = true
     this.focusAbort?.abort()
     this.focusAbort = undefined
     if (this.timer !== undefined) clearTimeout(this.timer)

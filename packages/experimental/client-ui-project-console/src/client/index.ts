@@ -101,6 +101,9 @@ function registerUi(ctx: Context): void {
     },
     follow: (sessionId, signal) => ctx.remote.sessionTasks.follow({ sessionId }, signal),
     readVisit: readVisitMemory,
+    acknowledge: async (workspaceId) => {
+      await ctx.remote.sessionTasks.acknowledge({ workspaceId })
+    },
     writeVisit: (workspaceId, memory) => {
       try {
         globalThis.localStorage?.setItem(VISIT_KEY + workspaceId, JSON.stringify(memory))
@@ -115,6 +118,13 @@ function registerUi(ctx: Context): void {
     },
   })
   ctx.effect(() => () => { store.dispose() }, 'project-console: store')
+  ctx.effect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') store.acknowledge()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => { document.removeEventListener('visibilitychange', onVisibility) }
+  }, 'project-console: acknowledge on hide')
   void store.refresh()
   ctx.effect(() => {
     const offAdded = ctx.remote.$on('api-session/added', () => { store.scheduleRefresh() })

@@ -38,6 +38,9 @@
     },
     {
       "path": "../../deliverables/workspace-changes"
+    },
+    {
+      "path": "../../storage/storage-domain"
     }
   ]
 }

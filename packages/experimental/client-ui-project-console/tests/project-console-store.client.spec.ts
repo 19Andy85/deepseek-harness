@@ -30,6 +30,7 @@ function hostOf(
   readonly responses: [string, 'allowed-once' | 'rejected'][]
   readonly answered: [string, QuestionAnswer][]
   readonly visits: [string, VisitMemory][]
+  readonly acknowledged: string[]
   failCreate: boolean
   failPrompt: boolean
   failCancel: boolean
@@ -44,6 +45,7 @@ function hostOf(
   const responses: [string, 'allowed-once' | 'rejected'][] = []
   const answered: [string, QuestionAnswer][] = []
   const visits: [string, VisitMemory][] = []
+  const acknowledged: string[] = []
   let listener: (() => void) | undefined
   const host = {
     reads,
@@ -59,9 +61,11 @@ function hostOf(
     responses,
     answered,
     visits,
+    acknowledged,
     follow: follow ?? (() => (async function* () {})()),
     readVisit: () => undefined,
     writeVisit: (workspaceId: string, memory: VisitMemory) => { visits.push([workspaceId, memory]) },
+    acknowledge: async (workspaceId: string) => { acknowledged.push(workspaceId) },
     listWorkspaces: () => workspaces,
     subscribeWorkspaces: (next: () => void) => { listener = next; return () => { listener = undefined } },
     snapshot: async (workspaceId?: string) => {
@@ -347,6 +351,21 @@ describe('ProjectConsoleStore', () => {
     store.dispose()
     await store.refresh()
     expect(listener).not.toHaveBeenCalled()
+  })
+})
+
+describe('ProjectConsoleStore server read state', () => {
+  it('prefers the Host changes and last-seen time, and acknowledges on dispose', async () => {
+    const host = hostOf(
+      [{ id: 'ws', title: 'Workspace', path: '/work' }],
+      async () => ({ ok: true, value: { workspaceId: 'ws', sessions: [row('a')], changes: ['a'], lastSeenAt: 42 } }),
+    )
+    const store = new ProjectConsoleStore(host)
+    await store.selectWorkspace('ws')
+    expect(store.getSnapshot().lastSeenAt).toBe(42)
+    expect([...(store.getSnapshot().changes?.keys() ?? [])]).toEqual(['a'])
+    store.dispose()
+    expect(host.acknowledged).toContain('ws')
   })
 })
 
