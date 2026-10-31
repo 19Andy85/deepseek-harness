@@ -116,7 +116,7 @@ export function AttentionInbox({
             ))}
             {failedItems.length === 0 ? null : <h3 className={visualCss.bucketTitle}>{t('failedGroup')}</h3>}
             {failedItems.map(item => (
-              <article key={item.sessionId} className={`${css.row} ${css.rowSuccess}`}>
+              <article key={item.sessionId} className={`${css.row} ${css.rowFailed}`}>
                 <div className={css.rowHead}>
                   <StatusDot state="error" />
                   <span className={css.sessionId} title={item.sessionId}>{item.row.title ?? t('untitled')}</span>

@@ -1,18 +1,29 @@
 /* Project console page: one scroller for the session list, a fixed head row. */
 .page {
+  /* Local spacing and type scale: shared by every console view through inheritance. */
+  --pc-gap-1: 4px;
+  --pc-gap-2: 8px;
+  --pc-gap-3: 12px;
+  --pc-gap-4: 16px;
+  --pc-gap-5: 24px;
+  --pc-radius: 8px;
+  --pc-radius-lg: 10px;
+  --pc-font-xs: 11px;
+  --pc-font-s: 12px;
+  --pc-font-m: 13px;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
   height: 100%;
-  padding: 0 clamp(24px, 4vw, 48px);
+  padding: 0 clamp(20px, 4vw, 48px);
   color: var(--dsw-alias-label-primary);
 }
 
 .head {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 28px 0 16px;
+  gap: var(--pc-gap-2);
+  padding: var(--pc-gap-5) 0 var(--pc-gap-4);
 }
 
 .title {
@@ -24,43 +35,55 @@
 .subtitle {
   margin: 0;
   color: var(--dsw-alias-label-secondary);
-  font-size: 13px;
+  font-size: var(--pc-font-m);
 }
 
 .toolbar {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: var(--pc-gap-2);
   align-items: center;
 }
 
 .select {
-  height: 28px;
-  padding: 0 8px;
-  border-radius: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: var(--pc-radius);
   border: 1px solid var(--dsw-alias-settings-card-stroke);
   background: var(--dsw-alias-settings-card-fill);
   color: var(--dsw-alias-label-primary);
-  font-size: 13px;
+  font-size: var(--pc-font-m);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.select:hover {
+  border-color: var(--dsw-alias-brand-primary);
 }
 
 .body {
   display: flex;
   flex-direction: column;
   flex: 1;
-  gap: 8px;
+  gap: var(--pc-gap-3);
   min-height: 0;
   overflow: auto;
-  padding-bottom: 32px;
+  padding-bottom: var(--pc-gap-5);
 }
 
 .row {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px 14px;
-  border-radius: 8px;
+  gap: var(--pc-gap-2);
+  padding: var(--pc-gap-3) var(--pc-gap-4);
+  border-radius: var(--pc-radius-lg);
   background: var(--dsw-alias-settings-card-fill);
   border: 1px solid var(--dsw-alias-settings-card-stroke);
+  transition: border-color 150ms ease-out;
+}
+
+.row:hover {
+  border-color: color-mix(in srgb, var(--dsw-alias-brand-primary) 45%, var(--dsw-alias-settings-card-stroke));
 }
 
 .rowMain {
@@ -79,38 +102,45 @@
 
 .rowActions {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: var(--pc-gap-2);
   align-items: center;
 }
 
 .compose {
   display: flex;
-  gap: 8px;
+  gap: var(--pc-gap-2);
   align-items: flex-end;
-  padding-bottom: 16px;
+  padding-bottom: var(--pc-gap-4);
 }
 
 .prompt {
   flex: 1;
   min-height: 48px;
-  padding: 8px 10px;
-  border-radius: 6px;
+  padding: 10px 12px;
+  border-radius: var(--pc-radius);
   border: 1px solid var(--dsw-alias-settings-card-stroke);
   background: var(--dsw-alias-settings-card-fill);
   color: var(--dsw-alias-label-primary);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--pc-font-m);
   resize: vertical;
+}
+
+.prompt:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--dsw-alias-brand-primary) 60%, transparent);
+  outline-offset: 1px;
 }
 
 .rowHead {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: var(--pc-gap-1) var(--pc-gap-3);
   align-items: baseline;
 }
 
 .sessionId {
-  font-size: 13px;
+  font-size: var(--pc-font-m);
   font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -119,21 +149,31 @@
 
 .meta {
   color: var(--dsw-alias-label-tertiary);
-  font-size: 12px;
+  font-size: var(--pc-font-s);
+}
+
+.path {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
 }
 
 .badges {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--pc-gap-1) 6px;
 }
 
 .chip {
-  padding: 1px 8px;
+  padding: 2px 9px;
   border-radius: 999px;
   background: var(--dsw-alias-bg-skeleton);
   color: var(--dsw-alias-label-secondary);
-  font-size: 12px;
+  font-size: var(--pc-font-s);
+  line-height: 16px;
 }
 
 .chipRunning {
@@ -157,10 +197,11 @@
 
 .notice {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: var(--pc-gap-2);
   align-items: center;
   padding: 10px 14px;
-  border-radius: 8px;
+  border-radius: var(--pc-radius);
   background: var(--dsw-alias-settings-card-fill);
   border: 1px solid var(--dsw-alias-settings-card-stroke);
   font-size: 13px;
@@ -173,22 +214,23 @@
 .section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
+  gap: var(--pc-gap-2);
+  margin-bottom: var(--pc-gap-4);
 }
 
 .sectionTitle {
   margin: 0;
   color: var(--dsw-alias-label-secondary);
-  font-size: 13px;
+  font-size: var(--pc-font-s);
   font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 .timeline {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-top: 8px;
+  gap: var(--pc-gap-1);
+  margin-top: var(--pc-gap-2);
 }
 
 .row {
@@ -198,6 +240,7 @@
 .rowRunning::before,
 .rowAttention::before,
 .rowSuccess::before,
+.rowFailed::before,
 .rowIdle::before {
   content: '';
   position: absolute;
@@ -212,6 +255,19 @@
 .rowRunning::before { background: var(--dsw-alias-state-business-primary); }
 .rowAttention::before { background: var(--dsw-alias-state-warn-primary); }
 .rowSuccess::before { background: var(--dsw-alias-state-success-primary); }
+.rowFailed::before { background: var(--dsw-alias-state-error-primary); }
+
+.rowAttention {
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 5%, var(--dsw-alias-settings-card-fill));
+}
+
+.rowSuccess {
+  background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 4%, var(--dsw-alias-settings-card-fill));
+}
+
+.rowFailed {
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 5%, var(--dsw-alias-settings-card-fill));
+}
 
 .viewToggle {
   display: inline-flex;
@@ -251,5 +307,37 @@
   .rowAttention,
   .rowSuccess {
     animation: none;
+  }
+}
+
+/* Narrow windows: keep actions usable and avoid clipped rows. */
+@media (max-width: 760px) {
+  .page {
+    padding: 0 16px;
+  }
+
+  .head {
+    padding: 20px 0 12px;
+  }
+
+  .title {
+    font-size: 18px;
+  }
+
+  .compose {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .prompt {
+    min-height: 40px;
+  }
+
+  .row {
+    padding: 10px 12px;
+  }
+
+  .empty {
+    padding: 32px 0;
   }
 }

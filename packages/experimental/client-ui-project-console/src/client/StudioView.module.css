@@ -2,8 +2,8 @@
 
 .floor {
   border: 1px solid var(--dsw-alias-settings-card-stroke);
-  border-radius: 10px;
-  padding: 16px;
+  border-radius: var(--pc-radius-lg, 10px);
+  padding: 20px;
   background:
     radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--dsw-alias-label-primary) 5%, transparent) 1px, transparent 0)
     0 0 / 24px 24px,
@@ -14,8 +14,8 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: var(--pc-gap-3, 12px);
+  margin-bottom: var(--pc-gap-3, 12px);
 }
 
 .floorTitle {
@@ -33,16 +33,16 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px;
+  gap: var(--pc-gap-3, 12px);
 }
 
 .desk {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 12px;
+  padding: 14px;
   border: 1px solid var(--dsw-alias-settings-card-stroke);
-  border-radius: 10px;
+  border-radius: var(--pc-radius-lg, 10px);
   background: var(--dsw-alias-settings-card-fill);
   color: var(--dsw-alias-label-primary);
   text-align: left;
@@ -67,8 +67,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   background: var(--dsw-alias-bg-skeleton);
   color: var(--dsw-alias-label-primary);
@@ -166,7 +166,7 @@
 
 /* Shift summary: observed events only, with a reset. */
 .shift {
-  margin-top: 14px;
+  margin-top: var(--pc-gap-3, 12px);
   padding-top: 12px;
   border-top: 1px dashed var(--dsw-alias-settings-card-stroke);
 }
@@ -236,4 +236,14 @@
 .lamp_error {
   background: var(--dsw-alias-state-error-primary);
   box-shadow: 0 0 8px color-mix(in srgb, var(--dsw-alias-state-error-primary) 40%, transparent);
+}
+
+@media (max-width: 760px) {
+  .floor {
+    padding: 12px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
 }

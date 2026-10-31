@@ -303,7 +303,7 @@ export function ProjectConsolePage({
                           {session.lastPromptAt === undefined
                             ? null
                             : <span className={css.meta}>{relativeTime(session.lastPromptAt, t)}</span>}
-                          {session.cwd === undefined ? null : <span className={css.meta} title={session.cwd}>{session.cwd}</span>}
+                          {session.cwd === undefined ? null : <span className={`${css.meta} ${css.path}`} title={session.cwd}>{session.cwd}</span>}
                           {parentTitle(session.sessionId) === undefined
                             ? null
                             : <span className={css.chip}>↳ {t('derivedFrom', { title: parentTitle(session.sessionId) })}</span>}
@@ -413,7 +413,7 @@ export function ProjectConsolePage({
                   : <span className={css.meta}>{relativeTime(focus.row.lastPromptAt, t)}</span>}
                 {focus.row === undefined || focus.row.cwd === undefined
                   ? null
-                  : <span className={css.meta} title={focus.row.cwd}>{focus.row.cwd}</span>}
+                  : <span className={`${css.meta} ${css.path}`} title={focus.row.cwd}>{focus.row.cwd}</span>}
                 {focus.row?.outcome === 'failed'
                   ? <span className={css.chip} title={focus.row.outcomeReason}>{t('failed')}</span>
                   : null}

@@ -1,10 +1,10 @@
 /* Durable derivation graph: parents with indented children. */
 
 .graph {
-  margin-bottom: 16px;
-  padding: 12px 14px;
+  margin-bottom: var(--pc-gap-4, 16px);
+  padding: var(--pc-gap-3, 12px) var(--pc-gap-4, 16px);
   border: 1px solid var(--dsw-alias-settings-card-stroke);
-  border-radius: 10px;
+  border-radius: var(--pc-radius-lg, 10px);
   background: var(--dsw-alias-settings-card-fill);
 }
 
@@ -26,17 +26,17 @@
 .childRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--pc-gap-2, 8px);
   min-height: 22px;
-  font-size: 12px;
+  font-size: var(--pc-font-s, 12px);
 }
 
 .children {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-left: 14px;
-  padding-left: 10px;
+  margin-left: var(--pc-gap-4, 16px);
+  padding-left: var(--pc-gap-2, 8px);
   border-left: 1px solid var(--dsw-alias-settings-card-stroke);
 }
 
