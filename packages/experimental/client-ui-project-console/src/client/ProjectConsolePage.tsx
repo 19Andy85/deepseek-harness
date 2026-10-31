@@ -297,7 +297,13 @@ export function ProjectConsolePage({
           ? ['a', 'b', 'c'].map(key => <div key={key} className={css.skeleton} />)
           : null}
         {state.status === 'ready' && !hasRows
-          ? <div className={css.empty}>{t('empty')}</div>
+          ? (
+            <div className={css.empty}>
+              <span className={css.emptyGlyph} aria-hidden="true">◇</span>
+              <p className={css.emptyTitle}>{t('emptyTitle')}</p>
+              <p className={css.emptyHint}>{t('emptyHint')}</p>
+            </div>
+          )
           : null}
 
         {state.status === 'ready' && hasRows
@@ -447,6 +453,7 @@ export function ProjectConsolePage({
                 <span className={css.sessionId} title={focus.sessionId}>
                   {focus.row === undefined ? t('untitled') : focus.row.title ?? t('untitled')}
                 </span>
+                <span className={css.chip}>{t('focusActive')}</span>
                 {focus.row === undefined
                   ? null
                   : <span className={css.meta}>{statusText(focus.row.status, t)}</span>}

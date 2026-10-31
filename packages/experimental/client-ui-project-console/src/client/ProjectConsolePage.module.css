@@ -175,16 +175,45 @@
 }
 
 .chipRunning {
-  color: var(--dsw-alias-brand-primary);
+  color: var(--dsw-alias-state-business-primary);
+}
+
+.select:focus-visible,
+.rowMain:focus-visible,
+.viewButton:focus-visible,
+.trackAction:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--dsw-alias-brand-primary) 65%, transparent);
+  outline-offset: 1px;
 }
 
 .empty {
-  display: grid;
-  place-items: center;
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pc-gap-1);
   padding: 48px 0;
+  text-align: center;
+}
+
+.emptyGlyph {
   color: var(--dsw-alias-label-tertiary);
-  font-size: 13px;
+  font-size: 30px;
+  line-height: 1;
+  margin-bottom: var(--pc-gap-2);
+}
+
+.emptyTitle {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--pc-font-m);
+}
+
+.emptyHint {
+  margin: 0;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: var(--pc-font-s);
 }
 
 .skeleton {
@@ -285,9 +314,10 @@
 }
 
 .viewButtonActive {
-  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 16%, transparent);
+  background: color-mix(in srgb, var(--dsw-alias-brand-primary) 20%, transparent);
   color: var(--dsw-alias-label-primary);
   box-shadow: inset 0 0 0 1px var(--dsw-alias-brand-primary);
+  font-weight: 500;
 }
 
 /* Attention arrivals fade in once; status rails keep their colour static. */
