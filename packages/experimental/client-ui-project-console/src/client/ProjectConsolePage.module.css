@@ -424,3 +424,21 @@
 .compact .badges {
   gap: 4px;
 }
+
+.taskTitle {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.renameInput {
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: var(--pc-radius);
+  background: var(--dsw-alias-settings-card-fill);
+  color: var(--dsw-alias-label-primary);
+  font-size: var(--pc-font-s);
+  width: 160px;
+}

@@ -1,0 +1,20 @@
+/* Identity hue is separate from state semantics: a ring only, never a status fill. */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border-radius: 50%;
+  background: var(--dsw-alias-bg-skeleton);
+  color: var(--dsw-alias-label-primary);
+  font-weight: 500;
+  line-height: 1;
+  box-shadow: inset 0 0 0 1.5px var(--dsw-alias-settings-card-stroke);
+}
+
+.analysis { box-shadow: inset 0 0 0 1.5px #6f7fe0; }
+.implementation { box-shadow: inset 0 0 0 1.5px #9a6fd8; }
+.research { box-shadow: inset 0 0 0 1.5px #3f9aa8; }
+.operation { box-shadow: inset 0 0 0 1.5px #5f7f9e; }
+.guard { box-shadow: inset 0 0 0 1.5px #7a8798; }
+.general { box-shadow: inset 0 0 0 1.5px var(--dsw-alias-settings-card-stroke); }

@@ -3,6 +3,8 @@ import { useState } from 'react'
 import type { ProjectConsoleKey } from './locales.ts'
 import type { RelationGraphGroup, RelationGraphNode } from './relation-tree.ts'
 import { ChevronIcon } from './icons.tsx'
+import { identityOf, partnerName } from './partner-identity.ts'
+import { PartnerAvatar } from './PartnerAvatar.tsx'
 import { StatusDot, type VisualState } from './visual/visual.tsx'
 import css from './RelationGraph.module.css'
 
@@ -13,19 +15,16 @@ function stateOf(node: RelationGraphNode): VisualState {
   return node.status === 'idle' ? 'idle' : 'unknown'
 }
 
-function shortId(sessionId: string): string {
-  return sessionId.slice(0, 8)
-}
-
 /**
  * Render the durable derivation graph.
  * @param props - groups, the page dictionary, and the open action.
  * @returns the relation graph, or null without groups.
  */
 export function RelationGraph({
-  groups, t, onOpen,
+  groups, aliases, t, onOpen,
 }: {
   readonly groups: readonly RelationGraphGroup[]
+  readonly aliases: ReadonlyMap<string, string>
   readonly t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string
   readonly onOpen: (sessionId: string) => void
 }) {
@@ -54,9 +53,15 @@ export function RelationGraph({
             >
               <span className={collapsed.has(group.parent.sessionId) ? css.chevronCollapsed : css.chevron}><ChevronIcon /></span>
             </button>
+            <PartnerAvatar
+              name={partnerName(group.parent.sessionId, group.parent.title, aliases.get(group.parent.sessionId))}
+              initial={identityOf({ sessionId: group.parent.sessionId, title: group.parent.title, activity: [] }, aliases).initial}
+              role={identityOf({ sessionId: group.parent.sessionId, title: group.parent.title, activity: [] }, aliases).role}
+              size={20}
+            />
             <StatusDot state={stateOf(group.parent)} />
             <button type="button" className={css.link} onClick={() => { onOpen(group.parent.sessionId) }}>
-              {group.parent.title ?? shortId(group.parent.sessionId)}
+              {partnerName(group.parent.sessionId, group.parent.title, aliases.get(group.parent.sessionId))}
             </button>
             <span className={css.meta}>{t('derivedChildren', { n: group.children.length })}</span>
           </div>
@@ -89,8 +94,14 @@ export function RelationGraph({
                       className={css.childNode}
                       onClick={() => { onOpen(child.sessionId) }}
                     >
+                      <PartnerAvatar
+                        name={partnerName(child.sessionId, child.title, aliases.get(child.sessionId))}
+                        initial={identityOf({ sessionId: child.sessionId, title: child.title, activity: [] }, aliases).initial}
+                        role={identityOf({ sessionId: child.sessionId, title: child.title, activity: [] }, aliases).role}
+                        size={18}
+                      />
                       <StatusDot state={stateOf(child)} />
-                      <span className={css.childTitle}>{child.title ?? shortId(child.sessionId)}</span>
+                      <span className={css.childTitle}>{partnerName(child.sessionId, child.title, aliases.get(child.sessionId))}</span>
                       {child.live === true ? <span className={css.badge}>{t('running')}</span> : null}
                     </button>
                   ))}

@@ -4,6 +4,8 @@ import type { ShiftStats } from './day-stats.ts'
 import type { AttentionDescriptor } from './attention.ts'
 import type { ProjectConsoleKey } from './locales.ts'
 import { DeskIcon } from './icons.tsx'
+import { identityOf } from './partner-identity.ts'
+import { PartnerAvatar } from './PartnerAvatar.tsx'
 import { ActivityTrack, StatusDot } from './visual/visual.tsx'
 import css from './StudioView.module.css'
 
@@ -19,9 +21,10 @@ export interface StudioSessionStatus {
  * @returns the studio floor.
  */
 export function StudioView({
-  rows, statusFacts, descriptorOf, shift, now, t, onFocus, onResetShift,
+  rows, aliases, statusFacts, descriptorOf, shift, now, t, onFocus, onResetShift,
 }: {
   readonly rows: readonly SessionTaskView[]
+  readonly aliases: ReadonlyMap<string, string>
   readonly statusFacts: ReadonlyMap<string, StudioSessionStatus>
   readonly descriptorOf: (sessionId: string) => AttentionDescriptor | undefined
   readonly shift: ShiftStats | undefined
@@ -50,19 +53,19 @@ export function StudioView({
           const unread = statusFacts.get(row.sessionId)?.completionUnread === true
           const lamp = row.outcome === 'failed' || row.stalled === true ? 'error'
             : pending ? 'attention' : unread ? 'success' : row.status === 'running' ? 'running' : 'idle'
-          const initials = (row.title ?? t('untitled')).slice(0, 2)
+          const identity = identityOf(row, aliases)
           return (
             <button
               key={row.sessionId}
               type="button"
               className={`${css.desk} ${pending ? css.deskAttention : ''}`}
               onClick={() => { onFocus(row.sessionId) }}
-              aria-label={`${row.title ?? t('untitled')} · ${row.status === 'running' ? t('running') : t('idle')}`}
+              aria-label={`${identity.name} · ${row.status === 'running' ? t('running') : t('idle')}`}
             >
               <div className={css.deskTop}>
-                <span className={css.avatar} aria-hidden="true">{initials}</span>
+                <PartnerAvatar name={identity.name} initial={identity.initial} role={identity.role} size={36} />
                 <div className={css.identity}>
-                  <span className={css.name} title={row.title ?? row.sessionId}>{row.title ?? t('untitled')}</span>
+                  <span className={css.name} title={row.title ?? row.sessionId}>{identity.name}</span>
                   <span className={css.deskStatus}>
                     <StatusDot state={lamp} />
                     {row.status === 'running' ? t('running') : t('idle')}

@@ -9,6 +9,9 @@ import { attentionItems, healthCounts, type AttentionDescriptor } from './attent
 import { visibleSessions } from './sessions-view.ts'
 import { relationHints } from './relations.ts'
 import { relationGroups } from './relation-tree.ts'
+import { identityOf, partnerName, type PartnerRole } from './partner-identity.ts'
+import { readPartnerAliases, writePartnerAlias } from './partner-aliases.ts'
+import { PartnerAvatar } from './PartnerAvatar.tsx'
 import { otherWorkspaceAttention, type WorkspaceSessions } from './cross-workspace.ts'
 import { globalInboxCount, globalInboxGroups } from './global-inbox.ts'
 import { GlobalInbox } from './GlobalInbox.tsx'
@@ -99,6 +102,9 @@ export function ProjectConsolePage({
   const [now, setNow] = useState(() => Date.now())
   const [activeId, setActiveId] = useState<string | undefined>(undefined)
   const [inboxOpen, setInboxOpen] = useState(false)
+  const [aliases, setAliases] = useState<Record<string, string>>(() => readPartnerAliases())
+  const [renaming, setRenaming] = useState<string | undefined>(undefined)
+  const [renameText, setRenameText] = useState('')
   const [prompt, setPrompt] = useState('')
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
@@ -117,7 +123,21 @@ export function ProjectConsolePage({
   const inboxGroups = globalInboxGroups(statusFacts, workspaceSessions())
   const inboxTotal = globalInboxCount(inboxGroups)
   const elsewhere = otherWorkspaceAttention(statusFacts, workspaceSessions(), selected)
+  const aliasesMap = new Map(Object.entries(aliases))
   const rows = visibleSessions(state.sessions)
+  const ROLE_KEYS: Record<PartnerRole, ProjectConsoleKey> = {
+    analysis: 'roleAnalysis',
+    implementation: 'roleImplementation',
+    research: 'roleResearch',
+    operation: 'roleOperation',
+    guard: 'roleGuard',
+    general: 'roleGeneral',
+  }
+  const saveAlias = (sessionId: string) => {
+    setAliases(writePartnerAlias(sessionId, renameText))
+    setRenaming(undefined)
+    setRenameText('')
+  }
   const pendingOf = (sessionId: string) => statusFacts.get(sessionId)?.pendingInteraction
   const descriptorOf = (sessionId: string): AttentionDescriptor | undefined => {
     const pending = pendingOf(sessionId)
@@ -210,6 +230,7 @@ export function ProjectConsolePage({
     return () => { clearInterval(timer) }
   }, [])
   const focusPending = focus === undefined ? 0 : pendingItems.filter(item => item.sessionId === focus.sessionId).length
+  const focusIdentity = focus?.row === undefined ? undefined : identityOf(focus.row, aliasesMap)
   const actionBusy = state.busySessionId
 
   return (
@@ -290,6 +311,7 @@ export function ProjectConsolePage({
               groups={inboxGroups}
               statuses={statusFacts}
               t={t}
+              aliases={aliasesMap}
               onOpen={(sessionId) => { openSession(sessionId) }}
               onSwitch={(workspaceId) => { selectWorkspace(workspaceId) }}
               onApprove={(sessionId) => { void answerApproval(sessionId, 'allowed-once') }}
@@ -358,7 +380,7 @@ export function ProjectConsolePage({
           )
           : null}
 
-        <RelationGraph groups={graphGroups} t={t} onOpen={openSession} />
+        <RelationGraph groups={graphGroups} aliases={aliasesMap} t={t} onOpen={openSession} />
 
         {focus === undefined
           ? (view === 'canvas'
@@ -368,6 +390,7 @@ export function ProjectConsolePage({
                   ? null
                   : <h2 className={css.sectionTitle}>{t('working')}</h2>}
                 {workingRows.map((session) => {
+                  const identity = identityOf(session, aliasesMap)
                   const status = statusFacts.get(session.sessionId)
                   const lane = status?.completionUnread === true ? css.rowSuccess
                     : session.status === 'running' ? css.rowRunning : css.rowIdle
@@ -381,7 +404,9 @@ export function ProjectConsolePage({
                       >
                         <div className={css.rowHead}>
                           <StatusDot state={session.stalled === true || session.outcome === 'failed' ? 'error' : status?.completionUnread === true ? 'success' : session.status === 'running' ? 'running' : 'idle'} />
-                          <span className={css.sessionId} title={session.sessionId}>{session.title ?? t('untitled')}</span>
+                          <PartnerAvatar name={identity.name} initial={identity.initial} role={identity.role} />
+                          <span className={css.sessionId} title={session.sessionId}>{identity.name}</span>
+                          <span className={`${css.meta} ${css.taskTitle}`} title={session.title ?? ''}>{session.title ?? t('untitled')}</span>
                           <span className={css.meta}>{statusText(session.status, t)}</span>
                           {session.lastPromptAt === undefined
                             ? null
@@ -472,6 +497,7 @@ export function ProjectConsolePage({
             : (
               <StudioView
                 rows={rows}
+                aliases={aliasesMap}
                 statusFacts={statusFacts}
                 descriptorOf={descriptorOf}
                 shift={state.shift}
@@ -485,10 +511,52 @@ export function ProjectConsolePage({
             <article className={`${css.row} ${focus.row === undefined ? css.rowIdle : focus.row.status === 'running' ? css.rowRunning : css.rowIdle}`}>
               <div className={css.rowHead}>
                 <StatusDot state={focus.row === undefined ? 'unknown' : focus.row.outcome === 'failed' ? 'error' : focus.row.status === 'running' ? 'running' : 'idle'} />
-                <span className={css.sessionId} title={focus.sessionId}>
-                  {focus.row === undefined ? t('untitled') : focus.row.title ?? t('untitled')}
-                </span>
+                {focus.row === undefined
+                  ? null
+                  : (
+                    <>
+                      <PartnerAvatar
+                        name={focusIdentity?.name ?? ''}
+                        initial={focusIdentity?.initial ?? '·'}
+                        role={focusIdentity?.role ?? 'general'}
+                        size={30}
+                      />
+                      <span className={css.sessionId} title={focus.sessionId}>{focusIdentity?.name}</span>
+                      <span className={css.chip}>{t(ROLE_KEYS[focusIdentity?.role ?? 'general'])}</span>
+                    </>
+                  )}
                 <span className={css.chip}>{t('focusActive')}</span>
+                {renaming === focus.sessionId
+                  ? (
+                    <>
+                      <input
+                        className={css.renameInput}
+                        value={renameText}
+                        placeholder={t('renamePlaceholder')}
+                        onChange={(event) => { setRenameText(event.currentTarget.value) }}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') saveAlias(focus.sessionId)
+                          if (event.key === 'Escape') { setRenaming(undefined); setRenameText('') }
+                        }}
+                      />
+                      <button type="button" className={css.select} onClick={() => { saveAlias(focus.sessionId) }}>{t('save')}</button>
+                      <button type="button" className={css.select} onClick={() => { setRenaming(undefined); setRenameText('') }}>{t('cancel')}</button>
+                    </>
+                  )
+                  : (
+                    <button
+                      type="button"
+                      className={css.select}
+                      onClick={() => {
+                        setRenaming(focus.sessionId)
+                        setRenameText(partnerName(
+                          focus.sessionId, focus.row?.title, aliasesMap.get(focus.sessionId),
+                        ))
+                      }}
+                    >
+                      {t('renamePartner')}
+                    </button>
+                  )}
                 {focus.row === undefined
                   ? null
                   : <span className={css.meta}>{statusText(focus.row.status, t)}</span>}
@@ -529,7 +597,7 @@ export function ProjectConsolePage({
                     <h2 className={css.sectionTitle}>{t('subagentsTitle')}</h2>
                     {focus.row.relations.children.map(child => (
                       <div key={child.sessionId} className={css.rowActions}>
-                        <span className={css.chip}>{child.sessionId.slice(0, 8)}{child.live === true ? ` · ${t('running')}` : ''}</span>
+                        <span className={css.chip}>{partnerName(child.sessionId, undefined, aliasesMap.get(child.sessionId))}{child.live === true ? ` · ${t('running')}` : ''}</span>
                         <button type="button" className={css.select} onClick={() => { openSession(child.sessionId) }}>{t('openSession')}</button>
                       </div>
                     ))}

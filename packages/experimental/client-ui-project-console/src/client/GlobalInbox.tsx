@@ -2,6 +2,7 @@
 import type { SessionStatus } from '@deepseek-ai/dsh-client-ui-session/client'
 import type { GlobalInboxGroup, GlobalInboxItem } from './global-inbox.ts'
 import type { ProjectConsoleKey } from './locales.ts'
+import { partnerName } from './partner-identity.ts'
 import css from './GlobalInbox.module.css'
 
 const KIND_KEYS: Record<GlobalInboxItem['kind'], ProjectConsoleKey> = {
@@ -11,20 +12,17 @@ const KIND_KEYS: Record<GlobalInboxItem['kind'], ProjectConsoleKey> = {
   completed: 'completedUnread',
 }
 
-function shortId(sessionId: string): string {
-  return sessionId.slice(0, 8)
-}
-
 /**
  * Render the cross-workspace attention panel.
  * @param props - grouped items, Session status facts, the page dictionary, and item actions.
  * @returns the inbox panel.
  */
 export function GlobalInbox({
-  groups, statuses, t, onOpen, onSwitch, onApprove, onReject, onAnswer,
+  groups, statuses, aliases, t, onOpen, onSwitch, onApprove, onReject, onAnswer,
 }: {
   readonly groups: readonly GlobalInboxGroup[]
   readonly statuses: ReadonlyMap<string, SessionStatus>
+  readonly aliases: ReadonlyMap<string, string>
   readonly t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string
   readonly onOpen: (sessionId: string) => void
   readonly onSwitch: (workspaceId: string) => void
@@ -44,12 +42,13 @@ export function GlobalInbox({
           {group.items.map((item) => {
             const status = statuses.get(item.sessionId)
             const pending = status?.pendingInteraction
+            const displayName = partnerName(item.sessionId, undefined, aliases.get(item.sessionId))
             const question = pending?.kind === 'question' ? pending.questions[0] : undefined
             const options = question?.options
             return (
               <div key={item.sessionId} className={css.item}>
                 <span className={css.kind}>{t(KIND_KEYS[item.kind])}</span>
-                <span className={css.title} title={item.sessionId}>{shortId(item.sessionId)}</span>
+                <span className={css.title} title={item.sessionId}>{displayName}</span>
                 <span className={css.actions}>
                   {item.kind === 'completed'
                     ? <button type="button" className={css.action} onClick={() => { onOpen(item.sessionId) }}>{t('view')}</button>
