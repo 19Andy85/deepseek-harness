@@ -471,3 +471,19 @@
   font-weight: 500;
   flex: none;
 }
+
+.chipButton {
+  align-self: flex-start;
+  padding: 3px 10px;
+  border: 1px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: 999px;
+  background: var(--dsw-alias-settings-card-fill);
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--pc-font-s);
+  cursor: pointer;
+}
+
+.chipButton:hover {
+  border-color: var(--dsw-alias-brand-primary);
+  color: var(--dsw-alias-label-primary);
+}

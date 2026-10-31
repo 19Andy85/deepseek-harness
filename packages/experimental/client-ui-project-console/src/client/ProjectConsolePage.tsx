@@ -647,7 +647,7 @@ export function ProjectConsolePage({
                 : (
                   <button
                     type="button"
-                    className={css.chip}
+                    className={css.chipButton}
                     onClick={() => { setRelationView('canvas') }}
                   >
                     {t('subagentsTitle')} {focus.row.relations.children.length}

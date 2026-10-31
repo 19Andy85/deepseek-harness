@@ -33,7 +33,7 @@
    },
 
 --- a/packages/experimental/api-session-tasks/src/index.ts	2026-10-31 11:46:44
-+++ b/packages/experimental/api-session-tasks/src/index.ts	2026-10-31 11:50:30
++++ b/packages/experimental/api-session-tasks/src/index.ts	2026-10-31 23:17:47
 @@ -100,8 +100,8 @@
      })
      if (this.ctx.get('storageDomain') !== undefined) await seenBinding
@@ -47,7 +47,7 @@
    }
 
 --- a/packages/experimental/api-session-tasks/src/outcome.ts	2026-10-31 02:14:10
-+++ b/packages/experimental/api-session-tasks/src/outcome.ts	2026-10-31 11:50:30
++++ b/packages/experimental/api-session-tasks/src/outcome.ts	2026-10-31 23:17:47
 @@ -8,7 +8,6 @@
  import type { SessionEvent } from '@deepseek-ai/dsh-session'
  import type {} from '@deepseek-ai/dsh-workspace-changes'
@@ -93,7 +93,7 @@
    },
 
 --- a/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-10-29 04:06:48
-+++ b/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-10-31 22:25:02
++++ b/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-10-31 23:17:47
 @@ -1,6 +1,5 @@
 -/** Workspace row menu entry that opens the project console on that Workspace. */
 +/** Session row menu entry that opens the project console for the row's workspace. */
@@ -139,8 +139,256 @@
      >
        {t('openConsole')}
 
+--- a/packages/experimental/client-ui-project-console/src/client/ProjectConsolePage.module.css	2026-10-31 23:24:09
++++ b/packages/experimental/client-ui-project-console/src/client/ProjectConsolePage.module.css	2026-10-31 23:17:47
+@@ -471,19 +471,3 @@
+   font-weight: 500;
+   flex: none;
+ }
+-
+-.chipButton {
+-  align-self: flex-start;
+-  padding: 3px 10px;
+-  border: 1px solid var(--dsw-alias-settings-card-stroke);
+-  border-radius: 999px;
+-  background: var(--dsw-alias-settings-card-fill);
+-  color: var(--dsw-alias-label-secondary);
+-  font-size: var(--pc-font-s);
+-  cursor: pointer;
+-}
+-
+-.chipButton:hover {
+-  border-color: var(--dsw-alias-brand-primary);
+-  color: var(--dsw-alias-label-primary);
+-}
+
+--- a/packages/experimental/client-ui-project-console/src/client/ProjectConsolePage.tsx	2026-10-31 23:24:08
++++ b/packages/experimental/client-ui-project-console/src/client/ProjectConsolePage.tsx	2026-10-31 23:17:47
+@@ -434,114 +434,114 @@
+                 {(() => {
+                   let lastSection = ''
+                   return orderedLanes.map(({ session, section, total, nested }) => {
+-                    const identity = identityOf(session, aliasesMap)
+-                    const status = statusFacts.get(session.sessionId)
+-                    const lane = status?.completionUnread === true ? css.rowSuccess
+-                      : session.status === 'running' ? css.rowRunning : css.rowIdle
+-                    const newSection = section !== lastSection
+-                    lastSection = section
+-                    return (
+-                      <Fragment key={session.sessionId}>
+-                        {newSection
+-                          ? <h2 className={css.sectionTitle}>{section} <span className={css.sectionCount}>{total}</span></h2>
++                  const identity = identityOf(session, aliasesMap)
++                  const status = statusFacts.get(session.sessionId)
++                  const lane = status?.completionUnread === true ? css.rowSuccess
++                    : session.status === 'running' ? css.rowRunning : css.rowIdle
++                  const newSection = section !== lastSection
++                  lastSection = section
++                  return (
++                    <Fragment key={session.sessionId}>
++                    {newSection
++                      ? <h2 className={css.sectionTitle}>{section} <span className={css.sectionCount}>{total}</span></h2>
++                      : null}
++                    <article className={`${css.row} ${lane} ${nested ? css.nestedLane : ''} ${active === session.sessionId ? css.rowActive : ''}`}>
++                      <button
++                        type="button"
++                        className={css.rowMain}
++                        aria-label={t('focusSession')}
++                        onClick={() => { focusSession(session.sessionId) }}
++                      >
++                        <div className={css.rowHead}>
++                          <StatusDot state={session.stalled === true || session.outcome === 'failed' ? 'error' : status?.completionUnread === true ? 'success' : session.status === 'running' ? 'running' : 'idle'} />
++                          <PartnerAvatar name={identity.name} initial={identity.initial} role={identity.role} />
++                          <span className={css.sessionId} title={session.sessionId}>{identity.name}</span>
++                          <span className={`${css.meta} ${css.taskTitle}`} title={session.title ?? ''}>{session.title ?? t('untitled')}</span>
++                          <span className={css.meta}>{statusText(session.status, t)}</span>
++                          {session.lastPromptAt === undefined
++                            ? null
++                            : <span className={css.meta}>{relativeTime(session.lastPromptAt, t)}</span>}
++                          {session.cwd === undefined ? null : <span className={`${css.meta} ${css.path}`} title={session.cwd}>{session.cwd}</span>}
++                          {parentTitle(session.sessionId) === undefined
++                            ? null
++                            : <span className={css.chip}>↳ {t('derivedFrom', { title: parentTitle(session.sessionId) })}</span>}
++                          {session.outcome === 'failed'
++                            ? <span className={css.chip} title={session.outcomeReason}>{t('failed')}{session.outcomeReason === undefined ? '' : ` · ${session.outcomeReason}`}</span>
++                            : null}
++                          {session.changes === undefined
++                            ? null
++                            : (
++                              <>
++                                <span className={css.chip}>{t('changesSummary', { n: session.changes.total, added: session.changes.added, deleted: session.changes.deleted })}</span>
++                                <button type="button" className={css.select} onClick={() => { openSession(session.sessionId) }}>{t('viewChanges')}</button>
++                              </>
++                            )}
++                          {session.stalled === true ? <span className={css.chip}>{t('stalled')}</span> : null}
++                          {state.changes?.has(session.sessionId) === true ? <span className={css.chip}>{t('newBadge')}</span> : null}
++                        </div>
++                        <ActivityTrack
++                          activity={session.activity}
++                          t={t}
++                          running={session.status === 'running'}
++                        />
++                      </button>
++                      <div className={css.rowActions}>
++                        <button
++                          type="button"
++                          className={css.select}
++                          onClick={() => {
++                            setReplyingTo(replyingTo === session.sessionId ? null : session.sessionId)
++                            setReplyText('')
++                          }}
++                        >
++                          {t('sendPrompt')}
++                        </button>
++                        {session.status === 'running'
++                          ? (
++                            <button
++                              type="button"
++                              className={css.select}
++                              disabled={actionBusy === session.sessionId}
++                              onClick={() => { void cancelSession(session.sessionId) }}
++                            >
++                              {t('interrupt')}
++                            </button>
++                          )
+                           : null}
+-                        <article className={`${css.row} ${lane} ${nested ? css.nestedLane : ''} ${active === session.sessionId ? css.rowActive : ''}`}>
+-                          <button
+-                            type="button"
+-                            className={css.rowMain}
+-                            aria-label={t('focusSession')}
+-                            onClick={() => { focusSession(session.sessionId) }}
+-                          >
+-                            <div className={css.rowHead}>
+-                              <StatusDot state={session.stalled === true || session.outcome === 'failed' ? 'error' : status?.completionUnread === true ? 'success' : session.status === 'running' ? 'running' : 'idle'} />
+-                              <PartnerAvatar name={identity.name} initial={identity.initial} role={identity.role} />
+-                              <span className={css.sessionId} title={session.sessionId}>{identity.name}</span>
+-                              <span className={`${css.meta} ${css.taskTitle}`} title={session.title ?? ''}>{session.title ?? t('untitled')}</span>
+-                              <span className={css.meta}>{statusText(session.status, t)}</span>
+-                              {session.lastPromptAt === undefined
+-                                ? null
+-                                : <span className={css.meta}>{relativeTime(session.lastPromptAt, t)}</span>}
+-                              {session.cwd === undefined ? null : <span className={`${css.meta} ${css.path}`} title={session.cwd}>{session.cwd}</span>}
+-                              {parentTitle(session.sessionId) === undefined
+-                                ? null
+-                                : <span className={css.chip}>↳ {t('derivedFrom', { title: parentTitle(session.sessionId) })}</span>}
+-                              {session.outcome === 'failed'
+-                                ? <span className={css.chip} title={session.outcomeReason}>{t('failed')}{session.outcomeReason === undefined ? '' : ` · ${session.outcomeReason}`}</span>
+-                                : null}
+-                              {session.changes === undefined
+-                                ? null
+-                                : (
+-                                  <>
+-                                    <span className={css.chip}>{t('changesSummary', { n: session.changes.total, added: session.changes.added, deleted: session.changes.deleted })}</span>
+-                                    <button type="button" className={css.select} onClick={() => { openSession(session.sessionId) }}>{t('viewChanges')}</button>
+-                                  </>
+-                                )}
+-                              {session.stalled === true ? <span className={css.chip}>{t('stalled')}</span> : null}
+-                              {state.changes?.has(session.sessionId) === true ? <span className={css.chip}>{t('newBadge')}</span> : null}
+-                            </div>
+-                            <ActivityTrack
+-                              activity={session.activity}
+-                              t={t}
+-                              running={session.status === 'running'}
++                      </div>
++                      {replyingTo === session.sessionId
++                        ? (
++                          <div className={css.compose}>
++                            <textarea
++                              className={css.prompt}
++                              rows={2}
++                              value={replyText}
++                              placeholder={t('replyPlaceholder')}
++                              onChange={(event) => { setReplyText(event.currentTarget.value) }}
+                             />
+-                          </button>
+-                          <div className={css.rowActions}>
+                             <button
+                               type="button"
+                               className={css.select}
++                              disabled={replyText.trim() === '' || actionBusy === session.sessionId}
+                               onClick={() => {
+-                                setReplyingTo(replyingTo === session.sessionId ? null : session.sessionId)
+-                                setReplyText('')
++                                void sendToSession(session.sessionId, replyText, 'queue').then((accepted) => {
++                                  if (!accepted) return
++                                  setReplyingTo(null)
++                                  setReplyText('')
++                                })
+                               }}
+                             >
+-                              {t('sendPrompt')}
++                              {t('sendQueue')}
+                             </button>
+-                            {session.status === 'running'
+-                              ? (
+-                                <button
+-                                  type="button"
+-                                  className={css.select}
+-                                  disabled={actionBusy === session.sessionId}
+-                                  onClick={() => { void cancelSession(session.sessionId) }}
+-                                >
+-                                  {t('interrupt')}
+-                                </button>
+-                              )
+-                              : null}
++                            <button type="button" className={css.select} onClick={() => { setReplyingTo(null); setReplyText('') }}>
++                              {t('cancel')}
++                            </button>
+                           </div>
+-                          {replyingTo === session.sessionId
+-                            ? (
+-                              <div className={css.compose}>
+-                                <textarea
+-                                  className={css.prompt}
+-                                  rows={2}
+-                                  value={replyText}
+-                                  placeholder={t('replyPlaceholder')}
+-                                  onChange={(event) => { setReplyText(event.currentTarget.value) }}
+-                                />
+-                                <button
+-                                  type="button"
+-                                  className={css.select}
+-                                  disabled={replyText.trim() === '' || actionBusy === session.sessionId}
+-                                  onClick={() => {
+-                                    void sendToSession(session.sessionId, replyText, 'queue').then((accepted) => {
+-                                      if (!accepted) return
+-                                      setReplyingTo(null)
+-                                      setReplyText('')
+-                                    })
+-                                  }}
+-                                >
+-                                  {t('sendQueue')}
+-                                </button>
+-                                <button type="button" className={css.select} onClick={() => { setReplyingTo(null); setReplyText('') }}>
+-                                  {t('cancel')}
+-                                </button>
+-                              </div>
+-                            )
+-                            : null}
+-                        </article>
+-                      </Fragment>
+-                    )
++                        )
++                        : null}
++                    </article>
++                    </Fragment>
++                  )
+                   })
+                 })()}
+               </>
+@@ -647,7 +647,7 @@
+                 : (
+                   <button
+                     type="button"
+-                    className={css.chipButton}
++                    className={css.chip}
+                     onClick={() => { setRelationView('canvas') }}
+                   >
+                     {t('subagentsTitle')} {focus.row.relations.children.length}
+
 --- a/packages/experimental/client-ui-project-console/src/client/index.ts	2026-10-31 19:59:51
-+++ b/packages/experimental/client-ui-project-console/src/client/index.ts	2026-10-31 22:25:02
++++ b/packages/experimental/client-ui-project-console/src/client/index.ts	2026-10-31 23:17:47
 @@ -22,7 +22,7 @@
  import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
  import { ProjectConsoleStore } from './ProjectConsoleStore.ts'
@@ -188,7 +436,7 @@
      id: PANEL_ID,
 
 --- a/packages/experimental/session-tasks-bundle/package.json	2026-10-29 04:02:07
-+++ b/packages/experimental/session-tasks-bundle/package.json	2026-10-31 11:50:30
++++ b/packages/experimental/session-tasks-bundle/package.json	2026-10-31 23:17:47
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-session-tasks-bundle",
