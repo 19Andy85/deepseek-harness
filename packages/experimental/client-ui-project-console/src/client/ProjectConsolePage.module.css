@@ -487,3 +487,134 @@
   border-color: var(--dsw-alias-brand-primary);
   color: var(--dsw-alias-label-primary);
 }
+
+.lane {
+  position: relative;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+  border: 1px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: var(--pc-radius-lg);
+  background: var(--dsw-alias-settings-card-fill);
+}
+
+.laneMain {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(200px, 1.1fr) minmax(240px, 2fr) 140px;
+  gap: 18px;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.laneIdentity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.identityTop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.laneActivity {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.laneChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+
+.laneTime {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.elapsed {
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--pc-font-s);
+  font-variant-numeric: tabular-nums;
+}
+
+.laneActions {
+  display: flex;
+  flex: none;
+  gap: 6px;
+  align-items: center;
+}
+
+.changeBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 6px 0 10px;
+  border-bottom: 1px dashed var(--dsw-alias-settings-card-stroke);
+}
+
+.changeLabel {
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--pc-font-s);
+  font-weight: 500;
+}
+
+@media (max-width: 900px) {
+  .lane {
+    flex-wrap: wrap;
+  }
+
+  .laneMain {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .laneTime {
+    align-items: flex-start;
+    text-align: left;
+  }
+}
+
+.studioShell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.studioSide {
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 180px);
+  overflow: auto;
+}
+
+@media (max-width: 900px) {
+  .studioShell {
+    grid-template-columns: 1fr;
+  }
+
+  .studioSide {
+    position: static;
+    max-height: none;
+  }
+}

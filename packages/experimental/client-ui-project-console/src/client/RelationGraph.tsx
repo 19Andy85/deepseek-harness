@@ -64,6 +64,7 @@ export function RelationGraph({
               {partnerName(group.parent.sessionId, group.parent.title, aliases.get(group.parent.sessionId))}
             </button>
             <span className={css.meta}>{t('derivedChildren', { n: group.children.length })}</span>
+            {group.parent.jobs?.map(job => <span key={job} className={css.jobChip}>{job}</span>)}
           </div>
           {collapsed.has(group.parent.sessionId)
             ? null
@@ -86,7 +87,7 @@ export function RelationGraph({
                     />
                   ))}
                 </svg>
-                <div className={css.childColumn}>
+                <div className={css.childColumn} data-relation="derived" aria-label={t('derivedFrom', { title: '' })}>
                   {group.children.map(child => (
                     <button
                       key={child.sessionId}
@@ -102,6 +103,8 @@ export function RelationGraph({
                       />
                       <StatusDot state={stateOf(child)} />
                       <span className={css.childTitle}>{partnerName(child.sessionId, child.title, aliases.get(child.sessionId))}</span>
+                      {child.depth !== undefined && child.depth > 1 ? <span className={css.depth}>{`L${String(child.depth)}`}</span> : null}
+                      {child.activity === undefined ? null : <span className={css.activity}>{child.activity}</span>}
                       {child.live === true ? <span className={css.badge}>{t('running')}</span> : null}
                     </button>
                   ))}

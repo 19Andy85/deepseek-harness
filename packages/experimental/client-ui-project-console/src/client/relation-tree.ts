@@ -15,6 +15,12 @@ export interface RelationGraphNode {
   readonly outcome?: string
   /** Whether the Session appears stalled. */
   readonly stalled?: boolean
+  /** Derivation depth inside the group (parent is 0). */
+  readonly depth?: number
+  /** Short activity label of a visible Session. */
+  readonly activity?: string
+  /** Background jobs owned by this Session. */
+  readonly jobs?: readonly string[]
 }
 
 /** One parent and its derived children. */
@@ -27,6 +33,8 @@ export interface RelationGraphGroup {
 
 /** Rows beyond this count are summarized instead of listed. */
 const MAX_CHILDREN = 8
+/** Deepest derivation level the graph walks when child rows are visible. */
+const MAX_DEPTH = 3
 
 /**
  * Build relation groups rooted at visible rows.
@@ -39,25 +47,35 @@ export function relationGroups(rows: readonly SessionTaskView[]): RelationGraphG
   for (const row of rows) {
     const children = row.relations?.children
     if (children === undefined || children.length === 0) continue
-    groups.push({
-      parent: nodeOf(row),
-      children: children.slice(0, MAX_CHILDREN).map((child) => {
+    const nodes: RelationGraphNode[] = []
+    const visited = new Set<string>([row.sessionId])
+    const walk = (parent: SessionTaskView, depth: number): void => {
+      for (const child of parent.relations?.children ?? []) {
+        if (visited.has(child.sessionId) || nodes.length >= MAX_CHILDREN) continue
+        visited.add(child.sessionId)
         const visible = byId.get(child.sessionId)
-        return visible === undefined
-          ? { sessionId: child.sessionId, ...child.live === true ? { live: true } : {} }
-          : nodeOf(visible)
-      }),
-    })
+        nodes.push(visible === undefined
+          ? { sessionId: child.sessionId, depth, ...child.live === true ? { live: true } : {} }
+          : { ...nodeOf(visible), depth })
+        if (visible !== undefined && depth < MAX_DEPTH) walk(visible, depth + 1)
+      }
+    }
+    walk(row, 1)
+    groups.push({ parent: nodeOf(row), children: nodes })
   }
   return groups
 }
 
 function nodeOf(row: SessionTaskView): RelationGraphNode {
+  const jobs = row.activity.filter(entry => entry.kind === 'job').map(entry => entry.items?.[0]?.label ?? entry.kind)
+  const firstActivity = row.activity[0]
   return {
     sessionId: row.sessionId,
     ...row.title === undefined ? {} : { title: row.title },
     status: row.status,
     ...row.outcome === undefined ? {} : { outcome: row.outcome },
     ...row.stalled === true ? { stalled: true } : {},
+    ...firstActivity === undefined ? {} : { activity: firstActivity.items?.[0]?.label ?? firstActivity.kind },
+    ...jobs.length === 0 ? {} : { jobs },
   }
 }

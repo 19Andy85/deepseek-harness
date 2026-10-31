@@ -20,7 +20,7 @@ import { RelationGraph } from './RelationGraph.tsx'
 import { AttentionInbox } from './AttentionInbox.tsx'
 import { StudioView } from './StudioView.tsx'
 import { readViewPreference, writeViewPreference, type ConsoleView } from './view-preference.ts'
-import { ActivityTrack, HealthSegments, StatusDot, Timeline, type HealthFilter } from './visual/visual.tsx'
+import { ActivityTrack, formatDuration, HealthSegments, StatusDot, Timeline, type HealthFilter } from './visual/visual.tsx'
 import type { ProjectConsoleKey } from './locales.ts'
 import css from './ProjectConsolePage.module.css'
 
@@ -217,6 +217,7 @@ export function ProjectConsolePage({
       }
     }
   }
+  const changedRows = workingRows.filter(row => state.changes?.has(row.sessionId) === true)
   const keyboardIds = [...attention.map(item => item.sessionId), ...workingRows.map(row => row.sessionId)]
   const active = activeId !== undefined && keyboardIds.includes(activeId) ? activeId : undefined
   useEffect(() => {
@@ -265,9 +266,25 @@ export function ProjectConsolePage({
     const timer = setInterval(() => { setNow(Date.now()) }, 1_000)
     return () => { clearInterval(timer) }
   }, [])
+  const actionBusy = state.busySessionId
+  const inboxNode = state.status === 'ready' && hasRows
+    ? (
+      <AttentionInbox
+        attention={attention}
+        busySessionId={actionBusy}
+        active={active}
+        t={t}
+        actions={{
+          open: openSession,
+          focus: focusSession,
+          approve: (sessionId, decision) => { void answerApproval(sessionId, decision) },
+          answer: (sessionId, answer) => { void answerQuestion(sessionId, answer) },
+        }}
+      />
+    )
+    : null
   const focusPending = focus === undefined ? 0 : pendingItems.filter(item => item.sessionId === focus.sessionId).length
   const focusIdentity = focus?.row === undefined ? undefined : identityOf(focus.row, aliasesMap)
-  const actionBusy = state.busySessionId
 
   return (
     <section className={css.page}>
@@ -406,22 +423,7 @@ export function ProjectConsolePage({
           )
           : null}
 
-        {state.status === 'ready' && hasRows
-          ? (
-            <AttentionInbox
-              attention={attention}
-              busySessionId={actionBusy}
-              active={active}
-              t={t}
-              actions={{
-                open: openSession,
-                focus: focusSession,
-                approve: (sessionId, decision) => { void answerApproval(sessionId, decision) },
-                answer: (sessionId, answer) => { void answerQuestion(sessionId, answer) },
-              }}
-            />
-          )
-          : null}
+        {!inboxOpen && view === 'canvas' ? inboxNode : null}
 
         {relationView === 'canvas' && focus === undefined
           ? <RelationGraph groups={graphGroups} aliases={aliasesMap} t={t} onOpen={openSession} />
@@ -431,6 +433,32 @@ export function ProjectConsolePage({
           ? (view === 'canvas'
             ? (
               <>
+                {state.lastSeenAt === undefined
+                  ? null
+                  : (
+                    <div className={css.changeBar}>
+                      <span className={css.changeLabel}>
+                        {t('sinceLastVisit', { time: new Date(state.lastSeenAt).toLocaleTimeString(undefined, { hour12: false }) })}
+                      </span>
+                      {changedRows.length === 0
+                        ? <span className={css.meta}>{t('noChangesSince')}</span>
+                        : (
+                          <>
+                            <span className={css.meta}>{t('changesSince', { n: changedRows.length })}</span>
+                            {changedRows.slice(0, 4).map(row => (
+                              <button
+                                key={row.sessionId}
+                                type="button"
+                                className={css.chipButton}
+                                onClick={() => { focusSession(row.sessionId) }}
+                              >
+                                {partnerName(row.sessionId, row.title, aliasesMap.get(row.sessionId))}
+                              </button>
+                            ))}
+                          </>
+                        )}
+                    </div>
+                  )}
                 {(() => {
                   let lastSection = ''
                   return orderedLanes.map(({ session, section, total, nested }) => {
@@ -438,6 +466,10 @@ export function ProjectConsolePage({
                     const status = statusFacts.get(session.sessionId)
                     const lane = status?.completionUnread === true ? css.rowSuccess
                       : session.status === 'running' ? css.rowRunning : css.rowIdle
+                    const startedAt = session.activity
+                      .flatMap(entry => entry.startedAt === undefined ? [] : [entry.startedAt])
+                      .reduce<number | undefined>((min, at) => (min === undefined || at < min ? at : min), session.lastPromptAt)
+                    const elapsed = startedAt === undefined ? undefined : formatDuration(Math.max(0, now - startedAt), t)
                     const newSection = section !== lastSection
                     lastSection = section
                     return (
@@ -445,47 +477,58 @@ export function ProjectConsolePage({
                         {newSection
                           ? <h2 className={css.sectionTitle}>{section} <span className={css.sectionCount}>{total}</span></h2>
                           : null}
-                        <article className={`${css.row} ${lane} ${nested ? css.nestedLane : ''} ${active === session.sessionId ? css.rowActive : ''}`}>
+                        <article className={`${css.lane} ${lane} ${nested ? css.nestedLane : ''} ${active === session.sessionId ? css.rowActive : ''}`}>
                           <button
                             type="button"
-                            className={css.rowMain}
+                            className={css.laneMain}
                             aria-label={t('focusSession')}
                             onClick={() => { focusSession(session.sessionId) }}
                           >
-                            <div className={css.rowHead}>
-                              <StatusDot state={session.stalled === true || session.outcome === 'failed' ? 'error' : status?.completionUnread === true ? 'success' : session.status === 'running' ? 'running' : 'idle'} />
-                              <PartnerAvatar name={identity.name} initial={identity.initial} role={identity.role} />
-                              <span className={css.sessionId} title={session.sessionId}>{identity.name}</span>
+                            <div className={css.laneIdentity}>
+                              <div className={css.identityTop}>
+                                <StatusDot state={session.stalled === true || session.outcome === 'failed' ? 'error' : status?.completionUnread === true ? 'success' : session.status === 'running' ? 'running' : 'idle'} />
+                                <PartnerAvatar name={identity.name} initial={identity.initial} role={identity.role} />
+                                <span className={css.sessionId} title={session.sessionId}>{identity.name}</span>
+                                {state.changes?.has(session.sessionId) === true ? <span className={css.chip}>{t('newBadge')}</span> : null}
+                              </div>
                               <span className={`${css.meta} ${css.taskTitle}`} title={session.title ?? ''}>{session.title ?? t('untitled')}</span>
                               <span className={css.meta}>{statusText(session.status, t)}</span>
+                            </div>
+                            <div className={css.laneActivity}>
+                              <ActivityTrack
+                                activity={session.activity}
+                                t={t}
+                                running={session.status === 'running'}
+                              />
+                              <div className={css.laneChips}>
+                                {session.cwd === undefined ? null : <span className={`${css.meta} ${css.path}`} title={session.cwd}>{session.cwd}</span>}
+                                {parentTitle(session.sessionId) === undefined
+                                  ? null
+                                  : <span className={css.chip}>↳ {t('derivedFrom', { title: parentTitle(session.sessionId) })}</span>}
+                                {session.outcome === 'failed'
+                                  ? <span className={css.chip} title={session.outcomeReason}>{t('failed')}{session.outcomeReason === undefined ? '' : ` · ${session.outcomeReason}`}</span>
+                                  : null}
+                                {session.changes === undefined
+                                  ? null
+                                  : (
+                                    <>
+                                      <span className={css.chip}>{t('changesSummary', { n: session.changes.total, added: session.changes.added, deleted: session.changes.deleted })}</span>
+                                      <button type="button" className={css.select} onClick={() => { openSession(session.sessionId) }}>{t('viewChanges')}</button>
+                                    </>
+                                  )}
+                                {session.stalled === true ? <span className={css.chip}>{t('stalled')}</span> : null}
+                              </div>
+                            </div>
+                            <div className={css.laneTime}>
+                              {session.status === 'running' && elapsed !== undefined
+                                ? <span className={css.elapsed}>{t('activityAge', { duration: elapsed })}</span>
+                                : null}
                               {session.lastPromptAt === undefined
                                 ? null
                                 : <span className={css.meta}>{relativeTime(session.lastPromptAt, t)}</span>}
-                              {session.cwd === undefined ? null : <span className={`${css.meta} ${css.path}`} title={session.cwd}>{session.cwd}</span>}
-                              {parentTitle(session.sessionId) === undefined
-                                ? null
-                                : <span className={css.chip}>↳ {t('derivedFrom', { title: parentTitle(session.sessionId) })}</span>}
-                              {session.outcome === 'failed'
-                                ? <span className={css.chip} title={session.outcomeReason}>{t('failed')}{session.outcomeReason === undefined ? '' : ` · ${session.outcomeReason}`}</span>
-                                : null}
-                              {session.changes === undefined
-                                ? null
-                                : (
-                                  <>
-                                    <span className={css.chip}>{t('changesSummary', { n: session.changes.total, added: session.changes.added, deleted: session.changes.deleted })}</span>
-                                    <button type="button" className={css.select} onClick={() => { openSession(session.sessionId) }}>{t('viewChanges')}</button>
-                                  </>
-                                )}
-                              {session.stalled === true ? <span className={css.chip}>{t('stalled')}</span> : null}
-                              {state.changes?.has(session.sessionId) === true ? <span className={css.chip}>{t('newBadge')}</span> : null}
                             </div>
-                            <ActivityTrack
-                              activity={session.activity}
-                              t={t}
-                              running={session.status === 'running'}
-                            />
                           </button>
-                          <div className={css.rowActions}>
+                          <div className={css.laneActions}>
                             <button
                               type="button"
                               className={css.select}
@@ -547,17 +590,21 @@ export function ProjectConsolePage({
               </>
             )
             : (
-              <StudioView
-                rows={rows}
-                aliases={aliasesMap}
-                statusFacts={statusFacts}
-                descriptorOf={descriptorOf}
-                shift={state.shift}
-                now={now}
-                t={t}
-                onFocus={focusSession}
-                onResetShift={resetShift}
-              />
+              <div className={css.studioShell}>
+                <aside className={css.studioSide}>{inboxOpen ? null : inboxNode}</aside>
+                <StudioView
+                  rows={rows}
+                  aliases={aliasesMap}
+                  statusFacts={statusFacts}
+                  descriptorOf={descriptorOf}
+                  shift={state.shift}
+                  now={now}
+                  t={t}
+                  onFocus={focusSession}
+                  onResetShift={resetShift}
+                  onOpen={openSession}
+                />
+              </div>
             ))
           : (
             <article className={`${css.row} ${focus.row === undefined ? css.rowIdle : focus.row.status === 'running' ? css.rowRunning : css.rowIdle}`}>

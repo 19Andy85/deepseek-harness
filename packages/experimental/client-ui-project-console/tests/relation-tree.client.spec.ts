@@ -24,6 +24,18 @@ describe('relationGroups', () => {
     expect(relationGroups([row('a'), row('b', { relations: { children: [] } })])).toHaveLength(0)
   })
 
+  it('walks visible grandchildren with depth and activity', () => {
+    const groups = relationGroups([
+      row('parent', { activity: [{ kind: 'job', label: 'sleep 60' }], relations: { children: [{ sessionId: 'child' }] } }),
+      row('child', { activity: [{ kind: 'turn' }], relations: { children: [{ sessionId: 'grand' }] } }),
+      row('grand', { title: 'Grand', status: 'running' }),
+    ])
+    expect(groups[0]?.children.map(child => child.depth)).toEqual([1, 2])
+    expect(groups[0]?.children[1]?.title).toBe('Grand')
+    expect(groups[0]?.parent.jobs).toEqual(['sleep 60'])
+    expect(groups[0]?.children[0]?.activity).toBe('turn')
+  })
+
   it('caps listed children', () => {
     const children = Array.from({ length: 12 }, (_, index) => ({ sessionId: `c${String(index)}` }))
     const groups = relationGroups([row('parent', { relations: { children } })])

@@ -178,3 +178,36 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.depth {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: var(--pc-font-xs, 11px);
+  border: 1px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+
+.activity {
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--pc-font-xs, 11px);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jobChip {
+  color: var(--dsw-alias-label-secondary);
+  background: var(--dsw-alias-bg-skeleton);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: var(--pc-font-xs, 11px);
+}
+
+.childColumn::before {
+  content: '↳ 派生';
+  display: block;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: var(--pc-font-xs, 11px);
+  margin-bottom: 2px;
+}
