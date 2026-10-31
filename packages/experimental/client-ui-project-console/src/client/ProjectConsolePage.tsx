@@ -212,8 +212,9 @@ export function ProjectConsolePage({
   const orderedLanes: { session: SessionTaskView; section: string; total: number; nested: boolean }[] = []
   for (const section of sections) {
     for (const family of section.families) {
+      const familyLaneCount = section.families.reduce((sum, members) => sum + members.length, 0)
       for (const [index, row] of family.entries()) {
-        orderedLanes.push({ session: row, section: section.title, total: section.families.length, nested: index > 0 })
+        orderedLanes.push({ session: row, section: section.title, total: familyLaneCount, nested: index > 0 })
       }
     }
   }
@@ -469,7 +470,9 @@ export function ProjectConsolePage({
                     const startedAt = session.activity
                       .flatMap(entry => entry.startedAt === undefined ? [] : [entry.startedAt])
                       .reduce<number | undefined>((min, at) => (min === undefined || at < min ? at : min), session.lastPromptAt)
-                    const elapsed = startedAt === undefined ? undefined : formatDuration(Math.max(0, now - startedAt), t)
+                    const elapsed = startedAt === undefined || now - startedAt > 86_400_000
+                      ? undefined
+                      : formatDuration(Math.max(0, now - startedAt), t)
                     const newSection = section !== lastSection
                     lastSection = section
                     return (

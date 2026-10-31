@@ -107,9 +107,11 @@ export function formatDuration(
   t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string,
 ): string {
   const minutes = Math.floor(ms / 60_000)
-  return minutes < 1
-    ? t('durationSeconds', { n: Math.max(1, Math.round(ms / 1_000)) })
-    : t('durationMinutes', { n: minutes })
+  if (minutes < 1) return t('durationSeconds', { n: Math.max(1, Math.round(ms / 1_000)) })
+  const hours = Math.floor(minutes / 60)
+  if (hours < 1) return t('durationMinutes', { n: minutes })
+  if (hours < 24) return t('durationHours', { n: hours })
+  return t('durationDays', { n: Math.floor(hours / 24) })
 }
 
 /** Display label of one activity family. */

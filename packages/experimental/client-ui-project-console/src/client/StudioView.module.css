@@ -430,3 +430,9 @@
     max-height: none;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .deskDerived {
+    animation: none;
+  }
+}
