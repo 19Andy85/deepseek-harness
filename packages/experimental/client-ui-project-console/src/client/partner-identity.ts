@@ -4,7 +4,7 @@
 export type PartnerRole = 'analysis' | 'implementation' | 'research' | 'operation' | 'guard' | 'general'
 
 const PREFIXES = ['请帮我', '请帮忙', '请', '帮我', '帮忙', '子代理', '子会话', '使用', '用', '执行', '运行', '分析', '检查', '查看', '处理', '解决', '修复', '实现', '开发', '研究', '评估', '整理', '读取', '搜索', '收集', '写', '创建', '生成']
-const FILLERS = ['工具', '执行', '命令', '并等待', '并回复', '并只回复', '只回复', '立即', '马上']
+const FILLERS = ['工具', '执行', '命令', '并等待', '并回复', '并只回复', '只回复', '立即', '马上', '派生', '父会话', '一个', '两个', '这个', '使用', '用']
 const SUFFIXES = ['命令', '任务', '测试', '并等待', '并回复', '并只回复']
 
 /** Role keywords, checked in order. */
@@ -27,6 +27,7 @@ export function normalizePartnerName(title: string | undefined): string | undefi
   if (value === '') return undefined
   value = value.replace(/[`"'“”‘’]/g, ' ')
   value = value.replace(/^[「『"'(（【\[]+/, '').replace(/[」』"')）】\]。.!！?？,，;；:：]+$/, '').trim()
+  value = value.split(/[；;]/)[0] ?? value
   let changed = true
   while (changed) {
     changed = false
@@ -41,6 +42,12 @@ export function normalizePartnerName(title: string | undefined): string | undefi
   for (const suffix of SUFFIXES) value = value.split(suffix).join(' ')
   for (const filler of FILLERS) value = value.split(filler).join(' ')
   value = value.replace(/\s+/g, ' ').trim()
+  for (const prefix of PREFIXES) {
+    if (value.startsWith(prefix) && value.length > prefix.length) {
+      value = value.slice(prefix.length).trim()
+      break
+    }
+  }
   if (value === '') return undefined
   const characters = [...value]
   return characters.length > 14 ? `${characters.slice(0, 13).join('')}…` : value

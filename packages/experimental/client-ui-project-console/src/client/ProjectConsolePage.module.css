@@ -116,7 +116,7 @@
 
 .prompt {
   flex: 1;
-  min-height: 48px;
+  min-height: 36px;
   padding: 10px 12px;
   border-radius: var(--pc-radius);
   border: 1px solid var(--dsw-alias-settings-card-stroke);
@@ -441,4 +441,33 @@
   color: var(--dsw-alias-label-primary);
   font-size: var(--pc-font-s);
   width: 160px;
+}
+
+.sectionCount {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: var(--pc-font-xs);
+  font-weight: 400;
+}
+
+.nestedLane {
+  margin-left: 44px;
+  padding-left: 10px;
+  border-left: 1px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: 0 var(--pc-radius-lg) var(--pc-radius-lg) 0;
+  background: color-mix(in srgb, var(--dsw-alias-settings-card-fill) 60%, transparent);
+}
+
+.needsBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--dsw-alias-state-warn-primary) 55%, var(--dsw-alias-settings-card-stroke));
+  border-radius: 999px;
+  color: var(--dsw-alias-state-warn-primary);
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 10%, transparent);
+  font-size: var(--pc-font-xs);
+  font-weight: 500;
+  flex: none;
 }

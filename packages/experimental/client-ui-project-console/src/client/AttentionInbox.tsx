@@ -2,6 +2,7 @@
 import type { QuestionAnswer } from '@deepseek-ai/dsh-client-ui-user-questions/client'
 import type { AttentionItem } from './attention.ts'
 import type { ProjectConsoleKey } from './locales.ts'
+import { PauseIcon } from './icons.tsx'
 import { StatusDot } from './visual/visual.tsx'
 import css from './ProjectConsolePage.module.css'
 import visualCss from './visual/visual.module.css'
@@ -50,6 +51,7 @@ export function AttentionInbox({
               <article key={item.sessionId} className={`${css.row} ${css.rowAttention}`}>
                 <div className={css.rowHead}>
                   <StatusDot state="attention" />
+                  <span className={css.needsBadge}><PauseIcon size={11} /> {t('needsYou')}</span>
                   <span className={css.sessionId} title={item.sessionId}>{item.row.title ?? t('untitled')}</span>
                   <span className={css.meta}>{item.row.status === 'running' ? t('running') : t('idle')}</span>
                   {item.row.lastPromptAt === undefined

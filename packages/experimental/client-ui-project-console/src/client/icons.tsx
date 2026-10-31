@@ -47,6 +47,11 @@ export function DeskIcon(props: IconProps) {
   return <Icon size={28} {...props}><path d="M2.5 6.5h11v6h-11z" /><path d="M2.5 10.5h11" /><circle cx="12.5" cy="4" r="1.5" /></Icon>
 }
 
+/** A paused waiting state: two bars. */
+export function PauseIcon(props: IconProps) {
+  return <Icon {...props}><path d="M6 4v8M10 4v8" /></Icon>
+}
+
 /** Expand/collapse chevron, rotated by the caller. */
 export function ChevronIcon(props: IconProps) {
   return <Icon {...props}><path d="M4 6.5 8 10l4-3.5" /></Icon>
