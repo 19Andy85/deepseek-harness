@@ -168,7 +168,7 @@ export function ActivityTrack({
               ? null
               : <span className={css.trackAge}>{t('activityAge', { duration: formatDuration(now - entry.startedAt, t) })}</span>}
             {items.slice(0, 3).map(item => (
-              <span key={item} className={css.trackItem} title={item}>{item}</span>
+              <span key={item} className={`${css.trackItem} ${css[`item_${entry.kind}`] ?? ''}`} title={item}>{item}</span>
             ))}
             {items.length > 3 ? <span className={css.trackItem}>+{items.length - 3}</span> : null}
           </div>

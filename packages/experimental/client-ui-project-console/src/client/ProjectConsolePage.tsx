@@ -306,6 +306,14 @@ export function ProjectConsolePage({
             {workspaces.map(workspace => <option key={workspace.id} value={workspace.id}>{workspace.title}</option>)}
           </select>
           <button type="button" className={css.select} onClick={() => { refresh() }}>{t('refresh')}</button>
+          <button type="button" className={css.select} onClick={() => { window.location.reload() }}>{t('refreshPage')}</button>
+          {state.updatedAt === undefined
+            ? null
+            : (
+              <span className={css.meta}>
+                {t('updatedAt', { time: new Date(state.updatedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false }) })}
+              </span>
+            )}
           <div className={css.viewToggle} role="group" aria-label={t('viewCanvas')}>
             <button
               type="button"
@@ -484,8 +492,9 @@ export function ProjectConsolePage({
                           <button
                             type="button"
                             className={css.laneMain}
-                            aria-label={t('focusSession')}
+                            aria-label={`${identity.name} · ${statusText(session.status, t)}`}
                             onClick={() => { focusSession(session.sessionId) }}
+                            onDoubleClick={() => { openSession(session.sessionId) }}
                           >
                             <div className={css.laneIdentity}>
                               <div className={css.identityTop}>
@@ -585,6 +594,14 @@ export function ProjectConsolePage({
                               </div>
                             )
                             : null}
+                          <div className={css.laneHover} aria-hidden="true">
+                            <span className={css.hoverTitle}>{session.title ?? t('untitled')}</span>
+                            <span className={css.meta}>
+                              {statusText(session.status, t)}
+                              {session.lastPromptAt === undefined ? '' : ` · ${relativeTime(session.lastPromptAt, t)}`}
+                              {session.relations?.children === undefined ? '' : ` · ${t('subagentsTitle')} ${String(session.relations.children.length)}`}
+                            </span>
+                          </div>
                         </article>
                       </Fragment>
                     )

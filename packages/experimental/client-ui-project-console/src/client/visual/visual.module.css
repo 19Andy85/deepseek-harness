@@ -329,3 +329,8 @@
     display: none;
   }
 }
+
+.item_turn { border-radius: 999px; }
+.item_job { border-radius: 4px; }
+.item_subagent { border-style: dashed; }
+.item_schedule { border-style: dotted; }

@@ -618,3 +618,41 @@
     max-height: none;
   }
 }
+
+.lane {
+  position: relative;
+}
+
+.laneHover {
+  display: none;
+  position: absolute;
+  left: 14px;
+  top: calc(100% + 4px);
+  z-index: 20;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 220px;
+  max-width: 420px;
+  padding: 8px 10px;
+  border: 1px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: var(--pc-radius);
+  background: var(--dsw-alias-settings-card-fill);
+  box-shadow: 0 8px 24px color-mix(in srgb, #000 35%, transparent);
+  pointer-events: none;
+}
+
+.lane:hover .laneHover,
+.lane:focus-within .laneHover {
+  display: flex;
+}
+
+.hoverTitle {
+  color: var(--dsw-alias-label-primary);
+  font-size: var(--pc-font-s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .laneHover {
+    transition: none;
+  }
+}

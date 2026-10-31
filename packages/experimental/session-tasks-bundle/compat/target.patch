@@ -37,7 +37,7 @@ index 1b09bef969..6d68208f38 100644
 +  /** When this item started, when the provider can report it. */
 +  readonly startedAt?: number
  }
- 
+
  /**
 @@ -55,6 +57,10 @@ export interface SessionActivityItem {
   */
@@ -90,7 +90,7 @@ index d6df9aae42..93db9ec98d 100644
 @@ -7703,6 +7715,52 @@ importers:
          specifier: ^4.3.2
          version: 4.3.2
- 
+
 +  packages/experimental/api-session-tasks:
 +    dependencies:
 +      '@deepseek-ai/dsh-brand':
@@ -143,7 +143,7 @@ index d6df9aae42..93db9ec98d 100644
 @@ -8339,6 +8397,64 @@ importers:
          specifier: ^18.2.0
          version: 18.3.1(react@18.3.1)
- 
+
 +  packages/experimental/client-ui-project-console:
 +    dependencies:
 +      '@deepseek-ai/dsh-experimental-api-session-tasks':
@@ -208,7 +208,7 @@ index d6df9aae42..93db9ec98d 100644
 @@ -9093,6 +9209,28 @@ importers:
          specifier: workspace:~
          version: link:../../../vendor/cordis
- 
+
 +  packages/experimental/session-tasks-bundle:
 +    dependencies:
 +      '@deepseek-ai/dsh-experimental-api-session-tasks':
@@ -237,7 +237,7 @@ index d6df9aae42..93db9ec98d 100644
 @@ -9383,6 +9521,67 @@ importers:
          specifier: workspace:*
          version: link:../../core/tools
- 
+
 +  packages/experimental/tool-session-tasks:
 +    dependencies:
 +      '@deepseek-ai/dsh-brand':

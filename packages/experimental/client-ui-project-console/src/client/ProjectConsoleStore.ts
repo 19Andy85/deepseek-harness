@@ -74,6 +74,8 @@ export interface ConsoleState {
   readonly lastSeenAt?: number | undefined
   /** Today's observed counters shown in the shift summary. */
   readonly shift?: ShiftStats | undefined
+  /** When the visible rows were last read from the Host. */
+  readonly updatedAt?: number | undefined
 }
 
 /** Host ports the store reads; tests can provide them without a browser. */
@@ -421,7 +423,7 @@ export class ProjectConsoleStore {
     this.emit()
     const run = async (): Promise<void> => {
       if (workspaceId === undefined) {
-        this.state = { ...this.state, status: 'ready', sessions: [] }
+        this.state = { ...this.state, status: 'ready', sessions: [], updatedAt: Date.now() }
         this.emit()
         return
       }
@@ -455,7 +457,7 @@ export class ProjectConsoleStore {
           const serverSeenAt = result.value.lastSeenAt
           const localChanges = firstVisit && serverChanges === undefined ? compareVisit(previous, rows) : undefined
           this.state = {
-            ...this.state, status: 'ready', workspaceId, sessions: rows, error: undefined,
+            ...this.state, status: 'ready', workspaceId, sessions: rows, error: undefined, updatedAt: Date.now(),
             ...serverChanges === undefined
               ? localChanges === undefined ? {} : { changes: localChanges }
               : { changes: new Map(serverChanges.map(sessionId => [sessionId, 'updated' as VisitChange])) },

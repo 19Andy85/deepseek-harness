@@ -53,12 +53,12 @@
  import type {} from '@deepseek-ai/dsh-workspace-changes'
  import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
 -import type { SessionProjectionSummaryExcluded } from '@deepseek-ai/dsh-session-projection/types'
- 
+
  /** How the last finished turn ended. */
  export type SessionTaskOutcomeKind = 'completed' | 'failed' | 'cancelled' | 'blocked' | 'truncated'
 @@ -30,9 +29,13 @@
  }
- 
+
  declare module '@deepseek-ai/dsh-session-projection/types' {
 +  interface SessionProjectionStateMap {
 +    /** Last finished turn's outcome. */
@@ -71,7 +71,7 @@
 +    sessionTaskOutcome: SessionTaskOutcome
    }
  }
- 
+
 @@ -75,5 +78,5 @@
    stateSchema: outcomeSchema,
    init: (): SessionTaskOutcome => ({}),
@@ -114,13 +114,13 @@
 -  readonly openConsole: (workspaceId: WorkspaceId) => void
 +  readonly openConsole: (sessionId: string) => void
  }
- 
+
  /** Framework props and the console dictionary of the menu row. */
 -export type ProjectConsoleMenuItemProps = PropsRuntime<'sidebar.workspaces.workspace.menu.item'>
 +export type ProjectConsoleMenuItemProps = PropsRuntime<'sidebar.workspaces.session.menu.item'>
    & PropsLocale<'projectConsole'>
    & InjectFace<ProjectConsoleMenuInjected>
- 
+
 @@ -25,14 +24,14 @@
   * @returns the menu row.
   */
@@ -147,7 +147,7 @@
  import type { VisitMemory } from './visit-memory.ts'
 -import { de, en, es, fr, ja, pt, ru, zh } from './locales.ts'
 +import { en, zh } from './locales.ts'
- 
+
  /** Locale namespace of the page copy. */
  export const NS = 'projectConsole'
 @@ -53,7 +53,7 @@
