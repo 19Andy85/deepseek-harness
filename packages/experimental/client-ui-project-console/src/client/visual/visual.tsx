@@ -1,6 +1,7 @@
 /** Visual-language primitives shared by the project console views. */
 import { Fragment } from 'react'
 import type { SessionTaskView } from '@deepseek-ai/dsh-experimental-api-session-tasks/types'
+import { JobIcon, ScheduleIcon, SubagentIcon, TurnIcon } from '../icons.tsx'
 import type { ConsoleFocusTimelineEntry } from '../ProjectConsoleStore.ts'
 import type { ProjectConsoleKey } from '../locales.ts'
 import css from './visual.module.css'
@@ -79,7 +80,7 @@ export function HealthSegments({
           <button
             key={segment.key}
             type="button"
-            className={css.legendItem}
+            className={segment.count === 0 ? `${css.legendItem} ${css.legendItemZero}` : css.legendItem}
             onClick={() => { onFilter(filter === segment.key ? undefined : segment.key) }}
           >
             <StatusDot state={segment.key === 'needs' ? 'attention'
@@ -155,8 +156,10 @@ export function ActivityTrack({
         const items = entry.items?.map(item => item.label ?? item.id) ?? []
         return (
           <div key={entry.kind} className={css.trackGroup}>
-            <span className={running ? `${css.trackLead} ${css.trackRunning}` : css.trackLead} aria-hidden="true">
-              {activitySymbol(entry.kind)}
+            <span className={running ? `${css.trackLead} ${css.trackRunning}` : css.trackLead}>
+              {entry.kind === 'turn' ? <TurnIcon /> : entry.kind === 'job' ? <JobIcon />
+                : entry.kind === 'subagent' ? <SubagentIcon /> : entry.kind === 'schedule' ? <ScheduleIcon />
+                  : <span aria-hidden="true">•</span>}
             </span>
             <span className={css.trackLabel}>{activityKindLabel(entry.kind, t)}</span>
             {entry.startedAt === undefined || now === undefined

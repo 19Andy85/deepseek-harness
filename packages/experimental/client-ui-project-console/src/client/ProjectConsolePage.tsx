@@ -242,21 +242,25 @@ export function ProjectConsolePage({
           </div>
           <span className={css.keyboardHint}>{t('keyboardHint')}</span>
         </div>
-        <form className={css.compose} onSubmit={(event) => {
-          event.preventDefault()
-          void dispatch(prompt).then((accepted) => { if (accepted) setPrompt('') })
-        }}>
-          <textarea
-            className={css.prompt}
-            value={prompt}
-            rows={2}
-            placeholder={t('newSessionPrompt')}
-            onChange={(event) => { setPrompt(event.currentTarget.value) }}
-          />
-          <button type="submit" className={css.select} disabled={state.dispatch === 'sending' || prompt.trim() === ''}>
-            {state.dispatch === 'sending' ? t('newSessionSending') : t('newSessionSend')}
-          </button>
-        </form>
+        {focus !== undefined
+          ? null
+          : (
+            <form className={css.compose} onSubmit={(event) => {
+              event.preventDefault()
+              void dispatch(prompt).then((accepted) => { if (accepted) setPrompt('') })
+            }}>
+              <textarea
+                className={css.prompt}
+                value={prompt}
+                rows={2}
+                placeholder={t('newSessionPrompt')}
+                onChange={(event) => { setPrompt(event.currentTarget.value) }}
+              />
+              <button type="submit" className={css.select} disabled={state.dispatch === 'sending' || prompt.trim() === ''}>
+                {state.dispatch === 'sending' ? t('newSessionSending') : t('newSessionSend')}
+              </button>
+            </form>
+          )}
         {state.dispatchFailed === true
           ? <div className={css.notice} role="alert"><span className={css.noticeText}>{t('newSessionFailed')}</span></div>
           : null}
@@ -264,7 +268,7 @@ export function ProjectConsolePage({
           ? <div className={css.notice} role="alert"><span className={css.noticeText}>{t('actionFailed')}</span></div>
           : null}
       </header>
-      <div className={css.body}>
+      <div className={rows.length > 12 ? `${css.body} ${css.compact}` : css.body}>
         {elsewhere.length === 0
           ? null
           : (

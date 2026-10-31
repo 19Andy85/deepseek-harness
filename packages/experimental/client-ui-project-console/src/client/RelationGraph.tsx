@@ -2,6 +2,7 @@
 import { useState } from 'react'
 import type { ProjectConsoleKey } from './locales.ts'
 import type { RelationGraphGroup, RelationGraphNode } from './relation-tree.ts'
+import { ChevronIcon } from './icons.tsx'
 import { StatusDot, type VisualState } from './visual/visual.tsx'
 import css from './RelationGraph.module.css'
 
@@ -51,7 +52,7 @@ export function RelationGraph({
               aria-label={collapsed.has(group.parent.sessionId) ? t('expandGraph') : t('collapseGraph')}
               onClick={() => { toggle(group.parent.sessionId) }}
             >
-              {collapsed.has(group.parent.sessionId) ? '▸' : '▾'}
+              <span className={collapsed.has(group.parent.sessionId) ? css.chevronCollapsed : css.chevron}><ChevronIcon /></span>
             </button>
             <StatusDot state={stateOf(group.parent)} />
             <button type="button" className={css.link} onClick={() => { onOpen(group.parent.sessionId) }}>

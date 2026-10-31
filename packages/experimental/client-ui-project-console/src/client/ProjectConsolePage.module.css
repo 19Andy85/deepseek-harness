@@ -385,3 +385,31 @@
     display: none;
   }
 }
+
+.question {
+  display: inline;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-width: 46ch;
+  vertical-align: bottom;
+}
+
+/* Compact density once the console carries many rows. */
+.compact {
+  gap: var(--pc-gap-2);
+}
+
+.compact .row {
+  padding: 8px 12px;
+  gap: 6px;
+}
+
+.compact .path,
+.compact .trackAge {
+  display: none;
+}
+
+.compact .badges {
+  gap: 4px;
+}

@@ -272,3 +272,18 @@
 }
 
 .segmentError { background: var(--dsw-alias-state-error-primary); }
+
+@media (max-width: 760px) {
+  .legendItemZero {
+    display: none;
+  }
+
+  .legend {
+    gap: 10px;
+  }
+}
+
+.trackLead {
+  display: inline-flex;
+  align-items: center;
+}

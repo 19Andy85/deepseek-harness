@@ -124,3 +124,13 @@
   width: 1px;
   background: var(--dsw-alias-settings-card-fill);
 }
+
+.chevron,
+.chevronCollapsed {
+  display: inline-flex;
+  transition: transform 150ms ease-out;
+}
+
+.chevronCollapsed {
+  transform: rotate(-90deg);
+}
