@@ -145,11 +145,11 @@
 }
 
 .lamp_running {
-  animation: studioLampPulse 2s ease-in-out infinite;
+  animation: studioLampPulse 2.6s ease-in-out infinite;
 }
 
 .lamp_attention {
-  animation: studioLampPulse 1.4s ease-in-out infinite;
+  animation: studioLampPulse 1.9s ease-in-out infinite;
 }
 
 .lamp_success {

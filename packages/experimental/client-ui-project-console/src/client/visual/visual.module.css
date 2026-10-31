@@ -251,7 +251,7 @@
 }
 
 .trackRunning {
-  animation: consoleLeadBob 1.6s ease-in-out infinite;
+  animation: consoleLeadBob 2.2s ease-in-out infinite;
 }
 
 .timeLine {

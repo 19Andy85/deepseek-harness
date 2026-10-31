@@ -341,3 +341,19 @@
     padding: 32px 0;
   }
 }
+
+.rowActive {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 1px;
+}
+
+.keyboardHint {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: var(--pc-font-xs);
+}
+
+@media (max-width: 900px) {
+  .keyboardHint {
+    display: none;
+  }
+}

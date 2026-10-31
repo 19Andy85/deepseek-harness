@@ -95,6 +95,7 @@ export function ProjectConsolePage({
   closeFocus, resetShift, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus,
 }: ProjectConsolePageProps) {
   const [now, setNow] = useState(() => Date.now())
+  const [activeId, setActiveId] = useState<string | undefined>(undefined)
   const [prompt, setPrompt] = useState('')
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
@@ -157,6 +158,45 @@ export function ProjectConsolePage({
     return true
   })
   const hasRows = rows.length > 0
+  const keyboardIds = [...attention.map(item => item.sessionId), ...workingRows.map(row => row.sessionId)]
+  const active = activeId !== undefined && keyboardIds.includes(activeId) ? activeId : undefined
+  useEffect(() => {
+    const editable = (target: EventTarget | null): boolean => target instanceof HTMLElement
+      && (target.isContentEditable || target.closest('input, textarea, [contenteditable="true"]') !== null)
+    const onKey = (event: KeyboardEvent): void => {
+      if (event.metaKey || event.ctrlKey || event.altKey || editable(event.target)) return
+      const index = active === undefined ? -1 : keyboardIds.indexOf(active)
+      if (event.key === 'j' || event.key === 'ArrowDown') {
+        event.preventDefault()
+        const next = keyboardIds[Math.min(keyboardIds.length - 1, index + 1)]
+        if (next !== undefined) setActiveId(next)
+      } else if (event.key === 'k' || event.key === 'ArrowUp') {
+        event.preventDefault()
+        const next = keyboardIds[Math.max(0, index - 1)]
+        if (next !== undefined) setActiveId(next)
+      } else if (event.key === 'Enter') {
+        const target = active ?? keyboardIds[0]
+        if (target !== undefined) {
+          event.preventDefault()
+          focusSession(target)
+        }
+      } else if (event.key === 'Escape') {
+        if (state.focus !== undefined) closeFocus()
+        else { setActiveId(undefined); setReplyingTo(null); setReplyText('') }
+      } else if (active !== undefined && event.key === 'a') {
+        const pending = pendingOf(active)
+        if (pending?.kind === 'approval') void answerApproval(active, 'allowed-once')
+      } else if (active !== undefined && event.key === 'r') {
+        setReplyingTo(active)
+        setReplyText('')
+      } else if (active !== undefined && event.key === 'i') {
+        const row = rows.find(candidate => candidate.sessionId === active)
+        if (row?.status === 'running') void cancelSession(active)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => { window.removeEventListener('keydown', onKey) }
+  }, [active, keyboardIds.join(','), state.focus, rows, attention, pendingOf, focusSession, closeFocus, answerApproval, cancelSession])
   const focus = state.focus
   useEffect(() => {
     const timer = setInterval(() => { setNow(Date.now()) }, 1_000)
@@ -200,6 +240,7 @@ export function ProjectConsolePage({
               {t('viewStudio')}
             </button>
           </div>
+          <span className={css.keyboardHint}>{t('keyboardHint')}</span>
         </div>
         <form className={css.compose} onSubmit={(event) => {
           event.preventDefault()
@@ -264,6 +305,7 @@ export function ProjectConsolePage({
             <AttentionInbox
               attention={attention}
               busySessionId={actionBusy}
+              active={active}
               t={t}
               actions={{
                 open: openSession,
@@ -289,7 +331,7 @@ export function ProjectConsolePage({
                   const lane = status?.completionUnread === true ? css.rowSuccess
                     : session.status === 'running' ? css.rowRunning : css.rowIdle
                   return (
-                    <article key={session.sessionId} className={`${css.row} ${lane}`}>
+                    <article key={session.sessionId} className={`${css.row} ${lane} ${active === session.sessionId ? css.rowActive : ''}`}>
                       <button
                         type="button"
                         className={css.rowMain}

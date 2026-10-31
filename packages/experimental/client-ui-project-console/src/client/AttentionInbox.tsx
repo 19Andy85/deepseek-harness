@@ -24,10 +24,11 @@ export interface AttentionInboxActions {
  * @returns the inbox section.
  */
 export function AttentionInbox({
-  attention, busySessionId, t, actions,
+  attention, busySessionId, active, t, actions,
 }: {
   readonly attention: readonly AttentionItem[]
   readonly busySessionId: string | undefined
+  readonly active?: string | undefined
   readonly t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string
   readonly actions: AttentionInboxActions
 }) {
@@ -116,7 +117,7 @@ export function AttentionInbox({
             ))}
             {failedItems.length === 0 ? null : <h3 className={visualCss.bucketTitle}>{t('failedGroup')}</h3>}
             {failedItems.map(item => (
-              <article key={item.sessionId} className={`${css.row} ${css.rowFailed}`}>
+              <article key={item.sessionId} className={`${css.row} ${css.rowFailed} ${active === item.sessionId ? css.rowActive : ''}`}>
                 <div className={css.rowHead}>
                   <StatusDot state="error" />
                   <span className={css.sessionId} title={item.sessionId}>{item.row.title ?? t('untitled')}</span>
@@ -134,7 +135,7 @@ export function AttentionInbox({
             ))}
             {completedItems.length === 0 ? null : <h3 className={visualCss.bucketTitle}>{t('completedGroup')}</h3>}
             {completedItems.map(item => (
-              <article key={item.sessionId} className={`${css.row} ${css.rowSuccess}`}>
+              <article key={item.sessionId} className={`${css.row} ${css.rowSuccess} ${active === item.sessionId ? css.rowActive : ''}`}>
                 <div className={css.rowHead}>
                   <StatusDot state="success" />
                   <span className={css.sessionId} title={item.sessionId}>{item.row.title ?? t('untitled')}</span>
