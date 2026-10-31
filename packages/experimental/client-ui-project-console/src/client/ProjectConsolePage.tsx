@@ -1,7 +1,7 @@
 /** Workspace console page: the attention inbox, the project state bar, and the session work surface. */
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import type { HostObservable, InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
+import type { SessionStatus, SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-user-questions/client'
 import type { QuestionAnswer } from '@deepseek-ai/dsh-client-ui-user-questions/client'
 import type { ConsoleState, ConsoleWorkspace } from './ProjectConsoleStore.ts'
@@ -10,6 +10,8 @@ import { visibleSessions } from './sessions-view.ts'
 import { relationHints } from './relations.ts'
 import { relationGroups } from './relation-tree.ts'
 import { otherWorkspaceAttention, type WorkspaceSessions } from './cross-workspace.ts'
+import { globalInboxCount, globalInboxGroups } from './global-inbox.ts'
+import { GlobalInbox } from './GlobalInbox.tsx'
 import { RelationGraph } from './RelationGraph.tsx'
 import { AttentionInbox } from './AttentionInbox.tsx'
 import { StudioView } from './StudioView.tsx'
@@ -96,6 +98,7 @@ export function ProjectConsolePage({
 }: ProjectConsolePageProps) {
   const [now, setNow] = useState(() => Date.now())
   const [activeId, setActiveId] = useState<string | undefined>(undefined)
+  const [inboxOpen, setInboxOpen] = useState(false)
   const [prompt, setPrompt] = useState('')
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
@@ -108,13 +111,13 @@ export function ProjectConsolePage({
   )
   const selected = selectedWorkspaceId()
   const workspaces = workspaceOptions()
-  const elsewhere = otherWorkspaceAttention(
-    new Map([...statuses].map(([id, status]) => [String(id), status])),
-    workspaceSessions(),
-    selected,
+  const statusFacts: ReadonlyMap<string, SessionStatus> = new Map(
+    [...statuses].map(([id, status]): [string, SessionStatus] => [String(id), status]),
   )
+  const inboxGroups = globalInboxGroups(statusFacts, workspaceSessions())
+  const inboxTotal = globalInboxCount(inboxGroups)
+  const elsewhere = otherWorkspaceAttention(statusFacts, workspaceSessions(), selected)
   const rows = visibleSessions(state.sessions)
-  const statusFacts = new Map([...statuses].map(([id, status]) => [String(id), status]))
   const pendingOf = (sessionId: string) => statusFacts.get(sessionId)?.pendingInteraction
   const descriptorOf = (sessionId: string): AttentionDescriptor | undefined => {
     const pending = pendingOf(sessionId)
@@ -180,7 +183,11 @@ export function ProjectConsolePage({
           event.preventDefault()
           focusSession(target)
         }
+      } else if (event.key === 'g') {
+        event.preventDefault()
+        setInboxOpen(open => !open)
       } else if (event.key === 'Escape') {
+        if (inboxOpen) { setInboxOpen(false); return }
         if (state.focus !== undefined) closeFocus()
         else { setActiveId(undefined); setReplyingTo(null); setReplyText('') }
       } else if (active !== undefined && event.key === 'a') {
@@ -196,7 +203,7 @@ export function ProjectConsolePage({
     }
     window.addEventListener('keydown', onKey)
     return () => { window.removeEventListener('keydown', onKey) }
-  }, [active, keyboardIds.join(','), state.focus, rows, attention, pendingOf, focusSession, closeFocus, answerApproval, cancelSession])
+  }, [active, keyboardIds.join(','), state.focus, rows, attention, inboxOpen, pendingOf, focusSession, closeFocus, answerApproval, cancelSession])
   const focus = state.focus
   useEffect(() => {
     const timer = setInterval(() => { setNow(Date.now()) }, 1_000)
@@ -240,6 +247,14 @@ export function ProjectConsolePage({
               {t('viewStudio')}
             </button>
           </div>
+          <button
+            type="button"
+            className={css.select}
+            aria-expanded={inboxOpen}
+            onClick={() => { setInboxOpen(open => !open) }}
+          >
+            {t('globalInbox')}{inboxTotal === 0 ? '' : ` ${String(inboxTotal)}`}
+          </button>
           <span className={css.keyboardHint}>{t('keyboardHint')}</span>
         </div>
         {focus !== undefined
@@ -269,7 +284,23 @@ export function ProjectConsolePage({
           : null}
       </header>
       <div className={rows.length > 12 ? `${css.body} ${css.compact}` : css.body}>
-        {elsewhere.length === 0
+        {inboxOpen
+          ? (
+            <GlobalInbox
+              groups={inboxGroups}
+              statuses={statusFacts}
+              t={t}
+              onOpen={(sessionId) => { openSession(sessionId) }}
+              onSwitch={(workspaceId) => { selectWorkspace(workspaceId) }}
+              onApprove={(sessionId) => { void answerApproval(sessionId, 'allowed-once') }}
+              onReject={(sessionId) => { void answerApproval(sessionId, 'rejected') }}
+              onAnswer={(sessionId, questionId, label) => {
+                void answerQuestion(sessionId, { answers: [{ id: questionId, selected: [label] }] })
+              }}
+            />
+          )
+          : null}
+        {inboxOpen || elsewhere.length === 0
           ? null
           : (
             <div className={css.notice} role="status">
