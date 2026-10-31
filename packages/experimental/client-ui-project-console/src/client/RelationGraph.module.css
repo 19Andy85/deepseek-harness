@@ -73,3 +73,54 @@
   color: var(--dsw-alias-state-business-primary);
   font-size: 11px;
 }
+
+.toggle {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 16px;
+  cursor: pointer;
+  flex: none;
+}
+
+.children {
+  position: relative;
+}
+
+.children::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -2px;
+  bottom: 8px;
+  width: 1px;
+  background: var(--dsw-alias-settings-card-stroke);
+}
+
+.childRow {
+  position: relative;
+}
+
+.childRow::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 8px;
+  height: 1px;
+  background: var(--dsw-alias-settings-card-stroke);
+}
+
+.childRow:last-child::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  bottom: 0;
+  width: 1px;
+  background: var(--dsw-alias-settings-card-fill);
+}
