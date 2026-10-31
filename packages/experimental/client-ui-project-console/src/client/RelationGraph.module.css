@@ -134,3 +134,47 @@
 .chevronCollapsed {
   transform: rotate(-90deg);
 }
+
+.canvas {
+  display: flex;
+  align-items: center;
+  margin: 4px 0 8px 22px;
+}
+
+.links {
+  flex: none;
+  overflow: visible;
+}
+
+.childColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.childNode {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  max-width: 520px;
+  padding: 0 10px;
+  border: 1px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: var(--pc-radius, 8px);
+  background: var(--dsw-alias-settings-card-fill);
+  color: var(--dsw-alias-label-primary);
+  font-size: var(--pc-font-s, 12px);
+  cursor: pointer;
+  text-align: left;
+}
+
+.childNode:hover {
+  border-color: var(--dsw-alias-brand-primary);
+}
+
+.childTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

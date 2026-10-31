@@ -63,17 +63,38 @@ export function RelationGraph({
           {collapsed.has(group.parent.sessionId)
             ? null
             : (
-              <div className={css.children}>
-                {group.children.map(child => (
-                  <div key={child.sessionId} className={css.childRow}>
-                    <span className={css.connector} aria-hidden="true" />
-                    <StatusDot state={stateOf(child)} />
-                    <button type="button" className={css.link} onClick={() => { onOpen(child.sessionId) }}>
-                      {child.title ?? shortId(child.sessionId)}
+              <div className={css.canvas}>
+                <svg
+                  className={css.links}
+                  width={44}
+                  height={group.children.length * 30}
+                  viewBox={`0 0 44 ${String(group.children.length * 30)}`}
+                  aria-hidden="true"
+                >
+                  {group.children.map((child, index) => (
+                    <path
+                      key={child.sessionId}
+                      d={`M0 ${String((group.children.length * 30) / 2)} C 18 ${String((group.children.length * 30) / 2)}, 26 ${String(index * 30 + 15)}, 44 ${String(index * 30 + 15)}`}
+                      fill="none"
+                      stroke="var(--dsw-alias-settings-card-stroke)"
+                      strokeWidth="1"
+                    />
+                  ))}
+                </svg>
+                <div className={css.childColumn}>
+                  {group.children.map(child => (
+                    <button
+                      key={child.sessionId}
+                      type="button"
+                      className={css.childNode}
+                      onClick={() => { onOpen(child.sessionId) }}
+                    >
+                      <StatusDot state={stateOf(child)} />
+                      <span className={css.childTitle}>{child.title ?? shortId(child.sessionId)}</span>
+                      {child.live === true ? <span className={css.badge}>{t('running')}</span> : null}
                     </button>
-                    {child.live === true ? <span className={css.badge}>{t('running')}</span> : null}
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             )}
         </div>
