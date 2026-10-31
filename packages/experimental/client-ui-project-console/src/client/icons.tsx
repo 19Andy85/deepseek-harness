@@ -42,6 +42,11 @@ export function ScheduleIcon(props: IconProps) {
   return <Icon {...props}><circle cx="8" cy="8" r="5.5" /><path d="M8 4.5V8l2.5 1.5" /></Icon>
 }
 
+/** An empty desk with a status lamp. */
+export function DeskIcon(props: IconProps) {
+  return <Icon size={28} {...props}><path d="M2.5 6.5h11v6h-11z" /><path d="M2.5 10.5h11" /><circle cx="12.5" cy="4" r="1.5" /></Icon>
+}
+
 /** Expand/collapse chevron, rotated by the caller. */
 export function ChevronIcon(props: IconProps) {
   return <Icon {...props}><path d="M4 6.5 8 10l4-3.5" /></Icon>

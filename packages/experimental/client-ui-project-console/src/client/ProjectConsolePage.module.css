@@ -327,13 +327,24 @@
 }
 
 .rowAttention,
-.rowSuccess {
+.rowSuccess,
+.rowFailed {
   animation: consoleNoticeIn 160ms ease-out;
+}
+
+@keyframes attentionArrival {
+  from { background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 16%, var(--dsw-alias-settings-card-fill)); }
+  to { background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 5%, var(--dsw-alias-settings-card-fill)); }
+}
+
+.rowAttention {
+  animation: consoleNoticeIn 160ms ease-out, attentionArrival 900ms ease-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .rowAttention,
-  .rowSuccess {
+  .rowSuccess,
+  .rowFailed {
     animation: none;
   }
 }

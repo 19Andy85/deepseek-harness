@@ -213,19 +213,39 @@ export function Timeline({
     }
     return t('timelineEnded')
   }
+  const durations = entries.map((entry, index) => {
+    const next = entries[index + 1]
+    const until = next?.at ?? (entry.kind === 'ended' ? entry.at : now)
+    return Math.max(0, until - entry.at)
+  })
+  const maxDuration = Math.max(1, ...durations)
   return (
     <div className={css.timeline}>
       {entries.map((entry, index) => {
-        const next = entries[index + 1]
-        const until = next?.at ?? (entry.kind === 'ended' ? entry.at : now)
+        const duration = durations[index] ?? 0
+        const fill = entry.kind === 'ended' ? css.intervalError
+          : entry.kind === 'activity' ? css.intervalActivity
+            : entry.kind === 'baseline'
+              ? (entry.to === 'running' ? css.intervalStatus : css.intervalActivity)
+              : entry.kind === 'status'
+                ? (entry.to === 'idle' ? css.intervalSuccess : css.intervalStatus)
+                : css.intervalActivity
         return (
           <Fragment key={`${entry.at}-${index}`}>
             <div className={css.timeLine}>
               <span className={css.time}>{formatTime(index === 0 ? startedAt : entry.at)}</span>
               <span className={`${css.eventDot} ${dotOfEntry(entry.kind) ?? ''}`} aria-hidden="true" />
               <span className={css.eventText}>{text(entry)}</span>
+              <span className={css.interval} aria-hidden="true">
+                {entry.kind === 'ended' ? null : (
+                  <span
+                    className={`${css.intervalFill} ${fill}`}
+                    style={{ width: `${String(Math.max(3, Math.round((duration / maxDuration) * 100)))}%` }}
+                  />
+                )}
+              </span>
               <span className={css.duration}>
-                {entry.kind === 'ended' ? '' : formatDuration(Math.max(0, until - entry.at), t)}
+                {entry.kind === 'ended' ? '' : formatDuration(duration, t)}
               </span>
             </div>
           </Fragment>

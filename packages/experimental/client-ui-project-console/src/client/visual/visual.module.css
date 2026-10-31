@@ -70,6 +70,16 @@
   border: none;
   padding: 0;
   cursor: pointer;
+  transition: filter 120ms ease-out;
+}
+
+.segment:hover {
+  filter: brightness(1.18);
+}
+
+.segment:focus-visible {
+  outline: 2px solid var(--dsw-alias-brand-primary);
+  outline-offset: 1px;
 }
 
 .segmentRunning { background: var(--dsw-alias-state-business-primary); }
@@ -93,6 +103,7 @@
 
 .legendItem {
   display: inline-flex;
+  border-radius: 4px;
   align-items: center;
   gap: 6px;
   border: none;
@@ -117,7 +128,7 @@
 
 .timeLine {
   display: grid;
-  grid-template-columns: 84px 12px 1fr auto;
+  grid-template-columns: 84px 12px 1fr 90px auto;
   gap: 10px;
   align-items: baseline;
   font-size: 12px;
@@ -286,4 +297,35 @@
 .trackLead {
   display: inline-flex;
   align-items: center;
+}
+
+.interval {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--dsw-alias-bg-skeleton);
+  overflow: hidden;
+  align-self: center;
+}
+
+.intervalFill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--dsw-alias-label-tertiary);
+  transition: width 200ms ease-out;
+}
+
+.intervalStatus { background: var(--dsw-alias-state-business-primary); }
+.intervalActivity { background: var(--dsw-alias-label-tertiary); }
+.intervalSuccess { background: var(--dsw-alias-state-success-primary); }
+.intervalError { background: var(--dsw-alias-state-error-primary); }
+
+@media (max-width: 760px) {
+  .timeLine {
+    grid-template-columns: 72px 10px 1fr auto;
+  }
+
+  .interval {
+    display: none;
+  }
 }

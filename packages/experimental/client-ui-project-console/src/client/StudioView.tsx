@@ -3,6 +3,7 @@ import type { SessionTaskView } from '@deepseek-ai/dsh-experimental-api-session-
 import type { ShiftStats } from './day-stats.ts'
 import type { AttentionDescriptor } from './attention.ts'
 import type { ProjectConsoleKey } from './locales.ts'
+import { DeskIcon } from './icons.tsx'
 import { ActivityTrack, StatusDot } from './visual/visual.tsx'
 import css from './StudioView.module.css'
 
@@ -85,7 +86,15 @@ export function StudioView({
           )
         })}
       </div>
-      {rows.length === 0 ? <div className={css.empty}>{t('studioEmpty')}</div> : null}
+      {rows.length === 0
+        ? (
+          <div className={css.empty}>
+            <DeskIcon className={css.emptyIcon} />
+            <p className={css.emptyTitle}>{t('studioEmpty')}</p>
+            <p className={css.emptyHint}>{t('studioEmptyHint')}</p>
+          </div>
+        )
+        : null}
       <section className={css.shift} aria-label={t('shiftTitle')}>
         <div className={css.shiftHead}>
           <h3 className={css.shiftTitle}>{t('shiftTitle')}</h3>
