@@ -1,0 +1,75 @@
+/* Durable derivation graph: parents with indented children. */
+
+.graph {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: 10px;
+  background: var(--dsw-alias-settings-card-fill);
+}
+
+.title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.parentRow,
+.childRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+  font-size: 12px;
+}
+
+.children {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-left: 14px;
+  padding-left: 10px;
+  border-left: 1px solid var(--dsw-alias-settings-card-stroke);
+}
+
+.connector {
+  width: 8px;
+  height: 1px;
+  background: var(--dsw-alias-settings-card-stroke);
+  flex: none;
+}
+
+.link {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.link:hover {
+  color: var(--dsw-alias-brand-primary);
+}
+
+.meta {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+}
+
+.badge {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 14%, transparent);
+  color: var(--dsw-alias-state-business-primary);
+  font-size: 11px;
+}

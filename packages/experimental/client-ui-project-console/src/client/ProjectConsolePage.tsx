@@ -8,6 +8,8 @@ import type { ConsoleState, ConsoleWorkspace } from './ProjectConsoleStore.ts'
 import { attentionItems, healthCounts, type AttentionDescriptor } from './attention.ts'
 import { visibleSessions } from './sessions-view.ts'
 import { relationHints } from './relations.ts'
+import { relationGroups } from './relation-tree.ts'
+import { RelationGraph } from './RelationGraph.tsx'
 import { AttentionInbox } from './AttentionInbox.tsx'
 import { StudioView } from './StudioView.tsx'
 import { readViewPreference, writeViewPreference, type ConsoleView } from './view-preference.ts'
@@ -130,6 +132,7 @@ export function ProjectConsolePage({
   const attention = attentionItems(rows, statusFacts, descriptorOf, failureOf)
   const health = healthCounts(rows, statusFacts, descriptorOf, failureOf)
   const relations = relationHints(rows)
+  const graphGroups = relationGroups(rows)
   const parentTitle = (sessionId: string): string | undefined => {
     const parentId = relations.parentOf.get(sessionId)
     return parentId === undefined ? undefined : rows.find(row => row.sessionId === parentId)?.title ?? parentId
@@ -244,6 +247,8 @@ export function ProjectConsolePage({
             />
           )
           : null}
+
+        <RelationGraph groups={graphGroups} t={t} onOpen={openSession} />
 
         {focus === undefined
           ? (view === 'canvas'
