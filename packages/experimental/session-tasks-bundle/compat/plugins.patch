@@ -81,7 +81,7 @@
  } satisfies ProjectionDefinition<'sessionTaskOutcome', SessionTaskOutcome>
 
 --- a/packages/experimental/client-ui-project-console/package.json	2026-10-29 07:21:12
-+++ b/packages/experimental/client-ui-project-console/package.json	2026-10-31 11:50:30
++++ b/packages/experimental/client-ui-project-console/package.json	2026-10-31 12:00:50
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-client-ui-project-console",
@@ -93,7 +93,7 @@
    },
 
 --- a/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-10-29 04:06:48
-+++ b/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-10-31 11:50:30
++++ b/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-10-31 12:00:50
 @@ -1,6 +1,5 @@
 -/** Workspace row menu entry that opens the project console on that Workspace. */
 +/** Session row menu entry that opens the project console for the row's workspace. */
@@ -139,8 +139,8 @@
      >
        {t('openConsole')}
 
---- a/packages/experimental/client-ui-project-console/src/client/index.ts	2026-10-31 11:47:01
-+++ b/packages/experimental/client-ui-project-console/src/client/index.ts	2026-10-31 11:50:30
+--- a/packages/experimental/client-ui-project-console/src/client/index.ts	2026-10-31 12:00:13
++++ b/packages/experimental/client-ui-project-console/src/client/index.ts	2026-10-31 12:00:50
 @@ -22,7 +22,7 @@
  import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
  import { ProjectConsoleStore } from './ProjectConsoleStore.ts'
@@ -159,7 +159,7 @@
    const unmount = await ctx.remote.$mount(sessionTasksRemote)
    try {
      await ctx.inject(['remote.sessionTasks'], (inner) => { registerUi(inner) })
-@@ -156,18 +156,20 @@
+@@ -161,18 +161,20 @@
        hooks: { sessionStatus: ctx.uiSession.sessionStatus },
      }),
    }, ProjectConsolePage)), 'project-console: page')
@@ -186,18 +186,6 @@
    ctx.effect(() => ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
      name: 'sidebar.panellist',
      id: PANEL_ID,
-
---- a/packages/experimental/client-ui-project-console/tests/project-console-store.client.spec.ts	2026-10-31 11:56:24
-+++ b/packages/experimental/client-ui-project-console/tests/project-console-store.client.spec.ts	2026-10-31 11:47:58
-@@ -358,7 +358,7 @@
-   it('prefers the Host changes and last-seen time, and acknowledges on dispose', async () => {
-     const host = hostOf(
-       [{ id: 'ws', title: 'Workspace', path: '/work' }],
--      async () => ({ ok: true, value: { workspaceId: 'ws', sessions: [row('a')], changes: ['a'], lastSeenAt: 42 } }),
-+      async () => ({ ...snapshot('ws', [row('a')]), changes: ['a'], lastSeenAt: 42 }),
-     )
-     const store = new ProjectConsoleStore(host)
-     await store.selectWorkspace('ws')
 
 --- a/packages/experimental/session-tasks-bundle/package.json	2026-10-29 04:02:07
 +++ b/packages/experimental/session-tasks-bundle/package.json	2026-10-31 11:50:30

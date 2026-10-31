@@ -141,6 +141,11 @@ function registerUi(ctx: Context): void {
     inject: (): ProjectConsoleInjected => ({
       store,
       workspaceOptions: () => store.workspaceOptions(),
+      workspaceSessions: () => ctx.workspaces.list.getSnapshot().items.map(workspace => ({
+        id: String(workspace.workspaceId),
+        title: workspace.title,
+        sessionIds: workspace.sessionIds.map(String),
+      })),
       selectedWorkspaceId: () => store.selectedWorkspaceId(),
       selectWorkspace: (workspaceId) => { void store.selectWorkspace(workspaceId) },
       refresh: () => { void store.refresh() },

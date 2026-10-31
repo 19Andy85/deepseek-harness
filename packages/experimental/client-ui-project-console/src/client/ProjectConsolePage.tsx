@@ -9,6 +9,7 @@ import { attentionItems, healthCounts, type AttentionDescriptor } from './attent
 import { visibleSessions } from './sessions-view.ts'
 import { relationHints } from './relations.ts'
 import { relationGroups } from './relation-tree.ts'
+import { otherWorkspaceAttention, type WorkspaceSessions } from './cross-workspace.ts'
 import { RelationGraph } from './RelationGraph.tsx'
 import { AttentionInbox } from './AttentionInbox.tsx'
 import { StudioView } from './StudioView.tsx'
@@ -30,6 +31,8 @@ export interface ProjectConsoleInjected {
   readonly store: HostObservable<ConsoleState>
   /** @returns selectable Workspaces in Host order. */
   readonly workspaceOptions: () => readonly ConsoleWorkspace[]
+  /** @returns every Workspace with its member Session ids. */
+  readonly workspaceSessions: () => readonly WorkspaceSessions[]
   /** @returns the selected Workspace id, when one is available. */
   readonly selectedWorkspaceId: () => string | undefined
   /**
@@ -88,7 +91,7 @@ function statusText(
  * @returns the page body.
  */
 export function ProjectConsolePage({
-  t, store, workspaceOptions, selectedWorkspaceId, selectWorkspace, refresh, openSession, focusSession,
+  t, store, workspaceOptions, workspaceSessions, selectedWorkspaceId, selectWorkspace, refresh, openSession, focusSession,
   closeFocus, resetShift, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus,
 }: ProjectConsolePageProps) {
   const [now, setNow] = useState(() => Date.now())
@@ -104,6 +107,11 @@ export function ProjectConsolePage({
   )
   const selected = selectedWorkspaceId()
   const workspaces = workspaceOptions()
+  const elsewhere = otherWorkspaceAttention(
+    new Map([...statuses].map(([id, status]) => [String(id), status])),
+    workspaceSessions(),
+    selected,
+  )
   const rows = visibleSessions(state.sessions)
   const statusFacts = new Map([...statuses].map(([id, status]) => [String(id), status]))
   const pendingOf = (sessionId: string) => statusFacts.get(sessionId)?.pendingInteraction
@@ -216,6 +224,25 @@ export function ProjectConsolePage({
           : null}
       </header>
       <div className={css.body}>
+        {elsewhere.length === 0
+          ? null
+          : (
+            <div className={css.notice} role="status">
+              <span className={css.noticeText}>
+                {t('attentionElsewhere', { n: elsewhere.reduce((sum, workspace) => sum + workspace.count, 0) })}
+              </span>
+              {elsewhere.map(workspace => (
+                <button
+                  key={workspace.workspaceId}
+                  type="button"
+                  className={css.select}
+                  onClick={() => { selectWorkspace(workspace.workspaceId) }}
+                >
+                  {workspace.title} · {workspace.count}
+                </button>
+              ))}
+            </div>
+          )}
         {state.status === 'error' && !hasRows
           ? <div className={css.empty}>{t('error')}</div>
           : null}
