@@ -111,6 +111,7 @@ export function ProjectConsolePage({
   const [aliases, setAliases] = useState<Record<string, string>>(() => readPartnerAliases())
   const [cards, setCards] = useState<TaskCard[]>(() => readTaskCards())
   const [cardText, setCardText] = useState('')
+  const [cardBoardOpen, setCardBoardOpen] = useState(false)
   const [readingMode, setReadingMode] = useState<ReadingMode>(() => readReadingMode())
   const [facts, setFacts] = useState(() => displayFacts())
   const readingLevel: ReadingLevel = resolveReadingLevel(readingMode, facts)
@@ -429,15 +430,23 @@ export function ProjectConsolePage({
         {focus === undefined
           ? (
             <div className={css.cardBoard} aria-label={t('taskBoard')}>
-              <span className={css.boardLabel}>{t('taskBoard')}</span>
-              <input
-                className={css.cardInput}
-                value={cardText}
-                placeholder={t('taskCardPlaceholder')}
-                onChange={(event) => { setCardText(event.currentTarget.value) }}
-                onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addCard() } }}
-              />
-              <button type="button" className={css.select} onClick={addCard}>{t('addTaskCard')}</button>
+              <button type="button" className={css.boardToggle} onClick={() => { setCardBoardOpen(open => !open) }}>
+                {cardBoardOpen ? '−' : '+'} {t('taskBoard')}
+              </button>
+              {cardBoardOpen
+                ? (
+                  <>
+                    <input
+                      className={css.cardInput}
+                      value={cardText}
+                      placeholder={t('taskCardPlaceholder')}
+                      onChange={(event) => { setCardText(event.currentTarget.value) }}
+                      onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addCard() } }}
+                    />
+                    <button type="button" className={css.select} onClick={addCard}>{t('addTaskCard')}</button>
+                  </>
+                )
+                : null}
               {cards.map(card => (
                 <div
                   key={card.id}
@@ -710,8 +719,10 @@ export function ProjectConsolePage({
               </>
             )
             : (
-              <div className={css.studioShell}>
-                <aside className={css.studioSide}>{inboxOpen ? null : inboxNode}</aside>
+              <div className={!inboxOpen && attention.length > 0 ? css.studioShell : css.studioShellFull}>
+                {!inboxOpen && attention.length > 0
+                  ? <aside className={css.studioSide}>{inboxNode}</aside>
+                  : null}
                 <StudioView
                   rows={rows}
                   aliases={aliasesMap}

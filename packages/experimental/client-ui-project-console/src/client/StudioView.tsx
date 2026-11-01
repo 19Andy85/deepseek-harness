@@ -48,9 +48,17 @@ export function StudioView({
   const unreadIds = new Set(unreadRows.map(row => row.sessionId))
   const pendingCount = rows.filter(row => descriptorOf(row.sessionId) !== undefined).length
   const failedCount = rows.filter(row => row.outcome === 'failed').length
-  const meetingParents = rows.filter(row => (row.relations?.children?.length ?? 0) > 0)
+  const meetingParents = rows.filter((row) => {
+    const runningChildren = (row.relations?.children ?? [])
+      .map(child => visible.get(child.sessionId))
+      .filter((child): child is SessionTaskView => child?.status === 'running')
+    return runningChildren.length >= 2 || (row.status === 'running' && runningChildren.length > 0)
+  })
   const meetingParentIds = new Set(meetingParents.map(row => row.sessionId))
-  const meetingChildIds = new Set(meetingParents.flatMap(row => row.relations?.children?.map(child => child.sessionId) ?? []))
+  const meetingChildIds = new Set(meetingParents.flatMap(row => (row.relations?.children ?? [])
+    .map(child => visible.get(child.sessionId))
+    .filter((child): child is SessionTaskView => child?.status === 'running')
+    .map(child => child.sessionId)))
   const activeRows = rows.filter(row => !unreadIds.has(row.sessionId) && !meetingParentIds.has(row.sessionId)
     && !meetingChildIds.has(row.sessionId)
     && (row.status === 'running' || descriptorOf(row.sessionId) !== undefined))
@@ -99,6 +107,24 @@ export function StudioView({
             {new Date(row.lastPromptAt).toLocaleTimeString(undefined, { hour12: false })}
           </span>
         )}
+        {row.relations?.children === undefined || row.relations.children.length === 0
+          ? null
+          : (() => {
+            const liveChildren = row.relations.children
+              .map(child => visible.get(child.sessionId))
+              .filter((child): child is SessionTaskView => child !== undefined)
+            const ended = row.relations.children.length - liveChildren.length
+            return (
+              <span className={css.childSummary}>
+                {liveChildren.slice(0, 3).map((child) => {
+                  const childName = identityOf(child, aliases).name
+                  return <span key={child.sessionId} className={css.childName}>{childName}</span>
+                })}
+                {liveChildren.length > 3 ? <span className={css.childName}>+{liveChildren.length - 3}</span> : null}
+                {ended > 0 ? <span className={css.childState}>+{ended} {t('completedUnread')}</span> : null}
+              </span>
+            )
+          })()}
       </button>
     )
   }
@@ -124,7 +150,7 @@ export function StudioView({
         </div>
         <span className={css.roomText}>{t('roomHealth', { needs: pendingCount, failed: failedCount })}</span>
       </div>
-      <div className={css.studioGrid}>
+      <div className={unreadRows.length === 0 ? css.studioGridFull : css.studioGrid}>
         <div className={css.zones}>
           {zone(t('zoneActive'), activeRows)}
           {meetingParents.length === 0 ? null : (
@@ -134,24 +160,10 @@ export function StudioView({
                 <div key={parent.sessionId} className={css.meetingGroup}>
                   {desk(parent, false)}
                   <div className={css.meetingChildren}>
-                    {(parent.relations?.children ?? []).map((child) => {
-                      const visibleChild = visible.get(child.sessionId)
-                      if (visibleChild !== undefined) return desk(visibleChild, true)
-                      const name = identityOf(
-                        { sessionId: child.sessionId, title: child.title, activity: [] }, aliases,
-                      ).name
-                      return (
-                        <button
-                          key={child.sessionId}
-                          type="button"
-                          className={css.childChip}
-                          onClick={() => { onOpen(child.sessionId) }}
-                        >
-                          <span className={css.childName}>{name}</span>
-                          <span className={css.childState}>{t('ended')}</span>
-                        </button>
-                      )
-                    })}
+                    {(parent.relations?.children ?? [])
+                      .map(child => visible.get(child.sessionId))
+                      .filter((child): child is SessionTaskView => child?.status === 'running')
+                      .map(child => desk(child, true))}
                   </div>
                 </div>
               ))}
@@ -168,29 +180,31 @@ export function StudioView({
             )
             : null}
         </div>
-        <aside className={css.completionTray} aria-label={t('completionTray')}>
-          <h3 className={css.zoneTitle}>{t('completionTray')} {unreadRows.length}</h3>
-          {unreadRows.length === 0
-            ? <p className={css.trayEmpty}>{t('noCompletion')}</p>
-            : unreadRows.map((row) => {
-              const identity = identityOf(row, aliases)
-              return (
-                <div key={row.sessionId} className={css.completionCard}>
-                  <div className={css.deskTop}>
-                    <PartnerAvatar name={identity.name} initial={identity.initial} role={identity.role} size={26} />
-                    <span className={css.name} title={row.title ?? row.sessionId}>{identity.name}</span>
+        {unreadRows.length === 0 ? null : (
+          <aside className={css.completionTray} aria-label={t('completionTray')}>
+            <h3 className={css.zoneTitle}>{t('completionTray')} {unreadRows.length}</h3>
+            {unreadRows.length === 0
+              ? <p className={css.trayEmpty}>{t('noCompletion')}</p>
+              : unreadRows.map((row) => {
+                const identity = identityOf(row, aliases)
+                return (
+                  <div key={row.sessionId} className={css.completionCard}>
+                    <div className={css.deskTop}>
+                      <PartnerAvatar name={identity.name} initial={identity.initial} role={identity.role} size={26} />
+                      <span className={css.name} title={row.title ?? row.sessionId}>{identity.name}</span>
+                    </div>
+                    {row.changes === undefined
+                      ? null
+                      : <span className={css.trayMeta}>{t('changesSummary', { n: row.changes.total, added: row.changes.added, deleted: row.changes.deleted })}</span>}
+                    <div className={css.trayActions}>
+                      <button type="button" className={css.select} onClick={() => { onFocus(row.sessionId) }}>{t('focusSession')}</button>
+                      <button type="button" className={css.select} onClick={() => { onOpen(row.sessionId) }}>{t('openSession')}</button>
+                    </div>
                   </div>
-                  {row.changes === undefined
-                    ? null
-                    : <span className={css.trayMeta}>{t('changesSummary', { n: row.changes.total, added: row.changes.added, deleted: row.changes.deleted })}</span>}
-                  <div className={css.trayActions}>
-                    <button type="button" className={css.select} onClick={() => { onFocus(row.sessionId) }}>{t('focusSession')}</button>
-                    <button type="button" className={css.select} onClick={() => { onOpen(row.sessionId) }}>{t('openSession')}</button>
-                  </div>
-                </div>
-              )
-            })}
-        </aside>
+                )
+              })}
+          </aside>
+        )}
       </div>
       <section className={css.shift} aria-label={t('shiftTitle')}>
         <div className={css.shiftHead}>

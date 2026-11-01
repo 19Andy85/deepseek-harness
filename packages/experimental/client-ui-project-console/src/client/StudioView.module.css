@@ -465,3 +465,31 @@
 .childState {
   color: var(--dsw-alias-label-tertiary);
 }
+
+.studioGridFull {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.childSummary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.childSummary .childName {
+  max-width: 90px;
+  height: 20px;
+  line-height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-skeleton);
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--pc-font-xs, 11px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
