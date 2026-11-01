@@ -8,9 +8,11 @@
   --pc-gap-5: 24px;
   --pc-radius: 8px;
   --pc-radius-lg: 10px;
-  --pc-font-xs: 11px;
-  --pc-font-s: 12px;
-  --pc-font-m: 13px;
+  --pc-font-xs: calc(11px * var(--pc-type-scale, 1));
+  --pc-font-s: calc(12px * var(--pc-type-scale, 1));
+  --pc-font-m: calc(13px * var(--pc-type-scale, 1));
+  --pc-type-scale: 1;
+  line-height: 1.55;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
@@ -28,7 +30,7 @@
 
 .title {
   margin: 0;
-  font-size: 20px;
+  font-size: calc(20px * var(--pc-type-scale, 1));
   font-weight: 500;
 }
 
@@ -727,4 +729,14 @@
 
 .cardAction:hover:not(:disabled) {
   color: var(--dsw-alias-brand-primary);
+}
+
+/* Reading-size levels: auto picks comfortable on scaled Retina, compact on narrow screens. */
+.page[data-reading='comfortable'] {
+  --pc-type-scale: 1.25;
+  line-height: 1.6;
+}
+
+.page[data-reading='compact'] {
+  --pc-type-scale: 0.95;
 }

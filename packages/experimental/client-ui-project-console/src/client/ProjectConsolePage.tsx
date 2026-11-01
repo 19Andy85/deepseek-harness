@@ -13,6 +13,9 @@ import { relationGroups } from './relation-tree.ts'
 import { identityOf, partnerName, type PartnerRole } from './partner-identity.ts'
 import { readPartnerAliases, writePartnerAlias } from './partner-aliases.ts'
 import { createTaskCard, parseTaskCard, readTaskCards, writeTaskCards, type TaskCard } from './task-cards.ts'
+import {
+  displayFacts, readReadingMode, resolveReadingLevel, writeReadingMode, type ReadingMode, type ReadingLevel,
+} from './reading-scale.ts'
 import { PartnerAvatar } from './PartnerAvatar.tsx'
 import { otherWorkspaceAttention, type WorkspaceSessions } from './cross-workspace.ts'
 import { globalInboxCount, globalInboxGroups } from './global-inbox.ts'
@@ -108,6 +111,9 @@ export function ProjectConsolePage({
   const [aliases, setAliases] = useState<Record<string, string>>(() => readPartnerAliases())
   const [cards, setCards] = useState<TaskCard[]>(() => readTaskCards())
   const [cardText, setCardText] = useState('')
+  const [readingMode, setReadingMode] = useState<ReadingMode>(() => readReadingMode())
+  const [facts, setFacts] = useState(() => displayFacts())
+  const readingLevel: ReadingLevel = resolveReadingLevel(readingMode, facts)
   const [renaming, setRenaming] = useState<string | undefined>(undefined)
   const [renameText, setRenameText] = useState('')
   const [prompt, setPrompt] = useState('')
@@ -289,6 +295,15 @@ export function ProjectConsolePage({
     const timer = setInterval(() => { setNow(Date.now()) }, 1_000)
     return () => { clearInterval(timer) }
   }, [])
+  useEffect(() => {
+    const update = () => { setFacts(displayFacts()) }
+    window.addEventListener('resize', update)
+    document.addEventListener('visibilitychange', update)
+    return () => {
+      window.removeEventListener('resize', update)
+      document.removeEventListener('visibilitychange', update)
+    }
+  }, [])
   const actionBusy = state.busySessionId
   const inboxNode = state.status === 'ready' && hasRows
     ? (
@@ -310,7 +325,7 @@ export function ProjectConsolePage({
   const focusIdentity = focus?.row === undefined ? undefined : identityOf(focus.row, aliasesMap)
 
   return (
-    <section className={css.page}>
+    <section className={css.page} data-reading={readingLevel}>
       <header className={css.head}>
         <h1 className={css.title}>{t('title')}</h1>
         <p className={css.subtitle}>{t('description')}</p>
@@ -329,6 +344,21 @@ export function ProjectConsolePage({
           </select>
           <button type="button" className={css.select} onClick={() => { refresh() }}>{t('refresh')}</button>
           <button type="button" className={css.select} onClick={() => { window.location.reload() }}>{t('refreshPage')}</button>
+          <select
+            className={css.select}
+            aria-label={t('readingSize')}
+            value={readingMode}
+            onChange={(event) => {
+              const mode = event.currentTarget.value as ReadingMode
+              setReadingMode(mode)
+              writeReadingMode(mode)
+            }}
+          >
+            <option value="auto">{t('readingAuto')}</option>
+            <option value="compact">{t('readingCompact')}</option>
+            <option value="standard">{t('readingStandard')}</option>
+            <option value="comfortable">{t('readingComfortable')}</option>
+          </select>
           {state.updatedAt === undefined
             ? null
             : (
@@ -396,6 +426,47 @@ export function ProjectConsolePage({
           : null}
       </header>
       <div className={rows.length > 12 ? `${css.body} ${css.compact}` : css.body}>
+        {focus === undefined
+          ? (
+            <div className={css.cardBoard} aria-label={t('taskBoard')}>
+              <span className={css.boardLabel}>{t('taskBoard')}</span>
+              <input
+                className={css.cardInput}
+                value={cardText}
+                placeholder={t('taskCardPlaceholder')}
+                onChange={(event) => { setCardText(event.currentTarget.value) }}
+                onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addCard() } }}
+              />
+              <button type="button" className={css.select} onClick={addCard}>{t('addTaskCard')}</button>
+              {cards.map(card => (
+                <div
+                  key={card.id}
+                  className={css.taskCard}
+                  draggable
+                  onDragStart={(event) => {
+                    event.dataTransfer.setData('application/x-project-console-card', JSON.stringify(card))
+                    event.dataTransfer.setData('text/plain', card.text)
+                    event.dataTransfer.effectAllowed = 'move'
+                  }}
+                >
+                  <span className={css.taskText} title={card.text}>{card.text}</span>
+                  <button
+                    type="button"
+                    className={css.cardAction}
+                    disabled={active === undefined}
+                    onClick={() => {
+                      if (active !== undefined) dispatchCard(active, JSON.stringify(card))
+                    }}
+                  >
+                    {t('dispatchToSelected')}
+                  </button>
+                  <button type="button" className={css.cardAction} aria-label={t('removeCard')} onClick={() => { removeCard(card.id) }}>×</button>
+                </div>
+              ))}
+            </div>
+          )
+          : null}
+
         {inboxOpen
           ? (
             <GlobalInbox
@@ -450,47 +521,6 @@ export function ProjectConsolePage({
               <span className={css.emptyGlyph} aria-hidden="true">◇</span>
               <p className={css.emptyTitle}>{t('emptyTitle')}</p>
               <p className={css.emptyHint}>{t('emptyHint')}</p>
-            </div>
-          )
-          : null}
-
-        {focus === undefined
-          ? (
-            <div className={css.cardBoard} aria-label={t('taskBoard')}>
-              <span className={css.boardLabel}>{t('taskBoard')}</span>
-              <input
-                className={css.cardInput}
-                value={cardText}
-                placeholder={t('taskCardPlaceholder')}
-                onChange={(event) => { setCardText(event.currentTarget.value) }}
-                onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addCard() } }}
-              />
-              <button type="button" className={css.select} onClick={addCard}>{t('addTaskCard')}</button>
-              {cards.map(card => (
-                <div
-                  key={card.id}
-                  className={css.taskCard}
-                  draggable
-                  onDragStart={(event) => {
-                    event.dataTransfer.setData('application/x-project-console-card', JSON.stringify(card))
-                    event.dataTransfer.setData('text/plain', card.text)
-                    event.dataTransfer.effectAllowed = 'move'
-                  }}
-                >
-                  <span className={css.taskText} title={card.text}>{card.text}</span>
-                  <button
-                    type="button"
-                    className={css.cardAction}
-                    disabled={active === undefined}
-                    onClick={() => {
-                      if (active !== undefined) dispatchCard(active, JSON.stringify(card))
-                    }}
-                  >
-                    {t('dispatchToSelected')}
-                  </button>
-                  <button type="button" className={css.cardAction} aria-label={t('removeCard')} onClick={() => { removeCard(card.id) }}>×</button>
-                </div>
-              ))}
             </div>
           )
           : null}
