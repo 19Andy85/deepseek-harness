@@ -8,7 +8,7 @@
  *   node packages/experimental/session-tasks-bundle/scripts/rebuild-client.mjs [--repo <checkout>]
  */
 import { spawnSync } from 'node:child_process'
-import { existsSync } from 'node:fs'
+import { copyFileSync, existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -28,13 +28,35 @@ for (let i = 0; i < args.length; i += 1) {
 }
 if (!existsSync(join(repo, 'package.json'))) fail(`${repo} is not a checkout`)
 
+const PACKAGES = [
+  'tool-session-tasks',
+  'api-session-tasks',
+  'client-ui-project-console',
+  'session-tasks-bundle',
+]
+const bundlePaths = PACKAGES.map(pkg => join(repo, 'packages/experimental', pkg, 'lib/client.js'))
+// Keep the previous verified bundle next to each rebuilt one so a broken
+// refresh can be rolled back without rebuilding the whole host.
+for (const bundle of bundlePaths) {
+  if (!existsSync(bundle)) continue
+  copyFileSync(bundle, `${bundle}.prev.js`)
+  if (existsSync(`${bundle}.map`)) copyFileSync(`${bundle}.map`, `${bundle}.map.prev`)
+}
 const command = 'pnpm'
 const result = spawnSync(command, ['exec', 'tsdown', '--config-loader', 'native', '--env.DSH_BUILD_FACE', 'client'], { cwd: repo, stdio: 'inherit' })
 if (result.status !== 0) fail(`client bundle build failed with exit ${String(result.status)}`)
+for (const bundle of bundlePaths) {
+  if (!existsSync(bundle)) continue
+  const check = spawnSync(process.execPath, ['--check', bundle], { stdio: 'ignore' })
+  if (check.status !== 0) {
+    fail(`built client bundle failed syntax validation: ${bundle}\nRun node packages/experimental/session-tasks-bundle/scripts/rollback-client.mjs to restore the previous bundle.`)
+  }
+}
 process.stdout.write([
   '',
-  `rebuild-client: client bundles rewritten in ${repo}`,
+  `rebuild-client: client bundles rewritten and validated in ${repo}`,
   'A running Host hot-reloads them; refresh its page if the reload did not appear.',
+  'The previous bundles were kept as lib/client.js.prev.js for rollback-client.mjs.',
   'Host-side (controller, stream, profile) changes still need a rebuilt artifact tree and a profile restart.',
   '',
 ].join('\n'))
