@@ -436,3 +436,32 @@
     animation: none;
   }
 }
+
+.childChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: 999px;
+  background: var(--dsw-alias-settings-card-fill);
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--pc-font-xs, 11px);
+  cursor: pointer;
+}
+
+.childChip:hover {
+  border-color: var(--dsw-alias-brand-primary);
+}
+
+.childName {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.childState {
+  color: var(--dsw-alias-label-tertiary);
+}

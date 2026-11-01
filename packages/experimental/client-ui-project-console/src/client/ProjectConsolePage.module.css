@@ -656,3 +656,75 @@
     transition: none;
   }
 }
+
+.cardBoard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: var(--pc-radius);
+  background: color-mix(in srgb, var(--dsw-alias-settings-card-fill) 60%, transparent);
+}
+
+.boardLabel {
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--pc-font-xs);
+  font-weight: 500;
+}
+
+.cardInput {
+  height: 26px;
+  min-width: 220px;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: var(--pc-radius);
+  background: var(--dsw-alias-settings-card-fill);
+  color: var(--dsw-alias-label-primary);
+  font-size: var(--pc-font-s);
+}
+
+.taskCard {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 360px;
+  height: 26px;
+  padding: 0 6px 0 9px;
+  border: 1px dashed var(--dsw-alias-settings-card-stroke);
+  border-radius: 999px;
+  background: var(--dsw-alias-settings-card-fill);
+  cursor: grab;
+}
+
+.taskCard:active {
+  cursor: grabbing;
+}
+
+.taskText {
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--pc-font-xs);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardAction {
+  border: none;
+  background: none;
+  color: var(--dsw-alias-label-tertiary);
+  font-size: var(--pc-font-xs);
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+.cardAction:disabled {
+  opacity: .45;
+  cursor: default;
+}
+
+.cardAction:hover:not(:disabled) {
+  color: var(--dsw-alias-brand-primary);
+}

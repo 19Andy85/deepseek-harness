@@ -12,6 +12,7 @@ import { relationHints } from './relations.ts'
 import { relationGroups } from './relation-tree.ts'
 import { identityOf, partnerName, type PartnerRole } from './partner-identity.ts'
 import { readPartnerAliases, writePartnerAlias } from './partner-aliases.ts'
+import { createTaskCard, parseTaskCard, readTaskCards, writeTaskCards, type TaskCard } from './task-cards.ts'
 import { PartnerAvatar } from './PartnerAvatar.tsx'
 import { otherWorkspaceAttention, type WorkspaceSessions } from './cross-workspace.ts'
 import { globalInboxCount, globalInboxGroups } from './global-inbox.ts'
@@ -105,6 +106,8 @@ export function ProjectConsolePage({
   const [inboxOpen, setInboxOpen] = useState(false)
   const [relationView, setRelationView] = useState<'inline' | 'canvas'>('inline')
   const [aliases, setAliases] = useState<Record<string, string>>(() => readPartnerAliases())
+  const [cards, setCards] = useState<TaskCard[]>(() => readTaskCards())
+  const [cardText, setCardText] = useState('')
   const [renaming, setRenaming] = useState<string | undefined>(undefined)
   const [renameText, setRenameText] = useState('')
   const [prompt, setPrompt] = useState('')
@@ -134,6 +137,25 @@ export function ProjectConsolePage({
     operation: 'roleOperation',
     guard: 'roleGuard',
     general: 'roleGeneral',
+  }
+  const persistCards = (next: readonly TaskCard[]) => {
+    setCards(writeTaskCards(next))
+  }
+  const addCard = () => {
+    const card = createTaskCard(cardText)
+    if (card === undefined) return
+    persistCards([...cards, card])
+    setCardText('')
+  }
+  const removeCard = (id: string) => {
+    persistCards(cards.filter(card => card.id !== id))
+  }
+  const dispatchCard = (sessionId: string, raw: string) => {
+    const card = parseTaskCard(raw)
+    if (card === undefined) return
+    void sendToSession(sessionId, card.text, 'queue').then((accepted) => {
+      if (accepted) removeCard(card.id)
+    })
   }
   const saveAlias = (sessionId: string) => {
     setAliases(writePartnerAlias(sessionId, renameText))
@@ -432,6 +454,47 @@ export function ProjectConsolePage({
           )
           : null}
 
+        {focus === undefined
+          ? (
+            <div className={css.cardBoard} aria-label={t('taskBoard')}>
+              <span className={css.boardLabel}>{t('taskBoard')}</span>
+              <input
+                className={css.cardInput}
+                value={cardText}
+                placeholder={t('taskCardPlaceholder')}
+                onChange={(event) => { setCardText(event.currentTarget.value) }}
+                onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addCard() } }}
+              />
+              <button type="button" className={css.select} onClick={addCard}>{t('addTaskCard')}</button>
+              {cards.map(card => (
+                <div
+                  key={card.id}
+                  className={css.taskCard}
+                  draggable
+                  onDragStart={(event) => {
+                    event.dataTransfer.setData('application/x-project-console-card', JSON.stringify(card))
+                    event.dataTransfer.setData('text/plain', card.text)
+                    event.dataTransfer.effectAllowed = 'move'
+                  }}
+                >
+                  <span className={css.taskText} title={card.text}>{card.text}</span>
+                  <button
+                    type="button"
+                    className={css.cardAction}
+                    disabled={active === undefined}
+                    onClick={() => {
+                      if (active !== undefined) dispatchCard(active, JSON.stringify(card))
+                    }}
+                  >
+                    {t('dispatchToSelected')}
+                  </button>
+                  <button type="button" className={css.cardAction} aria-label={t('removeCard')} onClick={() => { removeCard(card.id) }}>×</button>
+                </div>
+              ))}
+            </div>
+          )
+          : null}
+
         {!inboxOpen && view === 'canvas' ? inboxNode : null}
 
         {relationView === 'canvas' && focus === undefined
@@ -488,7 +551,14 @@ export function ProjectConsolePage({
                         {newSection
                           ? <h2 className={css.sectionTitle}>{section} <span className={css.sectionCount}>{total}</span></h2>
                           : null}
-                        <article className={`${css.lane} ${lane} ${nested ? css.nestedLane : ''} ${active === session.sessionId ? css.rowActive : ''}`}>
+                        <article
+                          className={`${css.lane} ${lane} ${nested ? css.nestedLane : ''} ${active === session.sessionId ? css.rowActive : ''}`}
+                          onDragOver={(event) => { event.preventDefault() }}
+                          onDrop={(event) => {
+                            event.preventDefault()
+                            dispatchCard(session.sessionId, event.dataTransfer.getData('application/x-project-console-card'))
+                          }}
+                        >
                           <button
                             type="button"
                             className={css.laneMain}
@@ -623,6 +693,7 @@ export function ProjectConsolePage({
                   onFocus={focusSession}
                   onResetShift={resetShift}
                   onOpen={openSession}
+                  onDropCard={(sessionId, raw) => { dispatchCard(sessionId, raw) }}
                 />
               </div>
             ))

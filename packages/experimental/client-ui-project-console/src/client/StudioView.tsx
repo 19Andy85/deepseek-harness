@@ -21,7 +21,7 @@ export interface StudioSessionStatus {
  * @returns the studio surface.
  */
 export function StudioView({
-  rows, aliases, statusFacts, descriptorOf, shift, now, t, onFocus, onResetShift, onOpen,
+  rows, aliases, statusFacts, descriptorOf, shift, now, t, onFocus, onResetShift, onOpen, onDropCard,
 }: {
   readonly rows: readonly SessionTaskView[]
   readonly aliases: ReadonlyMap<string, string>
@@ -33,6 +33,7 @@ export function StudioView({
   readonly onFocus: (sessionId: string) => void
   readonly onResetShift: () => void
   readonly onOpen: (sessionId: string) => void
+  readonly onDropCard: (sessionId: string, raw: string) => void
 }) {
   const counters = shift === undefined ? [] : [
     { key: 'newSession' as const, label: t('shiftNewSessions'), count: shift.newSession },
@@ -47,7 +48,7 @@ export function StudioView({
   const unreadIds = new Set(unreadRows.map(row => row.sessionId))
   const pendingCount = rows.filter(row => descriptorOf(row.sessionId) !== undefined).length
   const failedCount = rows.filter(row => row.outcome === 'failed').length
-  const meetingParents = rows.filter(row => row.relations?.children?.some(child => visible.has(child.sessionId)) === true)
+  const meetingParents = rows.filter(row => (row.relations?.children?.length ?? 0) > 0)
   const meetingParentIds = new Set(meetingParents.map(row => row.sessionId))
   const meetingChildIds = new Set(meetingParents.flatMap(row => row.relations?.children?.map(child => child.sessionId) ?? []))
   const activeRows = rows.filter(row => !unreadIds.has(row.sessionId) && !meetingParentIds.has(row.sessionId)
@@ -68,6 +69,11 @@ export function StudioView({
         type="button"
         className={`${css.desk} ${pending ? css.deskAttention : ''} ${nested ? css.deskDerived : ''}`}
         onClick={() => { onFocus(row.sessionId) }}
+        onDragOver={(event) => { event.preventDefault() }}
+        onDrop={(event) => {
+          event.preventDefault()
+          onDropCard(row.sessionId, event.dataTransfer.getData('application/x-project-console-card'))
+        }}
         aria-label={`${identity.name} · ${row.status === 'running' ? t('running') : t('idle')}`}
       >
         <div className={css.deskTop}>
@@ -128,10 +134,24 @@ export function StudioView({
                 <div key={parent.sessionId} className={css.meetingGroup}>
                   {desk(parent, false)}
                   <div className={css.meetingChildren}>
-                    {(parent.relations?.children ?? [])
-                      .map(child => visible.get(child.sessionId))
-                      .filter((child): child is SessionTaskView => child !== undefined)
-                      .map(child => desk(child, true))}
+                    {(parent.relations?.children ?? []).map((child) => {
+                      const visibleChild = visible.get(child.sessionId)
+                      if (visibleChild !== undefined) return desk(visibleChild, true)
+                      const name = identityOf(
+                        { sessionId: child.sessionId, title: child.title, activity: [] }, aliases,
+                      ).name
+                      return (
+                        <button
+                          key={child.sessionId}
+                          type="button"
+                          className={css.childChip}
+                          onClick={() => { onOpen(child.sessionId) }}
+                        >
+                          <span className={css.childName}>{name}</span>
+                          <span className={css.childState}>{t('ended')}</span>
+                        </button>
+                      )
+                    })}
                   </div>
                 </div>
               ))}
