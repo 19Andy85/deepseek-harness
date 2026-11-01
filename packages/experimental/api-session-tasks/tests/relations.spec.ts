@@ -4,6 +4,13 @@ import { describe, expect, it } from 'vitest'
 import { buildChildRelations } from '../src/relations.ts'
 
 describe('buildChildRelations', () => {
+  it('attaches folded child titles when provided', () => {
+    const relations = buildChildRelations([
+      { header: { id: 'child', parentSession: 'parent', origin: 'subagent' }, live: false },
+    ], new Map([['child', 'Refactor plan']]))
+    expect(relations.get('parent')?.[0]?.title).toBe('Refactor plan')
+  })
+
   it('groups subagent children by parent and keeps liveness', () => {
     const records = [
       { header: { id: 'child-a', parentSession: 'parent', origin: 'subagent' as const, delegationDepth: 1 }, live: true },

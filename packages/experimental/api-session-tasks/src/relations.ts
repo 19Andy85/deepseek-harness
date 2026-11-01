@@ -13,6 +13,8 @@ export interface SessionRelationChild {
   readonly live?: boolean
   /** Persisted delegation depth of the child. */
   readonly depth?: number
+  /** Log-backed title of the child, when the Host folded one. */
+  readonly title?: string
 }
 
 /** Relation slice attached to one row. */
@@ -43,18 +45,24 @@ export interface RelationSourceRecord {
 /**
  * Build child lists keyed by parent Session id from persisted records.
  * @param records - live-preferred session records.
+ * @param titles - optional child titles keyed by Session id.
  * @returns derived children per parent, in record order.
  */
-export function buildChildRelations(records: readonly RelationSourceRecord[]): Map<string, SessionRelationChild[]> {
+export function buildChildRelations(
+  records: readonly RelationSourceRecord[],
+  titles: ReadonlyMap<string, string> = new Map(),
+): Map<string, SessionRelationChild[]> {
   const byParent = new Map<string, SessionRelationChild[]>()
   for (const record of records) {
     const parent = record.header.parentSession
     if (parent === undefined || record.header.origin !== 'subagent') continue
     const children = byParent.get(parent) ?? []
+    const title = titles.get(record.header.id)
     children.push({
       sessionId: record.header.id,
       ...record.live ? { live: true } : {},
       ...record.header.delegationDepth === undefined ? {} : { depth: record.header.delegationDepth },
+      ...title === undefined ? {} : { title },
     })
     byParent.set(parent, children)
   }

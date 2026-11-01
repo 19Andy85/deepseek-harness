@@ -32,7 +32,7 @@
      "access": "public"
    },
 
---- a/packages/experimental/api-session-tasks/src/index.ts	2026-10-31 11:46:44
+--- a/packages/experimental/api-session-tasks/src/index.ts	2026-11-01 21:39:51
 +++ b/packages/experimental/api-session-tasks/src/index.ts	2026-10-31 23:17:47
 @@ -100,8 +100,8 @@
      })
@@ -45,6 +45,32 @@
      })
      if (this.ctx.get('sessionProjections') !== undefined) await binding
    }
+@@ -176,24 +176,7 @@
+     this.lastRelationsRefresh = Date.now()
+     try {
+       const records = await query.listSessions()
+-      const childIds = records
+-        .filter(record => record.header.parentSession !== undefined && record.header.origin === 'subagent')
+-        .map(record => record.header.id)
+-      const titles = new Map<string, string>()
+-      if (childIds.length > 0) {
+-        try {
+-          const observations = await query.readTitleSnapshots(childIds, new AbortController().signal)
+-          for (const observation of observations) {
+-            if (observation.status !== 'fulfilled') continue
+-            const title = observation.value.title?.title
+-            if (title !== undefined) titles.set(String(observation.sessionId), title)
+-          }
+-        } catch (error) {
+-          // Titles decorate the relation graph; relations remain readable without them.
+-          this.ctx.logger?.warn?.(error)
+-        }
+-      }
+-      this.relationsByParent = buildChildRelations(records, titles)
++      this.relationsByParent = buildChildRelations(records)
+       this.relationsByChild.clear()
+       for (const [parentId, children] of this.relationsByParent) {
+         for (const child of children) this.relationsByChild.set(child.sessionId, parentId)
 
 --- a/packages/experimental/api-session-tasks/src/outcome.ts	2026-10-31 02:14:10
 +++ b/packages/experimental/api-session-tasks/src/outcome.ts	2026-10-31 23:17:47
@@ -80,8 +106,63 @@
 +  wire: { viewSchema: outcomeSchema, view: (state: SessionTaskOutcome) => state },
  } satisfies ProjectionDefinition<'sessionTaskOutcome', SessionTaskOutcome>
 
+--- a/packages/experimental/api-session-tasks/src/relations.ts	2026-11-01 21:40:12
++++ b/packages/experimental/api-session-tasks/src/relations.ts	2026-10-31 23:17:47
+@@ -13,8 +13,6 @@
+   readonly live?: boolean
+   /** Persisted delegation depth of the child. */
+   readonly depth?: number
+-  /** Log-backed title of the child, when the Host folded one. */
+-  readonly title?: string
+ }
+
+ /** Relation slice attached to one row. */
+@@ -45,24 +43,18 @@
+ /**
+  * Build child lists keyed by parent Session id from persisted records.
+  * @param records - live-preferred session records.
+- * @param titles - optional child titles keyed by Session id.
+  * @returns derived children per parent, in record order.
+  */
+-export function buildChildRelations(
+-  records: readonly RelationSourceRecord[],
+-  titles: ReadonlyMap<string, string> = new Map(),
+-): Map<string, SessionRelationChild[]> {
++export function buildChildRelations(records: readonly RelationSourceRecord[]): Map<string, SessionRelationChild[]> {
+   const byParent = new Map<string, SessionRelationChild[]>()
+   for (const record of records) {
+     const parent = record.header.parentSession
+     if (parent === undefined || record.header.origin !== 'subagent') continue
+     const children = byParent.get(parent) ?? []
+-    const title = titles.get(record.header.id)
+     children.push({
+       sessionId: record.header.id,
+       ...record.live ? { live: true } : {},
+       ...record.header.delegationDepth === undefined ? {} : { depth: record.header.delegationDepth },
+-      ...title === undefined ? {} : { title },
+     })
+     byParent.set(parent, children)
+   }
+
+--- a/packages/experimental/api-session-tasks/tests/relations.spec.ts	2026-11-01 21:39:22
++++ b/packages/experimental/api-session-tasks/tests/relations.spec.ts	2026-10-31 01:31:18
+@@ -4,13 +4,6 @@
+ import { buildChildRelations } from '../src/relations.ts'
+
+ describe('buildChildRelations', () => {
+-  it('attaches folded child titles when provided', () => {
+-    const relations = buildChildRelations([
+-      { header: { id: 'child', parentSession: 'parent', origin: 'subagent' }, live: false },
+-    ], new Map([['child', 'Refactor plan']]))
+-    expect(relations.get('parent')?.[0]?.title).toBe('Refactor plan')
+-  })
+-
+   it('groups subagent children by parent and keeps liveness', () => {
+     const records = [
+       { header: { id: 'child-a', parentSession: 'parent', origin: 'subagent' as const, delegationDepth: 1 }, live: true },
+
 --- a/packages/experimental/client-ui-project-console/package.json	2026-10-29 07:21:12
-+++ b/packages/experimental/client-ui-project-console/package.json	2026-11-01 06:38:18
++++ b/packages/experimental/client-ui-project-console/package.json	2026-11-01 06:51:27
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-client-ui-project-console",
@@ -93,7 +174,7 @@
    },
 
 --- a/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-10-29 04:06:48
-+++ b/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-11-01 06:38:18
++++ b/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-11-01 06:51:27
 @@ -1,6 +1,5 @@
 -/** Workspace row menu entry that opens the project console on that Workspace. */
 +/** Session row menu entry that opens the project console for the row's workspace. */
@@ -140,7 +221,7 @@
        {t('openConsole')}
 
 --- a/packages/experimental/client-ui-project-console/src/client/index.ts	2026-10-31 19:59:51
-+++ b/packages/experimental/client-ui-project-console/src/client/index.ts	2026-11-01 06:38:19
++++ b/packages/experimental/client-ui-project-console/src/client/index.ts	2026-11-01 06:51:27
 @@ -22,7 +22,7 @@
  import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
  import { ProjectConsoleStore } from './ProjectConsoleStore.ts'
@@ -186,6 +267,23 @@
    ctx.effect(() => ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
      name: 'sidebar.panellist',
      id: PANEL_ID,
+
+--- a/packages/experimental/client-ui-project-console/src/client/relation-tree.ts	2026-11-01 21:39:22
++++ b/packages/experimental/client-ui-project-console/src/client/relation-tree.ts	2026-11-01 01:27:56
+@@ -55,12 +55,7 @@
+         visited.add(child.sessionId)
+         const visible = byId.get(child.sessionId)
+         nodes.push(visible === undefined
+-          ? {
+-              sessionId: child.sessionId,
+-              depth,
+-              ...child.live === true ? { live: true } : {},
+-              ...child.title === undefined ? {} : { title: child.title },
+-            }
++          ? { sessionId: child.sessionId, depth, ...child.live === true ? { live: true } : {} }
+           : { ...nodeOf(visible), depth })
+         if (visible !== undefined && depth < MAX_DEPTH) walk(visible, depth + 1)
+       }
 
 --- a/packages/experimental/session-tasks-bundle/package.json	2026-10-29 04:02:07
 +++ b/packages/experimental/session-tasks-bundle/package.json	2026-10-31 23:17:47

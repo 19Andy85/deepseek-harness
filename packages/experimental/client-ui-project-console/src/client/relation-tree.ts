@@ -55,7 +55,12 @@ export function relationGroups(rows: readonly SessionTaskView[]): RelationGraphG
         visited.add(child.sessionId)
         const visible = byId.get(child.sessionId)
         nodes.push(visible === undefined
-          ? { sessionId: child.sessionId, depth, ...child.live === true ? { live: true } : {} }
+          ? {
+            sessionId: child.sessionId,
+            depth,
+            ...child.live === true ? { live: true } : {},
+            ...child.title === undefined ? {} : { title: child.title },
+          }
           : { ...nodeOf(visible), depth })
         if (visible !== undefined && depth < MAX_DEPTH) walk(visible, depth + 1)
       }

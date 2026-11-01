@@ -176,7 +176,24 @@ export class SessionTasksController extends TypertRemoteService {
     this.lastRelationsRefresh = Date.now()
     try {
       const records = await query.listSessions()
-      this.relationsByParent = buildChildRelations(records)
+      const childIds = records
+        .filter(record => record.header.parentSession !== undefined && record.header.origin === 'subagent')
+        .map(record => record.header.id)
+      const titles = new Map<string, string>()
+      if (childIds.length > 0) {
+        try {
+          const observations = await query.readTitleSnapshots(childIds, new AbortController().signal)
+          for (const observation of observations) {
+            if (observation.status !== 'fulfilled') continue
+            const title = observation.value.title?.title
+            if (title !== undefined) titles.set(String(observation.sessionId), title)
+          }
+        } catch (error) {
+          // Titles decorate the relation graph; relations remain readable without them.
+          this.ctx.logger?.warn?.(error)
+        }
+      }
+      this.relationsByParent = buildChildRelations(records, titles)
       this.relationsByChild.clear()
       for (const [parentId, children] of this.relationsByParent) {
         for (const child of children) this.relationsByChild.set(child.sessionId, parentId)
