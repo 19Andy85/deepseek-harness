@@ -417,9 +417,14 @@ export class ProjectConsoleStore {
     if (this.disposed) return Promise.resolve()
     this.panelId ??= this.workspaces[0]?.id
     const workspaceId = this.panelId
+    // A periodic re-read of the same Workspace must not blank the visible
+    // state: keeping `ready` avoids the inbox/team board flashing on every poll.
+    const silent = this.state.status === 'ready' && this.state.workspaceId === workspaceId
     this.state = workspaceId === undefined
       ? { ...this.state, status: 'loading' }
-      : { ...this.state, status: 'loading', workspaceId }
+      : silent
+        ? { ...this.state, workspaceId }
+        : { ...this.state, status: 'loading', workspaceId }
     this.emit()
     const run = async (): Promise<void> => {
       if (workspaceId === undefined) {

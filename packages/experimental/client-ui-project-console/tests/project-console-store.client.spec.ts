@@ -354,6 +354,22 @@ describe('ProjectConsoleStore', () => {
   })
 })
 
+describe('ProjectConsoleStore periodic refresh', () => {
+  it('keeps the ready state while re-reading the same workspace', async () => {
+    const host = hostOf(
+      [{ id: 'ws', title: 'Workspace', path: '/work' }],
+      async () => snapshot('ws', [row('a')]),
+    )
+    const store = new ProjectConsoleStore(host)
+    await store.selectWorkspace('ws')
+    expect(store.getSnapshot().status).toBe('ready')
+    const pending = store.refresh()
+    expect(store.getSnapshot().status).toBe('ready')
+    await pending
+    expect(store.getSnapshot().status).toBe('ready')
+  })
+})
+
 describe('ProjectConsoleStore server read state', () => {
   it('prefers the Host changes and last-seen time, and acknowledges on dispose', async () => {
     const host = hostOf(
