@@ -335,3 +335,9 @@
 .item_job { border-radius: 4px; }
 .item_subagent { border-style: dashed; }
 .item_schedule { border-style: dotted; }
+
+.trackLabel,
+.trackItem,
+.trackAge {
+  white-space: nowrap;
+}

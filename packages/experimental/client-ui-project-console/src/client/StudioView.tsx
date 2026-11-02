@@ -1,23 +1,23 @@
-/** Studio view: zones, room health, completion tray, and the shift summary over live sessions. */
+/** Studio team board: one card per team, sorted by urgency, with live children and a completion strip. */
 import type { SessionTaskView } from '@deepseek-ai/dsh-experimental-api-session-tasks/types'
 import type { ShiftStats } from './day-stats.ts'
 import type { AttentionDescriptor } from './attention.ts'
 import type { ProjectConsoleKey } from './locales.ts'
 import { DeskIcon } from './icons.tsx'
-import { identityOf } from './partner-identity.ts'
+import { identityOf, type PartnerRole } from './partner-identity.ts'
 import { PartnerAvatar } from './PartnerAvatar.tsx'
 import { ActivityTrack, StatusDot } from './visual/visual.tsx'
 import css from './StudioView.module.css'
 
-/** Per-Session UI facts the studio desk reads. */
+/** Per-Session UI facts the studio card reads. */
 export interface StudioSessionStatus {
   /** Whether the Session has an unseen completion. */
   readonly completionUnread?: boolean
 }
 
 /**
- * Render the studio floor, zones, room health, and trays.
- * @param props - rows, aliases, status facts, the dictionary, and desk actions.
+ * Render the studio team board, room health, and completion strip.
+ * @param props - rows, aliases, status facts, the dictionary, and card actions.
  * @returns the studio surface.
  */
 export function StudioView({
@@ -44,96 +44,108 @@ export function StudioView({
     { key: 'questions' as const, label: t('shiftQuestions'), count: shift.questions },
   ].filter(counter => counter.count > 0)
   const visible = new Map(rows.map(row => [row.sessionId, row]))
+  const childIds = new Set<string>()
+  for (const row of rows) {
+    for (const child of row.relations?.children ?? []) {
+      if (visible.has(child.sessionId)) childIds.add(child.sessionId)
+    }
+  }
   const unreadRows = rows.filter(row => statusFacts.get(row.sessionId)?.completionUnread === true)
-  const unreadIds = new Set(unreadRows.map(row => row.sessionId))
   const pendingCount = rows.filter(row => descriptorOf(row.sessionId) !== undefined).length
   const failedCount = rows.filter(row => row.outcome === 'failed').length
-  const meetingParents = rows.filter((row) => {
-    const runningChildren = (row.relations?.children ?? [])
-      .map(child => visible.get(child.sessionId))
-      .filter((child): child is SessionTaskView => child?.status === 'running')
-    return runningChildren.length >= 2 || (row.status === 'running' && runningChildren.length > 0)
-  })
-  const meetingParentIds = new Set(meetingParents.map(row => row.sessionId))
-  const meetingChildIds = new Set(meetingParents.flatMap(row => (row.relations?.children ?? [])
-    .map(child => visible.get(child.sessionId))
-    .filter((child): child is SessionTaskView => child?.status === 'running')
-    .map(child => child.sessionId)))
-  const activeRows = rows.filter(row => !unreadIds.has(row.sessionId) && !meetingParentIds.has(row.sessionId)
-    && !meetingChildIds.has(row.sessionId)
-    && (row.status === 'running' || descriptorOf(row.sessionId) !== undefined))
-  const restRows = rows.filter(row => !unreadIds.has(row.sessionId) && !meetingParentIds.has(row.sessionId)
-    && !meetingChildIds.has(row.sessionId)
-    && row.status !== 'running' && descriptorOf(row.sessionId) === undefined)
-  const desk = (row: SessionTaskView, nested: boolean) => {
+  const priority = (row: SessionTaskView): number => {
+    if (descriptorOf(row.sessionId) !== undefined) return 0
+    if (row.outcome === 'failed' || row.stalled === true) return 1
+    if (row.status === 'running') return 2
+    if (statusFacts.get(row.sessionId)?.completionUnread === true) return 3
+    return 4
+  }
+  const teams = rows
+    .filter(row => !childIds.has(row.sessionId))
+    .map((row) => {
+      const children = (row.relations?.children ?? [])
+        .map(child => visible.get(child.sessionId))
+        .filter((child): child is SessionTaskView => child !== undefined)
+      const ended = (row.relations?.children?.length ?? 0) - children.length
+      return { row, children, ended }
+    })
+    .sort((left, right) => priority(left.row) - priority(right.row))
+  const roleLabel = (role: PartnerRole): ProjectConsoleKey => {
+    const keys: Record<PartnerRole, ProjectConsoleKey> = {
+      analysis: 'roleAnalysis',
+      implementation: 'roleImplementation',
+      research: 'roleResearch',
+      operation: 'roleOperation',
+      guard: 'roleGuard',
+      general: 'roleGeneral',
+    }
+    return keys[role]
+  }
+  const stateLabel = (row: SessionTaskView): string => {
+    if (descriptorOf(row.sessionId) !== undefined) return t('needsYou')
+    if (row.outcome === 'failed') return t('failed')
+    if (row.status === 'running') return t('running')
+    if (statusFacts.get(row.sessionId)?.completionUnread === true) return t('completedUnread')
+    return t('idle')
+  }
+  const teamCard = (row: SessionTaskView, children: readonly SessionTaskView[], ended: number) => {
     const pending = descriptorOf(row.sessionId) !== undefined
-    const unread = statusFacts.get(row.sessionId)?.completionUnread === true
-    const lamp = row.outcome === 'failed' || row.stalled === true ? 'error'
-      : pending ? 'attention' : unread ? 'success' : row.status === 'running' ? 'running' : 'idle'
     const identity = identityOf(row, aliases)
+    const lamp = row.outcome === 'failed' || row.stalled === true ? 'error'
+      : pending ? 'attention' : row.status === 'running' ? 'running' : 'idle'
     return (
-      <button
+      <article
         key={row.sessionId}
-        type="button"
-        className={`${css.desk} ${pending ? css.deskAttention : ''} ${nested ? css.deskDerived : ''}`}
+        className={`${css.teamCard} ${pending ? css.teamPending : ''} ${row.status === 'running' ? css.teamRunning : ''}`}
         onClick={() => { onFocus(row.sessionId) }}
         onDragOver={(event) => { event.preventDefault() }}
         onDrop={(event) => {
           event.preventDefault()
           onDropCard(row.sessionId, event.dataTransfer.getData('application/x-project-console-card'))
         }}
-        aria-label={`${identity.name} · ${row.status === 'running' ? t('running') : t('idle')}`}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onFocus(row.sessionId) } }}
+        aria-label={`${identity.name} · ${stateLabel(row)}`}
       >
-        <div className={css.deskTop}>
-          <PartnerAvatar name={identity.name} initial={identity.initial} role={identity.role} size={nested ? 28 : 36} />
-          <div className={css.identity}>
-            <span className={css.name} title={row.title ?? row.sessionId}>{identity.name}</span>
-            <span className={css.deskStatus}>
+        <div className={css.teamHead}>
+          <PartnerAvatar name={identity.name} initial={identity.initial} role={identity.role} size={34} />
+          <div className={css.teamIdentity}>
+            <span className={css.teamName} title={row.title ?? row.sessionId}>{identity.name}</span>
+            <span className={css.teamMeta}>
+              {t(roleLabel(identity.role))}
+              {' · '}
               <StatusDot state={lamp} />
-              {row.status === 'running' ? t('running') : t('idle')}
-              {pending ? ` · ${t('needsYou')}` : ''}
-              {unread ? ` · ${t('completedUnread')}` : ''}
-              {row.stalled === true ? ` · ${t('stalled')}` : ''}
-              {row.outcome === 'failed' ? ` · ${t('failed')}` : ''}
+              {stateLabel(row)}
             </span>
           </div>
-          <span className={`${css.lamp} ${css[`lamp_${lamp}`] ?? ''}`} aria-hidden="true" />
+          {children.length === 0 ? null : <span className={css.collabBadge}>{children.length + ' ' + t('activitySubagent')}</span>}
         </div>
-        <div className={css.deskBody}>
-          <ActivityTrack activity={row.activity} t={t} running={row.status === 'running'} now={now} />
-        </div>
-        {row.lastPromptAt === undefined ? null : (
-          <span className={css.deskFoot}>
-            {new Date(row.lastPromptAt).toLocaleTimeString(undefined, { hour12: false })}
-          </span>
-        )}
-        {row.relations?.children === undefined || row.relations.children.length === 0
+        <ActivityTrack activity={row.activity} t={t} running={row.status === 'running'} now={now} />
+        {children.length === 0 && ended === 0
           ? null
-          : (() => {
-            const liveChildren = row.relations.children
-              .map(child => visible.get(child.sessionId))
-              .filter((child): child is SessionTaskView => child !== undefined)
-            const ended = row.relations.children.length - liveChildren.length
-            return (
-              <span className={css.childSummary}>
-                {liveChildren.slice(0, 3).map((child) => {
-                  const childName = identityOf(child, aliases).name
-                  return <span key={child.sessionId} className={css.childName}>{childName}</span>
-                })}
-                {liveChildren.length > 3 ? <span className={css.childName}>+{liveChildren.length - 3}</span> : null}
-                {ended > 0 ? <span className={css.childState}>+{ended} {t('completedUnread')}</span> : null}
-              </span>
-            )
-          })()}
-      </button>
+          : (
+            <div className={css.teamFoot}>
+              {children.slice(0, 3).map((child) => {
+                const childName = identityOf(child, aliases).name
+                return (
+                  <button
+                    key={child.sessionId}
+                    type="button"
+                    className={css.teamChild}
+                    onClick={(event) => { event.stopPropagation(); onFocus(child.sessionId) }}
+                  >
+                    {childName}
+                  </button>
+                )
+              })}
+              {children.length > 3 ? <span className={css.teamFootMore}>{'+'}{children.length - 3}{' '}{t('running')}</span> : null}
+              {ended > 0 ? <span className={css.teamFootMore}>+{ended}{' '}{t('completedUnread')}</span> : null}
+            </div>
+          )}
+      </article>
     )
   }
-  const zone = (title: string, zoneRows: readonly SessionTaskView[]) => (zoneRows.length === 0 ? null : (
-    <div className={css.zone}>
-      <h3 className={css.zoneTitle}>{title}</h3>
-      <div className={css.zoneGrid}>{zoneRows.map(row => desk(row, false))}</div>
-    </div>
-  ))
   return (
     <section className={css.floor} aria-label={t('studioTitle')}>
       <div className={css.floorHead}>
@@ -150,62 +162,37 @@ export function StudioView({
         </div>
         <span className={css.roomText}>{t('roomHealth', { needs: pendingCount, failed: failedCount })}</span>
       </div>
-      <div className={unreadRows.length === 0 ? css.studioGridFull : css.studioGrid}>
-        <div className={css.zones}>
-          {zone(t('zoneActive'), activeRows)}
-          {meetingParents.length === 0 ? null : (
-            <div className={css.zone}>
-              <h3 className={css.zoneTitle}>{t('zoneMeeting')}</h3>
-              {meetingParents.map(parent => (
-                <div key={parent.sessionId} className={css.meetingGroup}>
-                  {desk(parent, false)}
-                  <div className={css.meetingChildren}>
-                    {(parent.relations?.children ?? [])
-                      .map(child => visible.get(child.sessionId))
-                      .filter((child): child is SessionTaskView => child?.status === 'running')
-                      .map(child => desk(child, true))}
-                  </div>
-                </div>
-              ))}
+      <div className={css.teamBoard}>
+        {teams.length === 0
+          ? (
+            <div className={css.empty}>
+              <DeskIcon className={css.emptyIcon} />
+              <p className={css.emptyTitle}>{t('studioEmpty')}</p>
+              <p className={css.emptyHint}>{t('studioEmptyHint')}</p>
             </div>
-          )}
-          {zone(t('zoneRest'), restRows)}
-          {activeRows.length + restRows.length + meetingParents.length === 0
-            ? (
-              <div className={css.empty}>
-                <DeskIcon className={css.emptyIcon} />
-                <p className={css.emptyTitle}>{t('studioEmpty')}</p>
-                <p className={css.emptyHint}>{t('studioEmptyHint')}</p>
-              </div>
-            )
-            : null}
-        </div>
-        {unreadRows.length === 0 ? null : (
-          <aside className={css.completionTray} aria-label={t('completionTray')}>
+          )
+          : teams.map(team => teamCard(team.row, team.children, team.ended))}
+      </div>
+      {unreadRows.length === 0
+        ? null
+        : (
+          <section className={css.completionStrip} aria-label={t('completionTray')}>
             <h3 className={css.zoneTitle}>{t('completionTray')} {unreadRows.length}</h3>
-            {unreadRows.length === 0
-              ? <p className={css.trayEmpty}>{t('noCompletion')}</p>
-              : unreadRows.map((row) => {
+            <div className={css.completionStripBody}>
+              {unreadRows.map((row) => {
                 const identity = identityOf(row, aliases)
                 return (
-                  <div key={row.sessionId} className={css.completionCard}>
-                    <div className={css.deskTop}>
-                      <PartnerAvatar name={identity.name} initial={identity.initial} role={identity.role} size={26} />
-                      <span className={css.name} title={row.title ?? row.sessionId}>{identity.name}</span>
-                    </div>
-                    {row.changes === undefined
-                      ? null
-                      : <span className={css.trayMeta}>{t('changesSummary', { n: row.changes.total, added: row.changes.added, deleted: row.changes.deleted })}</span>}
-                    <div className={css.trayActions}>
-                      <button type="button" className={css.select} onClick={() => { onFocus(row.sessionId) }}>{t('focusSession')}</button>
-                      <button type="button" className={css.select} onClick={() => { onOpen(row.sessionId) }}>{t('openSession')}</button>
-                    </div>
+                  <div key={row.sessionId} className={css.completionChip}>
+                    <PartnerAvatar name={identity.name} initial={identity.initial} role={identity.role} size={20} />
+                    <span className={css.teamChild}>{identity.name}</span>
+                    <button type="button" className={css.select} onClick={() => { onFocus(row.sessionId) }}>{t('focusSession')}</button>
+                    <button type="button" className={css.select} onClick={() => { onOpen(row.sessionId) }}>{t('openSession')}</button>
                   </div>
                 )
               })}
-          </aside>
+            </div>
+          </section>
         )}
-      </div>
       <section className={css.shift} aria-label={t('shiftTitle')}>
         <div className={css.shiftHead}>
           <h3 className={css.shiftTitle}>{t('shiftTitle')}</h3>

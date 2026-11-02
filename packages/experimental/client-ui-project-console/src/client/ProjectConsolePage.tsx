@@ -109,6 +109,7 @@ export function ProjectConsolePage({
   const [activeId, setActiveId] = useState<string | undefined>(undefined)
   const [inboxOpen, setInboxOpen] = useState(false)
   const [workspaceBack, setWorkspaceBack] = useState<string | undefined>(undefined)
+  const [reloadNotice, setReloadNotice] = useState(false)
   const [actions, setActions] = useState<{ readonly id: number; readonly label: string; readonly at: number }[]>([])
   const [relationView, setRelationView] = useState<'inline' | 'canvas'>('inline')
   const [aliases, setAliases] = useState<Record<string, string>>(() => readPartnerAliases())
@@ -370,6 +371,25 @@ export function ProjectConsolePage({
       />
     )
     : null
+  const crossGroups = inboxGroups.filter(group => group.workspaceId !== selected)
+  const crossInboxNode = crossGroups.length === 0
+    ? null
+    : (
+      <GlobalInbox
+        groups={crossGroups}
+        statuses={statusFacts}
+        aliases={aliasesMap}
+        t={t}
+        onOpen={(sessionId) => { openSession(sessionId) }}
+        onSwitch={(workspaceId) => { setWorkspaceBack(selected); selectWorkspace(workspaceId) }}
+        onApprove={(sessionId) => { approve(sessionId, 'allowed-once') }}
+        onReject={(sessionId) => { approve(sessionId, 'rejected') }}
+        onAnswer={(sessionId, questionId, label) => {
+          answer(sessionId, { answers: [{ id: questionId, selected: [label] }] })
+        }}
+      />
+    )
+  const inboxSideNode = attention.length > 0 ? inboxNode : crossInboxNode
   const focusPending = focus === undefined ? 0 : pendingItems.filter(item => item.sessionId === focus.sessionId).length
   const focusIdentity = focus?.row === undefined ? undefined : identityOf(focus.row, aliasesMap)
 
@@ -392,7 +412,7 @@ export function ProjectConsolePage({
             {workspaces.map(workspace => <option key={workspace.id} value={workspace.id}>{workspace.title}</option>)}
           </select>
           <button type="button" className={css.select} onClick={() => { refresh() }}>{t('refresh')}</button>
-          <button type="button" className={css.select} onClick={() => { window.location.reload() }}>{t('refreshPage')}</button>
+          <button type="button" className={css.select} onClick={() => { setReloadNotice(true) }}>{t('refreshPage')}</button>
           <select
             className={css.select}
             aria-label={t('readingSize')}
@@ -470,6 +490,26 @@ export function ProjectConsolePage({
             : <span className={css.meta}>{t('recentActions')} · {actions[0].label}</span>}
           <span className={css.keyboardHint}>{t('keyboardHint')}</span>
         </div>
+        {reloadNotice
+          ? (
+            <div className={css.notice} role="alert">
+              <span className={css.noticeText}>{t('reloadRisk')}</span>
+              <button type="button" className={css.select} onClick={() => { refresh(); setReloadNotice(false) }}>{t('refresh')}</button>
+              <button
+                type="button"
+                className={css.select}
+                onClick={() => {
+                  const url = new URL(window.location.href)
+                  url.searchParams.set('_reload', String(Date.now()))
+                  window.location.replace(url.toString())
+                }}
+              >
+                {t('reloadAnyway')}
+              </button>
+              <button type="button" className={css.select} onClick={() => { setReloadNotice(false) }}>{t('cancel')}</button>
+            </div>
+          )
+          : null}
         {focus !== undefined
           ? null
           : (
@@ -600,7 +640,7 @@ export function ProjectConsolePage({
             )
             : null}
 
-          {!inboxOpen && view === 'canvas' ? inboxNode : null}
+          {!inboxOpen && view === 'canvas' ? inboxSideNode : null}
 
           {(view === 'canvas'
             ? (
@@ -780,9 +820,9 @@ export function ProjectConsolePage({
               </>
             )
             : (
-              <div className={!inboxOpen && attention.length > 0 ? css.studioShell : css.studioShellFull}>
-                {!inboxOpen && attention.length > 0
-                  ? <aside className={css.studioSide}>{inboxNode}</aside>
+              <div className={!inboxOpen && inboxSideNode !== null ? css.studioShell : css.studioShellFull}>
+                {!inboxOpen && inboxSideNode !== null
+                  ? <aside className={css.studioSide}>{inboxSideNode}</aside>
                   : null}
                 <StudioView
                   rows={rows}
