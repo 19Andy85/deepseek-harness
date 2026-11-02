@@ -15,7 +15,12 @@ export interface BalanceWallet {
  * @param props.read - reads the current wallets; resolves undefined when unavailable.
  * @returns the badge, or null while the balance is unavailable.
  */
-export function BalanceBadge({ read }: { readonly read: () => Promise<readonly BalanceWallet[] | undefined> }) {
+export function BalanceBadge({
+  read, label,
+}: {
+  readonly read: () => Promise<readonly BalanceWallet[] | undefined>
+  readonly label: string
+}) {
   const [wallets, setWallets] = useState<readonly BalanceWallet[] | undefined>(undefined)
   useEffect(() => {
     let alive = true
@@ -41,7 +46,7 @@ export function BalanceBadge({ read }: { readonly read: () => Promise<readonly B
     : wallet.balance
   return (
     <span className={css.balance} title={`${wallet.currency} ${wallet.balance}`}>
-      {symbol}{display}
+      {label}{symbol}{display}
     </span>
   )
 }

@@ -175,7 +175,7 @@ function registerUi(ctx: Context): void {
   ctx.effect(() => ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
     name: 'sidebar.footer.action',
     id: 'project-console-balance',
-    inject: () => ({ read: readBalance }),
+    inject: () => ({ read: readBalance, label: t('dsBalance') }),
   }, BalanceBadge)), 'project-console: balance badge')
   ctx.effect(() => ctx.slots.inject('sidebar.workspaces.workspace.menu.item', () => ctx.slots.register({
     name: 'sidebar.workspaces.workspace.menu.item',
