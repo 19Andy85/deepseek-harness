@@ -120,6 +120,7 @@ export class ProjectConsoleStore {
   private timer: ReturnType<typeof setTimeout> | undefined
   private disposed = false
   private tail: Promise<void> = Promise.resolve()
+  private inFlight: { readonly workspaceId: string | undefined; readonly promise: Promise<void> } | undefined
   private focusAbort: AbortController | undefined
   private focusRun = 0
   private memoryWorkspace: string | undefined
@@ -423,6 +424,9 @@ export class ProjectConsoleStore {
     if (this.disposed) return Promise.resolve()
     this.panelId ??= this.workspaces[0]?.id
     const workspaceId = this.panelId
+    // Auto-refresh and a manual read can overlap: one read per Workspace is
+    // enough, otherwise slow Host snapshots pile up and keep the page loading.
+    if (this.inFlight !== undefined && this.inFlight.workspaceId === workspaceId) return this.inFlight.promise
     // A periodic re-read of the same Workspace must not blank the visible
     // state: keeping `ready` avoids the inbox/team board flashing on every poll.
     const silent = this.state.status === 'ready' && this.state.workspaceId === workspaceId
@@ -488,8 +492,13 @@ export class ProjectConsoleStore {
       }
       this.emit()
     }
-    this.tail = this.tail.then(run, run)
-    return this.tail
+    const promise = this.tail.then(run, run)
+    this.tail = promise
+    this.inFlight = { workspaceId, promise }
+    void promise.finally(() => {
+      if (this.inFlight?.promise === promise) this.inFlight = undefined
+    })
+    return promise
   }
 
   /** Stop timers, subscriptions, and pending publication. */

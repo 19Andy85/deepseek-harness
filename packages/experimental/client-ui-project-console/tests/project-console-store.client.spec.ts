@@ -354,6 +354,28 @@ describe('ProjectConsoleStore', () => {
   })
 })
 
+describe('ProjectConsoleStore overlapping reads', () => {
+  it('coalesces reads of the same workspace', async () => {
+    let reads = 0
+    let release: (() => void) | undefined
+    const host = hostOf(
+      [{ id: 'ws', title: 'Workspace', path: '/work' }],
+      async () => {
+        reads += 1
+        await new Promise<void>((resolve) => { release = resolve })
+        return snapshot('ws', [row('a')])
+      },
+    )
+    const store = new ProjectConsoleStore(host)
+    const first = store.selectWorkspace('ws')
+    const second = store.refresh()
+    expect(reads).toBe(1)
+    release?.()
+    await Promise.all([first, second])
+    expect(store.getSnapshot().status).toBe('ready')
+  })
+})
+
 describe('ProjectConsoleStore workspace switching', () => {
   it('clears the previous rows when switching workspaces', async () => {
     const host = hostOf(
