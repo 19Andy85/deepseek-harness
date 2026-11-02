@@ -25,7 +25,7 @@ import { RelationGraph } from './RelationGraph.tsx'
 import { AttentionInbox } from './AttentionInbox.tsx'
 import { StudioView } from './StudioView.tsx'
 import { readViewPreference, writeViewPreference, type ConsoleView } from './view-preference.ts'
-import { ActivityTrack, formatDuration, HealthSegments, StatusDot, Timeline, type HealthFilter } from './visual/visual.tsx'
+import { ActivityTrack, formatDuration, formatTokens, HealthSegments, StatusDot, Timeline, type HealthFilter } from './visual/visual.tsx'
 import type { ProjectConsoleKey } from './locales.ts'
 import css from './ProjectConsolePage.module.css'
 
@@ -746,7 +746,7 @@ export function ProjectConsolePage({
                                   : <span className={css.chip}>{t('progressOf', { done: session.progress.completed, total: session.progress.total })}</span>}
                                 {session.usage === undefined
                                   ? null
-                                  : <span className={css.chip}>{t('tokensSummary', { input: session.usage.inputTokens, output: session.usage.outputTokens })}</span>}
+                                  : <span className={css.chip}>{t('tokensSummary', { input: formatTokens(session.usage.inputTokens), output: formatTokens(session.usage.outputTokens) })}</span>}
                                 {session.toolCall === undefined
                                   ? null
                                   : <span className={css.chip} title={session.toolCall.arguments}>{t('toolCallLabel', { name: session.toolCall.name })}</span>}
