@@ -16,10 +16,12 @@ import type {} from '@deepseek-ai/dsh-client-ui-approval/client'
 import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-user-questions/client'
 import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
+import type {} from '@deepseek-ai/dsh-api-account-controller/remote'
 import sessionTasksRemote from '@deepseek-ai/dsh-experimental-api-session-tasks/remote'
 import { ProjectConsoleMenuItem, type ProjectConsoleMenuInjected } from './ProjectConsoleMenu.tsx'
 import { ProjectConsolePage, type ProjectConsoleInjected } from './ProjectConsolePage.tsx'
 import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
+import { BalanceBadge, type BalanceWallet } from './BalanceBadge.tsx'
 import { ProjectConsoleStore } from './ProjectConsoleStore.ts'
 import type { VisitMemory } from './visit-memory.ts'
 import { de, en, es, fr, ja, pt, ru, zh } from './locales.ts'
@@ -44,7 +46,7 @@ function readVisitMemory(workspaceId: string): VisitMemory | undefined {
 export const PANEL_ID = 'project-console' as MainPanelId
 
 /** Client capabilities the page contributes through. */
-export const inject = ['slots', 'locale', 'remote', 'remote.session', 'workspaces', 'layout', 'uiWorkspace', 'uiSession']
+export const inject = ['slots', 'locale', 'remote', 'remote.session', 'remote.account', 'workspaces', 'layout', 'uiWorkspace', 'uiSession']
 
 /**
  * Mount the overview Remote, then contribute the console entry, the page it
@@ -161,6 +163,20 @@ function registerUi(ctx: Context): void {
       hooks: { sessionStatus: ctx.uiSession.sessionStatus },
     }),
   }, ProjectConsolePage)), 'project-console: page')
+  const readBalance = async (): Promise<readonly BalanceWallet[] | undefined> => {
+    const result = await ctx.remote.account.getBalance({
+      version: process.env.DSH_CLIENT_VERSION ?? '0.0.0',
+      locale: ctx.locale.getSnapshot().active,
+      timezoneOffsetSeconds: -new Date().getTimezoneOffset() * 60,
+    })
+    if (!result.ok || result.value === null || result.value.status !== 'ready') return undefined
+    return result.value.value
+  }
+  ctx.effect(() => ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
+    name: 'sidebar.footer.action',
+    id: 'project-console-balance',
+    inject: () => ({ read: readBalance }),
+  }, BalanceBadge)), 'project-console: balance badge')
   ctx.effect(() => ctx.slots.inject('sidebar.workspaces.workspace.menu.item', () => ctx.slots.register({
     name: 'sidebar.workspaces.workspace.menu.item',
     id: 'project-console',

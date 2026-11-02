@@ -244,7 +244,24 @@ export class SessionTasksController extends TypertRemoteService {
         inProgress: todos.filter(todo => todo.status === 'in_progress').length,
         ...firstInProgress === undefined ? {} : { current: firstInProgress.content },
       }
-    const lastCall = agent.session.snapshotEvents().findLast(event => event.type === 'tool/call')
+    const events = agent.session.snapshotEvents()
+    let usage: {
+      inputTokens: number
+      outputTokens: number
+      totalTokens: number
+      cacheReadTokens: number
+      cacheWriteTokens: number
+    } | undefined
+    for (const event of events) {
+      if (event.type !== 'assistant/message' || event.data.usage === undefined) continue
+      usage ??= { inputTokens: 0, outputTokens: 0, totalTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 }
+      usage.inputTokens += event.data.usage.inputTokens
+      usage.outputTokens += event.data.usage.outputTokens
+      usage.totalTokens += event.data.usage.totalTokens ?? event.data.usage.inputTokens + event.data.usage.outputTokens
+      usage.cacheReadTokens += event.data.usage.cacheReadTokens ?? 0
+      usage.cacheWriteTokens += event.data.usage.cacheWriteTokens ?? 0
+    }
+    const lastCall = events.findLast(event => event.type === 'tool/call')
     const toolCall = lastCall === undefined
       ? undefined
       : {
@@ -277,6 +294,15 @@ export class SessionTasksController extends TypertRemoteService {
       ...outcome?.kind === undefined ? {} : { outcome: outcome.kind },
       ...outcome?.at === undefined ? {} : { outcomeAt: outcome.at },
       ...outcome?.reason === undefined ? {} : { outcomeReason: outcome.reason },
+      ...usage === undefined ? {} : {
+        usage: {
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          totalTokens: usage.totalTokens,
+          ...usage.cacheReadTokens === 0 ? {} : { cacheReadTokens: usage.cacheReadTokens },
+          ...usage.cacheWriteTokens === 0 ? {} : { cacheWriteTokens: usage.cacheWriteTokens },
+        },
+      },
       ...progress === undefined ? {} : { progress },
       ...toolCall === undefined ? {} : { toolCall },
       ...changes === undefined ? {} : { changes },

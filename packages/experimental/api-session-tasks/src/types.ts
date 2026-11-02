@@ -50,6 +50,8 @@ export interface SessionTaskActivityViewEntry {
 
 /** Row metadata read from the owning domain services. */
 export interface SessionTaskMetadata {
+  /** Cumulative token usage, when available. */
+  readonly usage?: SessionTaskUsage
   /** Agent-maintained todo progress, when available. */
   readonly progress?: SessionTaskProgress
   /** Latest tool call, when available. */
@@ -82,6 +84,20 @@ export interface SessionTaskProgress {
   readonly inProgress: number
   /** Content of the first in-progress item, when one exists. */
   readonly current?: string
+}
+
+/** Cumulative token usage of one Session. */
+export interface SessionTaskUsage {
+  /** Prompt tokens consumed. */
+  readonly inputTokens: number
+  /** Completion tokens produced. */
+  readonly outputTokens: number
+  /** Provider total when reported, else input + output + cache tokens. */
+  readonly totalTokens: number
+  /** Cache read tokens, when reported. */
+  readonly cacheReadTokens?: number
+  /** Cache write tokens, when reported. */
+  readonly cacheWriteTokens?: number
 }
 
 /** Latest tool call observed in the Session log. */
@@ -128,6 +144,8 @@ export interface SessionTaskView {
   readonly outcomeAt?: number
   /** Failure message for a failed outcome. */
   readonly outcomeReason?: string
+  /** Cumulative token usage, when the Session log reported any. */
+  readonly usage?: SessionTaskUsage
   /** Agent-maintained todo progress, when the Session has a todo list. */
   readonly progress?: SessionTaskProgress
   /** Latest tool call, when the Session log has one. */

@@ -1013,3 +1013,10 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+.usageBlock {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 4px;
+}

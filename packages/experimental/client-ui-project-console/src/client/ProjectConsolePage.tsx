@@ -330,6 +330,12 @@ export function ProjectConsolePage({
     return () => { clearInterval(timer) }
   }, [])
   useEffect(() => {
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') void refresh()
+    }, 5_000)
+    return () => { clearInterval(timer) }
+  }, [refresh])
+  useEffect(() => {
     const update = () => { setFacts(displayFacts()) }
     window.addEventListener('resize', update)
     document.addEventListener('visibilitychange', update)
@@ -738,6 +744,9 @@ export function ProjectConsolePage({
                                 {session.progress === undefined
                                   ? null
                                   : <span className={css.chip}>{t('progressOf', { done: session.progress.completed, total: session.progress.total })}</span>}
+                                {session.usage === undefined
+                                  ? null
+                                  : <span className={css.chip}>{t('tokensSummary', { input: session.usage.inputTokens, output: session.usage.outputTokens })}</span>}
                                 {session.toolCall === undefined
                                   ? null
                                   : <span className={css.chip} title={session.toolCall.arguments}>{t('toolCallLabel', { name: session.toolCall.name })}</span>}
