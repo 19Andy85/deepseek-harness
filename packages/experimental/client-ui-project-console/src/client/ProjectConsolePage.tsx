@@ -1,5 +1,5 @@
 /** Workspace console page: the attention inbox, the project state bar, and the session work surface. */
-import { Fragment, useEffect, useState, useSyncExternalStore } from 'react'
+import { Fragment, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import type { HostObservable, InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionStatus, SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
 import type { SessionTaskView } from '@deepseek-ai/dsh-experimental-api-session-tasks/types'
@@ -13,6 +13,7 @@ import { relationGroups } from './relation-tree.ts'
 import { identityOf, partnerName, type PartnerRole } from './partner-identity.ts'
 import { readPartnerAliases, writePartnerAlias } from './partner-aliases.ts'
 import { createTaskCard, parseTaskCard, readTaskCards, writeTaskCards, type TaskCard } from './task-cards.ts'
+import { readUiState, writeUiState, type ConsoleUiState } from './ui-state.ts'
 import {
   displayFacts, readReadingMode, resolveReadingLevel, writeReadingMode, type ReadingMode, type ReadingLevel,
 } from './reading-scale.ts'
@@ -107,11 +108,15 @@ export function ProjectConsolePage({
   const [now, setNow] = useState(() => Date.now())
   const [activeId, setActiveId] = useState<string | undefined>(undefined)
   const [inboxOpen, setInboxOpen] = useState(false)
+  const [workspaceBack, setWorkspaceBack] = useState<string | undefined>(undefined)
+  const [actions, setActions] = useState<{ readonly id: number; readonly label: string; readonly at: number }[]>([])
   const [relationView, setRelationView] = useState<'inline' | 'canvas'>('inline')
   const [aliases, setAliases] = useState<Record<string, string>>(() => readPartnerAliases())
   const [cards, setCards] = useState<TaskCard[]>(() => readTaskCards())
   const [cardText, setCardText] = useState('')
   const [cardBoardOpen, setCardBoardOpen] = useState(false)
+  const bodyRef = useRef<HTMLDivElement | null>(null)
+  const scrollTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const [readingMode, setReadingMode] = useState<ReadingMode>(() => readReadingMode())
   const [facts, setFacts] = useState(() => displayFacts())
   const readingLevel: ReadingLevel = resolveReadingLevel(readingMode, facts)
@@ -145,6 +150,24 @@ export function ProjectConsolePage({
     guard: 'roleGuard',
     general: 'roleGeneral',
   }
+  const logAction = (label: string) => {
+    setActions(previous => [{ id: Date.now(), label, at: Date.now() }, ...previous].slice(0, 6))
+  }
+  const approve = (sessionId: string, decision: 'allowed-once' | 'rejected') => {
+    void answerApproval(sessionId, decision).then((accepted) => {
+      if (accepted) logAction(`${decision === 'allowed-once' ? t('allowOnce') : t('rejectApproval')} · ${partnerName(sessionId, rows.find(row => row.sessionId === sessionId)?.title, aliasesMap.get(sessionId))}`)
+    })
+  }
+  const answer = (sessionId: string, answerValue: Parameters<typeof answerQuestion>[1]) => {
+    void answerQuestion(sessionId, answerValue).then((accepted) => {
+      if (accepted) logAction(`${t('answerQuestion')} · ${partnerName(sessionId, rows.find(row => row.sessionId === sessionId)?.title, aliasesMap.get(sessionId))}`)
+    })
+  }
+  const interrupt = (sessionId: string) => {
+    void cancelSession(sessionId).then((accepted) => {
+      if (accepted) logAction(`${t('interrupt')} · ${partnerName(sessionId, rows.find(row => row.sessionId === sessionId)?.title, aliasesMap.get(sessionId))}`)
+    })
+  }
   const persistCards = (next: readonly TaskCard[]) => {
     setCards(writeTaskCards(next))
   }
@@ -161,10 +184,13 @@ export function ProjectConsolePage({
     const card = parseTaskCard(raw)
     if (card === undefined) return
     void sendToSession(sessionId, card.text, 'queue').then((accepted) => {
-      if (accepted) removeCard(card.id)
+      if (!accepted) return
+      removeCard(card.id)
+      logAction(`${t('dispatchToSelected')} · ${partnerName(sessionId, rows.find(row => row.sessionId === sessionId)?.title, aliasesMap.get(sessionId))}`)
     })
   }
   const saveAlias = (sessionId: string) => {
+    if (renameText.trim() !== '') logAction(`${t('renamePartner')} · ${renameText.trim()}`)
     setAliases(writePartnerAlias(sessionId, renameText))
     setRenaming(undefined)
     setRenameText('')
@@ -279,18 +305,18 @@ export function ProjectConsolePage({
         else { setActiveId(undefined); setReplyingTo(null); setReplyText('') }
       } else if (active !== undefined && event.key === 'a') {
         const pending = pendingOf(active)
-        if (pending?.kind === 'approval') void answerApproval(active, 'allowed-once')
+        if (pending?.kind === 'approval') approve(active, 'allowed-once')
       } else if (active !== undefined && event.key === 'r') {
         setReplyingTo(active)
         setReplyText('')
       } else if (active !== undefined && event.key === 'i') {
         const row = rows.find(candidate => candidate.sessionId === active)
-        if (row?.status === 'running') void cancelSession(active)
+        if (row?.status === 'running') interrupt(active)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => { window.removeEventListener('keydown', onKey) }
-  }, [active, keyboardIds.join(','), state.focus, rows, attention, inboxOpen, pendingOf, focusSession, closeFocus, answerApproval, cancelSession])
+  }, [active, keyboardIds.join(','), state.focus, rows, attention, inboxOpen, pendingOf, focusSession, closeFocus, approve, interrupt])
   const focus = state.focus
   useEffect(() => {
     const timer = setInterval(() => { setNow(Date.now()) }, 1_000)
@@ -305,6 +331,28 @@ export function ProjectConsolePage({
       document.removeEventListener('visibilitychange', update)
     }
   }, [])
+  useEffect(() => {
+    if (selected === undefined) return
+    const saved = readUiState(selected)
+    setActiveId(saved.activeId)
+    setFilter(saved.filter)
+    setRelationView(saved.relationView ?? 'inline')
+    setCardBoardOpen(saved.cardBoardOpen ?? false)
+    const restore = () => { bodyRef.current?.scrollTo({ top: saved.scrollTop ?? 0 }) }
+    const frame = requestAnimationFrame(restore)
+    const timer = setTimeout(restore, 250)
+    return () => { cancelAnimationFrame(frame); clearTimeout(timer) }
+  }, [selected])
+  useEffect(() => {
+    if (selected === undefined) return
+    writeUiState(selected, { activeId, filter, relationView, cardBoardOpen })
+  }, [selected, activeId, filter, relationView, cardBoardOpen])
+  useEffect(() => {
+    if (focus?.sessionId !== undefined) setActiveId(focus.sessionId)
+  }, [focus?.sessionId])
+  useEffect(() => () => {
+    if (scrollTimer.current !== undefined) clearTimeout(scrollTimer.current)
+  }, [])
   const actionBusy = state.busySessionId
   const inboxNode = state.status === 'ready' && hasRows
     ? (
@@ -316,8 +364,8 @@ export function ProjectConsolePage({
         actions={{
           open: openSession,
           focus: focusSession,
-          approve: (sessionId, decision) => { void answerApproval(sessionId, decision) },
-          answer: (sessionId, answer) => { void answerQuestion(sessionId, answer) },
+          approve: (sessionId, decision) => { approve(sessionId, decision) },
+          answer: (sessionId, answerValue) => { answer(sessionId, answerValue) },
         }}
       />
     )
@@ -394,10 +442,32 @@ export function ProjectConsolePage({
             type="button"
             className={css.select}
             aria-expanded={inboxOpen}
-            onClick={() => { setInboxOpen(open => !open) }}
+            onClick={() => {
+              setInboxOpen((open) => {
+                if (!open) closeFocus()
+                return !open
+              })
+            }}
           >
             {t('globalInbox')}{inboxTotal === 0 ? '' : ` ${String(inboxTotal)}`}
           </button>
+          {workspaceBack === undefined
+            ? null
+            : (
+              <button
+                type="button"
+                className={css.select}
+                onClick={() => {
+                  selectWorkspace(workspaceBack)
+                  setWorkspaceBack(undefined)
+                }}
+              >
+                {t('backToWorkspace')}
+              </button>
+            )}
+          {actions[0] === undefined
+            ? null
+            : <span className={css.meta}>{t('recentActions')} · {actions[0].label}</span>}
           <span className={css.keyboardHint}>{t('keyboardHint')}</span>
         </div>
         {focus !== undefined
@@ -426,122 +496,113 @@ export function ProjectConsolePage({
           ? <div className={css.notice} role="alert"><span className={css.noticeText}>{t('actionFailed')}</span></div>
           : null}
       </header>
-      <div className={rows.length > 12 ? `${css.body} ${css.compact}` : css.body}>
-        {focus === undefined
-          ? (
-            <div className={css.cardBoard} aria-label={t('taskBoard')}>
-              <button type="button" className={css.boardToggle} onClick={() => { setCardBoardOpen(open => !open) }}>
-                {cardBoardOpen ? '−' : '+'} {t('taskBoard')}
-              </button>
-              {cardBoardOpen
-                ? (
-                  <>
-                    <input
-                      className={css.cardInput}
-                      value={cardText}
-                      placeholder={t('taskCardPlaceholder')}
-                      onChange={(event) => { setCardText(event.currentTarget.value) }}
-                      onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addCard() } }}
-                    />
-                    <button type="button" className={css.select} onClick={addCard}>{t('addTaskCard')}</button>
-                  </>
-                )
-                : null}
-              {cards.map(card => (
-                <div
-                  key={card.id}
-                  className={css.taskCard}
-                  draggable
-                  onDragStart={(event) => {
-                    event.dataTransfer.setData('application/x-project-console-card', JSON.stringify(card))
-                    event.dataTransfer.setData('text/plain', card.text)
-                    event.dataTransfer.effectAllowed = 'move'
-                  }}
-                >
-                  <span className={css.taskText} title={card.text}>{card.text}</span>
-                  <button
-                    type="button"
-                    className={css.cardAction}
-                    disabled={active === undefined}
-                    onClick={() => {
-                      if (active !== undefined) dispatchCard(active, JSON.stringify(card))
+      <div className={css.body}>
+        <div
+          ref={bodyRef}
+          className={rows.length > 12 ? `${css.mainColumn} ${css.compact}` : css.mainColumn}
+          onScroll={(event) => {
+            if (selected === undefined) return
+            const top = event.currentTarget.scrollTop
+            if (scrollTimer.current !== undefined) clearTimeout(scrollTimer.current)
+            scrollTimer.current = setTimeout(() => {
+              const saved: ConsoleUiState = readUiState(selected)
+              writeUiState(selected, { ...saved, scrollTop: top })
+            }, 200)
+          }}
+        >
+          {focus === undefined
+            ? (
+              <div className={css.cardBoard} aria-label={t('taskBoard')}>
+                <button type="button" className={css.boardToggle} onClick={() => { setCardBoardOpen(open => !open) }}>
+                  {cardBoardOpen ? '−' : '+'} {t('taskBoard')}
+                </button>
+                {cardBoardOpen
+                  ? (
+                    <>
+                      <input
+                        className={css.cardInput}
+                        value={cardText}
+                        placeholder={t('taskCardPlaceholder')}
+                        onChange={(event) => { setCardText(event.currentTarget.value) }}
+                        onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addCard() } }}
+                      />
+                      <button type="button" className={css.select} onClick={addCard}>{t('addTaskCard')}</button>
+                    </>
+                  )
+                  : null}
+                {cards.map(card => (
+                  <div
+                    key={card.id}
+                    className={css.taskCard}
+                    draggable
+                    onDragStart={(event) => {
+                      event.dataTransfer.setData('application/x-project-console-card', JSON.stringify(card))
+                      event.dataTransfer.setData('text/plain', card.text)
+                      event.dataTransfer.effectAllowed = 'move'
                     }}
                   >
-                    {t('dispatchToSelected')}
+                    <span className={css.taskText} title={card.text}>{card.text}</span>
+                    <button
+                      type="button"
+                      className={css.cardAction}
+                      disabled={active === undefined}
+                      onClick={() => {
+                        if (active !== undefined) dispatchCard(active, JSON.stringify(card))
+                      }}
+                    >
+                      {t('dispatchToSelected')}
+                    </button>
+                    <button type="button" className={css.cardAction} aria-label={t('removeCard')} onClick={() => { removeCard(card.id) }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )
+            : null}
+
+          {inboxOpen || elsewhere.length === 0
+            ? null
+            : (
+              <div className={css.notice} role="status">
+                <span className={css.noticeText}>
+                  {t('attentionElsewhere', { n: elsewhere.reduce((sum, workspace) => sum + workspace.count, 0) })}
+                </span>
+                {elsewhere.map(workspace => (
+                  <button
+                    key={workspace.workspaceId}
+                    type="button"
+                    className={css.select}
+                    onClick={() => { selectWorkspace(workspace.workspaceId) }}
+                  >
+                    {workspace.title} · {workspace.count}
                   </button>
-                  <button type="button" className={css.cardAction} aria-label={t('removeCard')} onClick={() => { removeCard(card.id) }}>×</button>
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
+          {state.status === 'error' && !hasRows
+            ? <div className={css.empty}>{t('error')}</div>
+            : null}
+          {state.status === 'error' && hasRows
+            ? <div className={css.notice} role="alert">
+              <span className={css.noticeText}>{t('error')}</span>
+              <button type="button" className={css.select} onClick={() => { refresh() }}>{t('retry')}</button>
             </div>
-          )
-          : null}
+            : null}
+          {state.status === 'loading' && !hasRows
+            ? ['a', 'b', 'c'].map(key => <div key={key} className={css.skeleton} />)
+            : null}
+          {state.status === 'ready' && !hasRows
+            ? (
+              <div className={css.empty}>
+                <span className={css.emptyGlyph} aria-hidden="true">◇</span>
+                <p className={css.emptyTitle}>{t('emptyTitle')}</p>
+                <p className={css.emptyHint}>{t('emptyHint')}</p>
+              </div>
+            )
+            : null}
 
-        {inboxOpen
-          ? (
-            <GlobalInbox
-              groups={inboxGroups}
-              statuses={statusFacts}
-              t={t}
-              aliases={aliasesMap}
-              onOpen={(sessionId) => { openSession(sessionId) }}
-              onSwitch={(workspaceId) => { selectWorkspace(workspaceId) }}
-              onApprove={(sessionId) => { void answerApproval(sessionId, 'allowed-once') }}
-              onReject={(sessionId) => { void answerApproval(sessionId, 'rejected') }}
-              onAnswer={(sessionId, questionId, label) => {
-                void answerQuestion(sessionId, { answers: [{ id: questionId, selected: [label] }] })
-              }}
-            />
-          )
-          : null}
-        {inboxOpen || elsewhere.length === 0
-          ? null
-          : (
-            <div className={css.notice} role="status">
-              <span className={css.noticeText}>
-                {t('attentionElsewhere', { n: elsewhere.reduce((sum, workspace) => sum + workspace.count, 0) })}
-              </span>
-              {elsewhere.map(workspace => (
-                <button
-                  key={workspace.workspaceId}
-                  type="button"
-                  className={css.select}
-                  onClick={() => { selectWorkspace(workspace.workspaceId) }}
-                >
-                  {workspace.title} · {workspace.count}
-                </button>
-              ))}
-            </div>
-          )}
-        {state.status === 'error' && !hasRows
-          ? <div className={css.empty}>{t('error')}</div>
-          : null}
-        {state.status === 'error' && hasRows
-          ? <div className={css.notice} role="alert">
-            <span className={css.noticeText}>{t('error')}</span>
-            <button type="button" className={css.select} onClick={() => { refresh() }}>{t('retry')}</button>
-          </div>
-          : null}
-        {state.status === 'loading' && !hasRows
-          ? ['a', 'b', 'c'].map(key => <div key={key} className={css.skeleton} />)
-          : null}
-        {state.status === 'ready' && !hasRows
-          ? (
-            <div className={css.empty}>
-              <span className={css.emptyGlyph} aria-hidden="true">◇</span>
-              <p className={css.emptyTitle}>{t('emptyTitle')}</p>
-              <p className={css.emptyHint}>{t('emptyHint')}</p>
-            </div>
-          )
-          : null}
+          {!inboxOpen && view === 'canvas' ? inboxNode : null}
 
-        {!inboxOpen && view === 'canvas' ? inboxNode : null}
-
-        {relationView === 'canvas' && focus === undefined
-          ? <RelationGraph groups={graphGroups} aliases={aliasesMap} t={t} onOpen={openSession} />
-          : null}
-
-        {focus === undefined
-          ? (view === 'canvas'
+          {(view === 'canvas'
             ? (
               <>
                 {state.lastSeenAt === undefined
@@ -666,7 +727,7 @@ export function ProjectConsolePage({
                                   type="button"
                                   className={css.select}
                                   disabled={actionBusy === session.sessionId}
-                                  onClick={() => { void cancelSession(session.sessionId) }}
+                                  onClick={() => { interrupt(session.sessionId) }}
                                 >
                                   {t('interrupt')}
                                 </button>
@@ -737,176 +798,223 @@ export function ProjectConsolePage({
                   onDropCard={(sessionId, raw) => { dispatchCard(sessionId, raw) }}
                 />
               </div>
-            ))
+            ))}
+        </div>
+        {relationView === 'canvas' && !inboxOpen && focus === undefined
+          ? (
+            <aside className={css.relationColumn} aria-label={t('relationCanvas')}>
+              <div className={css.inboxColumnHead}>
+                <span className={css.sectionTitle}>{t('relationCanvas')}</span>
+                <button type="button" className={css.select} onClick={() => { setRelationView('inline') }}>{t('relationInline')}</button>
+              </div>
+              <RelationGraph groups={graphGroups} aliases={aliasesMap} t={t} onOpen={focusSession} />
+            </aside>
+          )
+          : null}
+        {inboxOpen
+          ? (
+            <aside className={css.inboxColumn} aria-label={t('globalInbox')}>
+              <div className={css.inboxColumnHead}>
+                <span className={css.sectionTitle}>{t('globalInbox')}</span>
+                <button type="button" className={css.select} onClick={() => { setInboxOpen(false) }}>×</button>
+              </div>
+              <GlobalInbox
+                groups={inboxGroups}
+                statuses={statusFacts}
+                t={t}
+                aliases={aliasesMap}
+                onOpen={(sessionId) => { openSession(sessionId) }}
+                onSwitch={(workspaceId) => { setWorkspaceBack(selected); selectWorkspace(workspaceId) }}
+                onApprove={(sessionId) => { approve(sessionId, 'allowed-once') }}
+                onReject={(sessionId) => { approve(sessionId, 'rejected') }}
+                onAnswer={(sessionId, questionId, label) => {
+                  answer(sessionId, { answers: [{ id: questionId, selected: [label] }] })
+                }}
+              />
+            </aside>
+          )
+          : null}
+        {focus === undefined
+          ? null
           : (
-            <article className={`${css.row} ${focus.row === undefined ? css.rowIdle : focus.row.status === 'running' ? css.rowRunning : css.rowIdle}`}>
-              <div className={css.rowHead}>
-                <StatusDot state={focus.row === undefined ? 'unknown' : focus.row.outcome === 'failed' ? 'error' : focus.row.status === 'running' ? 'running' : 'idle'} />
-                {focus.row === undefined
-                  ? null
-                  : (
-                    <>
-                      <PartnerAvatar
-                        name={focusIdentity?.name ?? ''}
-                        initial={focusIdentity?.initial ?? '·'}
-                        role={focusIdentity?.role ?? 'general'}
-                        size={30}
-                      />
-                      <span className={css.sessionId} title={focus.sessionId}>{focusIdentity?.name}</span>
-                      <span className={css.chip}>{t(ROLE_KEYS[focusIdentity?.role ?? 'general'])}</span>
-                    </>
-                  )}
-                <span className={css.chip}>{t('focusActive')}</span>
-                {renaming === focus.sessionId
-                  ? (
-                    <>
-                      <input
-                        className={css.renameInput}
-                        value={renameText}
-                        placeholder={t('renamePlaceholder')}
-                        onChange={(event) => { setRenameText(event.currentTarget.value) }}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') saveAlias(focus.sessionId)
-                          if (event.key === 'Escape') { setRenaming(undefined); setRenameText('') }
+            <aside className={css.drawerColumn} role="dialog" aria-label={t('focusActive')}>
+              <article className={`${css.row} ${css.drawerCard} ${focus.row === undefined ? css.rowIdle : focus.row.status === 'running' ? css.rowRunning : css.rowIdle}`}>
+                <div className={css.rowHead}>
+                  <StatusDot state={focus.row === undefined ? 'unknown' : focus.row.outcome === 'failed' ? 'error' : focus.row.status === 'running' ? 'running' : 'idle'} />
+                  {focus.row === undefined
+                    ? null
+                    : (
+                      <>
+                        <PartnerAvatar
+                          name={focusIdentity?.name ?? ''}
+                          initial={focusIdentity?.initial ?? '·'}
+                          role={focusIdentity?.role ?? 'general'}
+                          size={30}
+                        />
+                        <span className={css.sessionId} title={focus.sessionId}>{focusIdentity?.name}</span>
+                        <span className={css.chip}>{t(ROLE_KEYS[focusIdentity?.role ?? 'general'])}</span>
+                      </>
+                    )}
+                  <span className={css.chip}>{t('focusActive')}</span>
+                  {renaming === focus.sessionId
+                    ? (
+                      <>
+                        <input
+                          className={css.renameInput}
+                          value={renameText}
+                          placeholder={t('renamePlaceholder')}
+                          onChange={(event) => { setRenameText(event.currentTarget.value) }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') saveAlias(focus.sessionId)
+                            if (event.key === 'Escape') { setRenaming(undefined); setRenameText('') }
+                          }}
+                        />
+                        <button type="button" className={css.select} onClick={() => { saveAlias(focus.sessionId) }}>{t('save')}</button>
+                        <button type="button" className={css.select} onClick={() => { setRenaming(undefined); setRenameText('') }}>{t('cancel')}</button>
+                      </>
+                    )
+                    : (
+                      <button
+                        type="button"
+                        className={css.select}
+                        onClick={() => {
+                          setRenaming(focus.sessionId)
+                          setRenameText(partnerName(
+                            focus.sessionId, focus.row?.title, aliasesMap.get(focus.sessionId),
+                          ))
                         }}
-                      />
-                      <button type="button" className={css.select} onClick={() => { saveAlias(focus.sessionId) }}>{t('save')}</button>
-                      <button type="button" className={css.select} onClick={() => { setRenaming(undefined); setRenameText('') }}>{t('cancel')}</button>
-                    </>
-                  )
+                      >
+                        {t('renamePartner')}
+                      </button>
+                    )}
+                  {focus.row === undefined
+                    ? null
+                    : <span className={css.meta}>{statusText(focus.row.status, t)}</span>}
+                  {focus.row === undefined || focus.row.lastPromptAt === undefined
+                    ? null
+                    : <span className={css.meta}>{relativeTime(focus.row.lastPromptAt, t)}</span>}
+                  {focus.row === undefined || focus.row.cwd === undefined
+                    ? null
+                    : <span className={`${css.meta} ${css.path}`} title={focus.row.cwd}>{focus.row.cwd}</span>}
+                  {focus.row?.outcome === 'failed'
+                    ? <span className={css.chip} title={focus.row.outcomeReason}>{t('failed')}</span>
+                    : null}
+                  {focus.row?.changes === undefined
+                    ? null
+                    : (
+                      <>
+                        <span className={css.chip}>{t('changesSummary', { n: focus.row.changes.total, added: focus.row.changes.added, deleted: focus.row.changes.deleted })}</span>
+                        <button type="button" className={css.select} onClick={() => { openSession(focus.sessionId) }}>{t('viewChanges')}</button>
+                      </>
+                    )}
+                  {focusPending === 0
+                    ? null
+                    : <span className={css.chip}>{t('needsYou')} {focusPending}</span>}
+                </div>
+                <ActivityTrack
+                  activity={focus.row === undefined ? [] : focus.row.activity}
+                  t={t}
+                  running={focus.row?.status === 'running'}
+                  now={now}
+                />
+                {focus.row === undefined ? null : (
+                  <h2 className={css.sectionTitle}>{t('timeline')}</h2>
+                )}
+                {focus.row?.relations?.children === undefined || focus.row.relations.children.length === 0
+                  ? null
                   : (
                     <button
                       type="button"
-                      className={css.select}
-                      onClick={() => {
-                        setRenaming(focus.sessionId)
-                        setRenameText(partnerName(
-                          focus.sessionId, focus.row?.title, aliasesMap.get(focus.sessionId),
-                        ))
-                      }}
+                      className={css.chipButton}
+                      onClick={() => { setRelationView('canvas') }}
                     >
-                      {t('renamePartner')}
+                      {t('subagentsTitle')} {focus.row.relations.children.length}
                     </button>
                   )}
-                {focus.row === undefined
-                  ? null
-                  : <span className={css.meta}>{statusText(focus.row.status, t)}</span>}
-                {focus.row === undefined || focus.row.lastPromptAt === undefined
-                  ? null
-                  : <span className={css.meta}>{relativeTime(focus.row.lastPromptAt, t)}</span>}
-                {focus.row === undefined || focus.row.cwd === undefined
-                  ? null
-                  : <span className={`${css.meta} ${css.path}`} title={focus.row.cwd}>{focus.row.cwd}</span>}
-                {focus.row?.outcome === 'failed'
-                  ? <span className={css.chip} title={focus.row.outcomeReason}>{t('failed')}</span>
+                <Timeline
+                  entries={focus.timeline}
+                  startedAt={focus.startedAt}
+                  now={now}
+                  t={t}
+                />
+                {focus.phase === 'ended' || focus.phase === 'failed'
+                  ? (
+                    <div className={css.notice} role={focus.phase === 'failed' ? 'alert' : 'status'}>
+                      <span className={css.noticeText}>
+                        {focus.phase === 'failed' ? t('focusFailed') : t('focusEnded')}
+                      </span>
+                    </div>
+                  )
                   : null}
-                {focus.row?.changes === undefined
-                  ? null
-                  : (
-                    <>
-                      <span className={css.chip}>{t('changesSummary', { n: focus.row.changes.total, added: focus.row.changes.added, deleted: focus.row.changes.deleted })}</span>
-                      <button type="button" className={css.select} onClick={() => { openSession(focus.sessionId) }}>{t('viewChanges')}</button>
-                    </>
-                  )}
-                {focusPending === 0
-                  ? null
-                  : <span className={css.chip}>{t('needsYou')} {focusPending}</span>}
-              </div>
-              <ActivityTrack
-                activity={focus.row === undefined ? [] : focus.row.activity}
-                t={t}
-                running={focus.row?.status === 'running'}
-                now={now}
-              />
-              {focus.row === undefined ? null : (
-                <h2 className={css.sectionTitle}>{t('timeline')}</h2>
-              )}
-              {focus.row?.relations?.children === undefined || focus.row.relations.children.length === 0
-                ? null
-                : (
+                <div className={css.rowActions}>
+                  <button type="button" className={css.select} onClick={() => { closeFocus() }}>{t('focusBack')}</button>
+                  <button type="button" className={css.select} onClick={() => { openSession(focus.sessionId) }}>{t('openSession')}</button>
+                  {focus.row?.status === 'running'
+                    ? (
+                      <button
+                        type="button"
+                        className={css.select}
+                        disabled={actionBusy === focus.sessionId}
+                        onClick={() => { interrupt(focus.sessionId) }}
+                      >
+                        {t('interrupt')}
+                      </button>
+                    )
+                    : null}
                   <button
                     type="button"
-                    className={css.chipButton}
-                    onClick={() => { setRelationView('canvas') }}
+                    className={css.select}
+                    onClick={() => {
+                      setReplyingTo(replyingTo === focus.sessionId ? null : focus.sessionId)
+                      setReplyText('')
+                    }}
                   >
-                    {t('subagentsTitle')} {focus.row.relations.children.length}
+                    {t('sendPrompt')}
                   </button>
-                )}
-              <Timeline
-                entries={focus.timeline}
-                startedAt={focus.startedAt}
-                now={now}
-                t={t}
-              />
-              {focus.phase === 'ended' || focus.phase === 'failed'
-                ? (
-                  <div className={css.notice} role={focus.phase === 'failed' ? 'alert' : 'status'}>
-                    <span className={css.noticeText}>
-                      {focus.phase === 'failed' ? t('focusFailed') : t('focusEnded')}
-                    </span>
-                  </div>
-                )
-                : null}
-              <div className={css.rowActions}>
-                <button type="button" className={css.select} onClick={() => { closeFocus() }}>{t('focusBack')}</button>
-                <button type="button" className={css.select} onClick={() => { openSession(focus.sessionId) }}>{t('openSession')}</button>
-                {focus.row?.status === 'running'
+                </div>
+                {focus.phase === 'connecting' && focus.row === undefined
+                  ? <p className={css.meta}>{t('focusConnecting')}</p>
+                  : null}
+                {replyingTo === focus.sessionId
                   ? (
-                    <button
-                      type="button"
-                      className={css.select}
-                      disabled={actionBusy === focus.sessionId}
-                      onClick={() => { void cancelSession(focus.sessionId) }}
-                    >
-                      {t('interrupt')}
-                    </button>
+                    <div className={css.compose}>
+                      <textarea
+                        className={css.prompt}
+                        rows={2}
+                        value={replyText}
+                        placeholder={t('replyPlaceholder')}
+                        onChange={(event) => { setReplyText(event.currentTarget.value) }}
+                      />
+                      <button
+                        type="button"
+                        className={css.select}
+                        disabled={replyText.trim() === '' || actionBusy === focus.sessionId}
+                        onClick={() => {
+                          void sendToSession(focus.sessionId, replyText, 'queue').then((accepted) => {
+                            if (!accepted) return
+                            setReplyingTo(null)
+                            setReplyText('')
+                          })
+                        }}
+                      >
+                        {t('sendQueue')}
+                      </button>
+                      <button type="button" className={css.select} onClick={() => { setReplyingTo(null); setReplyText('') }}>
+                        {t('cancel')}
+                      </button>
+                    </div>
                   )
                   : null}
-                <button
-                  type="button"
-                  className={css.select}
-                  onClick={() => {
-                    setReplyingTo(replyingTo === focus.sessionId ? null : focus.sessionId)
-                    setReplyText('')
-                  }}
-                >
-                  {t('sendPrompt')}
-                </button>
-              </div>
-              {focus.phase === 'connecting' && focus.row === undefined
-                ? <p className={css.meta}>{t('focusConnecting')}</p>
-                : null}
-              {replyingTo === focus.sessionId
-                ? (
-                  <div className={css.compose}>
-                    <textarea
-                      className={css.prompt}
-                      rows={2}
-                      value={replyText}
-                      placeholder={t('replyPlaceholder')}
-                      onChange={(event) => { setReplyText(event.currentTarget.value) }}
-                    />
-                    <button
-                      type="button"
-                      className={css.select}
-                      disabled={replyText.trim() === '' || actionBusy === focus.sessionId}
-                      onClick={() => {
-                        void sendToSession(focus.sessionId, replyText, 'queue').then((accepted) => {
-                          if (!accepted) return
-                          setReplyingTo(null)
-                          setReplyText('')
-                        })
-                      }}
-                    >
-                      {t('sendQueue')}
-                    </button>
-                    <button type="button" className={css.select} onClick={() => { setReplyingTo(null); setReplyText('') }}>
-                      {t('cancel')}
-                    </button>
-                  </div>
-                )
-                : null}
-            </article>
+                {actions.length === 0
+                  ? null
+                  : (
+                    <div className={css.actionLog}>
+                      <h2 className={css.sectionTitle}>{t('recentActions')}</h2>
+                      {actions.slice(0, 4).map(action => <span key={action.id} className={css.actionItem}>{action.label}</span>)}
+                    </div>
+                  )}
+              </article>
+            </aside>
           )}
       </div>
     </section>
