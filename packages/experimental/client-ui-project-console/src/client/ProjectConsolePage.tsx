@@ -134,7 +134,7 @@ export function ProjectConsolePage({
     listener => store.subscribe(listener),
     () => store.getSnapshot(),
   )
-  const selected = selectedWorkspaceId()
+  const selected = state.workspaceId ?? selectedWorkspaceId()
   const workspaces = workspaceOptions()
   const statusFacts: ReadonlyMap<string, SessionStatus> = new Map(
     [...statuses].map(([id, status]): [string, SessionStatus] => [String(id), status]),

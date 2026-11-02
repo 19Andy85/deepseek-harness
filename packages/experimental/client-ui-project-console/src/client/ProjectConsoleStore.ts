@@ -373,6 +373,12 @@ export class ProjectConsoleStore {
    */
   selectWorkspace(workspaceId?: string): Promise<void> {
     if (this.disposed) return Promise.resolve()
+    if (this.panelId !== workspaceId) {
+      // A different workspace must not keep showing the previous rows: clear
+      // them before the read so the studio/canvas cannot appear stuck.
+      this.knownSessions.clear()
+      this.previousStatus.clear()
+    }
     this.closeFocus()
     this.panelId = workspaceId
     return this.refresh()
@@ -424,7 +430,7 @@ export class ProjectConsoleStore {
       ? { ...this.state, status: 'loading' }
       : silent
         ? { ...this.state, workspaceId }
-        : { ...this.state, status: 'loading', workspaceId }
+        : { ...this.state, status: 'loading', workspaceId, sessions: [] }
     this.emit()
     const run = async (): Promise<void> => {
       if (workspaceId === undefined) {

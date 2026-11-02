@@ -354,6 +354,22 @@ describe('ProjectConsoleStore', () => {
   })
 })
 
+describe('ProjectConsoleStore workspace switching', () => {
+  it('clears the previous rows when switching workspaces', async () => {
+    const host = hostOf(
+      [{ id: 'a', title: 'A', path: '/a' }, { id: 'b', title: 'B', path: '/b' }],
+      async workspaceId => snapshot(workspaceId ?? 'a', [row(workspaceId === 'b' ? 'b1' : 'a1')]),
+    )
+    const store = new ProjectConsoleStore(host)
+    await store.selectWorkspace('a')
+    expect(store.getSnapshot().sessions[0]?.sessionId).toBe('a1')
+    const pending = store.selectWorkspace('b')
+    expect(store.getSnapshot().sessions).toEqual([])
+    await pending
+    expect(store.getSnapshot().sessions[0]?.sessionId).toBe('b1')
+  })
+})
+
 describe('ProjectConsoleStore periodic refresh', () => {
   it('keeps the ready state while re-reading the same workspace', async () => {
     const host = hostOf(
