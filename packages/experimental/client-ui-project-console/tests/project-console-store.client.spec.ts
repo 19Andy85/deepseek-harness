@@ -389,6 +389,10 @@ describe('ProjectConsoleStore workspace switching', () => {
     expect(store.getSnapshot().sessions).toEqual([])
     await pending
     expect(store.getSnapshot().sessions[0]?.sessionId).toBe('b1')
+    const back = store.selectWorkspace('a')
+    expect(store.getSnapshot().status).toBe('ready')
+    expect(store.getSnapshot().sessions[0]?.sessionId).toBe('a1')
+    await back
   })
 })
 

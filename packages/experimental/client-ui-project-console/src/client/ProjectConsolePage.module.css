@@ -1020,3 +1020,10 @@
   align-items: center;
   margin-top: 4px;
 }
+
+.usageSummary {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: var(--pc-font-xs);
+  font-variant-numeric: tabular-nums;
+  padding: 2px 0 0;
+}

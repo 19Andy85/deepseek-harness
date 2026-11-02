@@ -120,6 +120,7 @@ export class ProjectConsoleStore {
   private timer: ReturnType<typeof setTimeout> | undefined
   private disposed = false
   private tail: Promise<void> = Promise.resolve()
+  private readonly cache = new Map<string, { sessions: readonly SessionTaskView[]; updatedAt: number }>()
   private inFlight: { readonly workspaceId: string | undefined; readonly promise: Promise<void> } | undefined
   private focusAbort: AbortController | undefined
   private focusRun = 0
@@ -429,12 +430,15 @@ export class ProjectConsoleStore {
     if (this.inFlight !== undefined && this.inFlight.workspaceId === workspaceId) return this.inFlight.promise
     // A periodic re-read of the same Workspace must not blank the visible
     // state: keeping `ready` avoids the inbox/team board flashing on every poll.
+    const cached = workspaceId === undefined ? undefined : this.cache.get(workspaceId)
     const silent = this.state.status === 'ready' && this.state.workspaceId === workspaceId
     this.state = workspaceId === undefined
       ? { ...this.state, status: 'loading' }
       : silent
         ? { ...this.state, workspaceId }
-        : { ...this.state, status: 'loading', workspaceId, sessions: [] }
+        : cached === undefined
+          ? { ...this.state, status: 'loading', workspaceId, sessions: [] }
+          : { ...this.state, status: 'ready', workspaceId, sessions: cached.sessions, updatedAt: cached.updatedAt }
     this.emit()
     const run = async (): Promise<void> => {
       if (workspaceId === undefined) {
@@ -447,6 +451,7 @@ export class ProjectConsoleStore {
         if (this.disposed || this.panelId !== workspaceId) return
         if (result.ok) {
           const rows = result.value.sessions
+          this.cache.set(workspaceId, { sessions: rows, updatedAt: Date.now() })
           this.currentRows = rows
           const observed: ShiftEvent[] = []
           if (this.knownSessions.size > 0) {

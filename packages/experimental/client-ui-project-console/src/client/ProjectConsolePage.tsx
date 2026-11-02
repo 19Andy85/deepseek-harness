@@ -227,6 +227,7 @@ export function ProjectConsolePage({
   }
   const attention = attentionItems(rows, statusFacts, descriptorOf, failureOf)
   const health = healthCounts(rows, statusFacts, descriptorOf, failureOf)
+  const usageTotals = rows.reduce((sum, row) => sum + (row.usage?.totalTokens ?? 0), 0)
   const relations = relationHints(rows)
   const graphGroups = relationGroups(rows)
   const parentTitle = (sessionId: string): string | undefined => {
@@ -413,6 +414,9 @@ export function ProjectConsolePage({
         {state.status === 'ready' && hasRows
           ? <HealthSegments counts={health} filter={filter} t={t} onFilter={setFilter} />
           : null}
+        {usageTotals === 0
+          ? null
+          : <div className={css.usageSummary}>{t('tokensTotalLabel')} · {formatTokens(usageTotals)}</div>}
         <div className={css.toolbar}>
           <label className={css.meta} htmlFor="project-console-workspace">{t('workspace')}</label>
           <select
