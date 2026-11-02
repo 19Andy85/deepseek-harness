@@ -21,10 +21,11 @@ function stateOf(node: RelationGraphNode): VisualState {
  * @returns the relation graph, or null without groups.
  */
 export function RelationGraph({
-  groups, aliases, t, onOpen,
+  groups, aliases, t, onOpen, expanded = false,
 }: {
   readonly groups: readonly RelationGraphGroup[]
   readonly aliases: ReadonlyMap<string, string>
+  readonly expanded?: boolean
   readonly t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string
   readonly onOpen: (sessionId: string) => void
 }) {
@@ -69,7 +70,7 @@ export function RelationGraph({
           {collapsed.has(group.parent.sessionId)
             ? null
             : (
-              <div className={css.canvas}>
+              <div className={expanded ? `${css.canvas} ${css.canvasExpanded}` : css.canvas}>
                 <svg
                   className={css.links}
                   width={44}

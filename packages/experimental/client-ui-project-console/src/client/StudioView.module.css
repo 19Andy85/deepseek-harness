@@ -630,3 +630,22 @@
     font-size: var(--pc-font-s, 12px);
   }
 }
+
+.teamBoardHead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 4px 0 8px;
+}
+
+.teamBoardTitle {
+  margin: 0;
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--pc-font-s, 12px);
+  font-weight: 500;
+}
+
+.teamBoardHint {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: var(--pc-font-xs, 11px);
+}

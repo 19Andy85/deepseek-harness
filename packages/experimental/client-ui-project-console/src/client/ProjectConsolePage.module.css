@@ -800,6 +800,7 @@
 
 /* Workspace split: main column keeps its own scroll, the detail drawer is a sibling column. */
 .body {
+  position: relative;
   display: flex;
   flex-direction: row;
   flex: 1;
@@ -820,13 +821,21 @@
 }
 
 .drawerColumn {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: auto;
+  z-index: 40;
   display: flex;
   flex-direction: column;
-  flex: none;
-  width: min(410px, 38vw);
-  min-height: 0;
+  width: min(440px, 42vw);
+  max-height: 100%;
   overflow: auto;
-  padding-bottom: var(--pc-gap-5);
+  padding: 8px;
+  border: 1px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: var(--pc-radius-lg);
+  background: var(--dsw-alias-settings-card-fill);
+  box-shadow: -8px 12px 32px color-mix(in srgb, #000 38%, transparent);
 }
 
 .drawerCard {
@@ -850,8 +859,11 @@
 
   .drawerColumn {
     width: auto;
-    max-height: 45vh;
-    flex: none;
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    max-height: 55vh;
   }
 }
 
@@ -910,4 +922,94 @@
 .actionItem {
   color: var(--dsw-alias-label-secondary);
   font-size: var(--pc-font-s);
+}
+
+.relationColumnExpanded {
+  width: min(760px, 58vw);
+}
+
+.attentionContext {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border: 1px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: var(--pc-radius);
+  background: color-mix(in srgb, var(--dsw-alias-bg-skeleton) 55%, transparent);
+}
+
+.contextLabel {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: var(--pc-font-xs);
+  font-weight: 500;
+}
+
+.contextText {
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--pc-font-s);
+  overflow-wrap: anywhere;
+}
+
+.contextOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.contextMeta {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: var(--pc-font-xs);
+}
+
+.progressBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.progressBar {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--dsw-alias-bg-skeleton);
+  overflow: hidden;
+}
+
+.progressFill {
+  display: block;
+  height: 100%;
+  background: var(--dsw-alias-state-business-primary);
+  transition: width 200ms ease-out;
+}
+
+.toolCallBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.toolCallArgs {
+  max-height: 120px;
+  overflow: auto;
+  padding: 6px 8px;
+  border-radius: var(--pc-radius);
+  background: var(--dsw-alias-bg-skeleton);
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--pc-font-xs);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.contextCode {
+  max-height: 96px;
+  overflow: auto;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-skeleton);
+  color: var(--dsw-alias-label-secondary);
+  font-size: var(--pc-font-xs);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }

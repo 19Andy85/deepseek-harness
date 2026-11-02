@@ -50,6 +50,10 @@ export interface SessionTaskActivityViewEntry {
 
 /** Row metadata read from the owning domain services. */
 export interface SessionTaskMetadata {
+  /** Agent-maintained todo progress, when available. */
+  readonly progress?: SessionTaskProgress
+  /** Latest tool call, when available. */
+  readonly toolCall?: SessionTaskToolCall
   /** Current Session title, when a title provider has produced one. */
   readonly title?: string
   /** Time of the latest human-authored prompt, when the projection carries one. */
@@ -66,6 +70,26 @@ export interface SessionTaskMetadata {
   readonly changes?: SessionTaskChanges
   /** Durable derivation relations of this Session. */
   readonly relations?: SessionTaskRelations
+}
+
+/** Agent-maintained todo progress of one Session. */
+export interface SessionTaskProgress {
+  /** Total todo items in the latest list. */
+  readonly total: number
+  /** Items already completed. */
+  readonly completed: number
+  /** Items currently in progress. */
+  readonly inProgress: number
+  /** Content of the first in-progress item, when one exists. */
+  readonly current?: string
+}
+
+/** Latest tool call observed in the Session log. */
+export interface SessionTaskToolCall {
+  /** Tool name. */
+  readonly name: string
+  /** Truncated JSON arguments preview. */
+  readonly arguments: string
 }
 
 /** Changed-file facts of the latest summarized turn. */
@@ -104,6 +128,10 @@ export interface SessionTaskView {
   readonly outcomeAt?: number
   /** Failure message for a failed outcome. */
   readonly outcomeReason?: string
+  /** Agent-maintained todo progress, when the Session has a todo list. */
+  readonly progress?: SessionTaskProgress
+  /** Latest tool call, when the Session log has one. */
+  readonly toolCall?: SessionTaskToolCall
   /** Changed files summarized for the latest finished turn, when the Host kept one. */
   readonly changes?: SessionTaskChanges
   /** Durable derivation relations of this Session. */

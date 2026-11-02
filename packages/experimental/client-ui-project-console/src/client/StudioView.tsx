@@ -162,6 +162,10 @@ export function StudioView({
         </div>
         <span className={css.roomText}>{t('roomHealth', { needs: pendingCount, failed: failedCount })}</span>
       </div>
+      <div className={css.teamBoardHead}>
+        <h3 className={css.teamBoardTitle}>{t('teamBoardTitle')}</h3>
+        <span className={css.teamBoardHint}>{t('teamBoardHint')}</span>
+      </div>
       <div className={css.teamBoard}>
         {teams.length === 0
           ? (

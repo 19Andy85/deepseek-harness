@@ -112,6 +112,7 @@ export function ProjectConsolePage({
   const [reloadNotice, setReloadNotice] = useState(false)
   const [actions, setActions] = useState<{ readonly id: number; readonly label: string; readonly at: number }[]>([])
   const [relationView, setRelationView] = useState<'inline' | 'canvas'>('inline')
+  const [relationExpanded, setRelationExpanded] = useState(false)
   const [aliases, setAliases] = useState<Record<string, string>>(() => readPartnerAliases())
   const [cards, setCards] = useState<TaskCard[]>(() => readTaskCards())
   const [cardText, setCardText] = useState('')
@@ -201,7 +202,12 @@ export function ProjectConsolePage({
     const pending = pendingOf(sessionId)
     if (pending === undefined) return undefined
     if (pending.kind === 'approval') {
-      return { kind: 'approval', toolName: pending.toolName, answerable: pending.answerable }
+      return {
+        kind: 'approval',
+        toolName: pending.toolName,
+        answerable: pending.answerable,
+        ...pending.reason === undefined ? {} : { reason: pending.reason },
+      }
     }
     const first = pending.questions[0]
     if (first === undefined) return undefined
@@ -454,7 +460,10 @@ export function ProjectConsolePage({
           <button
             type="button"
             className={css.select}
-            onClick={() => { setRelationView(view => (view === 'inline' ? 'canvas' : 'inline')) }}
+            onClick={() => {
+              setRelationView(view => (view === 'inline' ? 'canvas' : 'inline'))
+              setInboxOpen(false)
+            }}
           >
             {relationView === 'inline' ? t('relationInline') : t('relationCanvas')}
           </button>
@@ -464,7 +473,10 @@ export function ProjectConsolePage({
             aria-expanded={inboxOpen}
             onClick={() => {
               setInboxOpen((open) => {
-                if (!open) closeFocus()
+                if (!open) {
+                  closeFocus()
+                  setRelationView('inline')
+                }
                 return !open
               })
             }}
@@ -723,6 +735,12 @@ export function ProjectConsolePage({
                                 running={session.status === 'running'}
                               />
                               <div className={css.laneChips}>
+                                {session.progress === undefined
+                                  ? null
+                                  : <span className={css.chip}>{t('progressOf', { done: session.progress.completed, total: session.progress.total })}</span>}
+                                {session.toolCall === undefined
+                                  ? null
+                                  : <span className={css.chip} title={session.toolCall.arguments}>{t('toolCallLabel', { name: session.toolCall.name })}</span>}
                                 {session.cwd === undefined ? null : <span className={`${css.meta} ${css.path}`} title={session.cwd}>{session.cwd}</span>}
                                 {parentTitle(session.sessionId) === undefined
                                   ? null
@@ -842,12 +860,15 @@ export function ProjectConsolePage({
         </div>
         {relationView === 'canvas' && !inboxOpen && focus === undefined
           ? (
-            <aside className={css.relationColumn} aria-label={t('relationCanvas')}>
+            <aside className={relationExpanded ? `${css.relationColumn} ${css.relationColumnExpanded}` : css.relationColumn} aria-label={t('relationCanvas')}>
               <div className={css.inboxColumnHead}>
                 <span className={css.sectionTitle}>{t('relationCanvas')}</span>
+                <button type="button" className={css.select} onClick={() => { setRelationExpanded(open => !open) }}>
+                  {relationExpanded ? t('collapse') : t('expand')}
+                </button>
                 <button type="button" className={css.select} onClick={() => { setRelationView('inline') }}>{t('relationInline')}</button>
               </div>
-              <RelationGraph groups={graphGroups} aliases={aliasesMap} t={t} onOpen={focusSession} />
+              <RelationGraph groups={graphGroups} aliases={aliasesMap} t={t} onOpen={focusSession} expanded={relationExpanded} />
             </aside>
           )
           : null}

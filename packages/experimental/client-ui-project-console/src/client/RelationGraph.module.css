@@ -211,3 +211,16 @@
   font-size: var(--pc-font-xs, 11px);
   margin-bottom: 2px;
 }
+
+.canvasExpanded {
+  margin-left: 0;
+}
+
+.link {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}

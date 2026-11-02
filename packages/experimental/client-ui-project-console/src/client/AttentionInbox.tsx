@@ -58,6 +58,56 @@ export function AttentionInbox({
                     ? null
                     : <span className={css.meta}>{new Date(item.row.lastPromptAt).toLocaleTimeString(undefined, { hour12: false })}</span>}
                 </div>
+                <div className={css.attentionContext}>
+                  <span className={css.contextLabel}>{t('contextLabel')}</span>
+                  {item.row.title === undefined
+                    ? null
+                    : <span className={css.contextText}>{item.row.title}</span>}
+                  {item.pending?.kind === 'approval'
+                    ? (
+                      <>
+                        <span className={css.contextText}>{t('pendingApproval')} · {item.pending.toolName}</span>
+                        {item.pending.reason === undefined
+                          ? null
+                          : <span className={css.contextText}>{item.pending.reason}</span>}
+                        {item.row.toolCall === undefined
+                          ? null
+                          : <code className={css.contextCode}>{item.row.toolCall.arguments}</code>}
+                      </>
+                    )
+                    : null}
+                  {item.pending?.kind === 'question' || item.pending?.kind === 'plan-review'
+                    ? (
+                      <>
+                        <span className={css.contextText}>{item.pending.firstQuestion.question}</span>
+                        {item.pending.firstQuestion.options === undefined
+                          ? null
+                          : (
+                            <span className={css.contextOptions}>
+                              {item.pending.firstQuestion.options.map(option => (
+                                <span key={option.label} className={css.chip}>{option.label}</span>
+                              ))}
+                            </span>
+                          )}
+                      </>
+                    )
+                    : null}
+                  {item.failed?.reason === undefined
+                    ? null
+                    : <span className={css.contextText}>{t('failed')} · {item.failed.reason}</span>}
+                  {item.row.changes === undefined
+                    ? null
+                    : (
+                      <span className={css.contextText}>
+                        {t('changesSummary', { n: item.row.changes.total, added: item.row.changes.added, deleted: item.row.changes.deleted })}
+                      </span>
+                    )}
+                  <span className={css.contextMeta}>
+                    {t('activityTrack')} · {item.row.activity.length === 0 ? t('noActivity') : item.row.activity.map(entry => entry.kind).join(' / ')}
+                    {' · '}
+                    {t('focusSession')}
+                  </span>
+                </div>
                 <div className={css.rowActions}>
                   {item.pending?.kind === 'approval'
                     ? (
@@ -129,6 +179,56 @@ export function AttentionInbox({
                     ? null
                     : <span className={css.chip}>{t('changesSummary', { n: item.row.changes.total, added: item.row.changes.added, deleted: item.row.changes.deleted })}</span>}
                 </div>
+                <div className={css.attentionContext}>
+                  <span className={css.contextLabel}>{t('contextLabel')}</span>
+                  {item.row.title === undefined
+                    ? null
+                    : <span className={css.contextText}>{item.row.title}</span>}
+                  {item.pending?.kind === 'approval'
+                    ? (
+                      <>
+                        <span className={css.contextText}>{t('pendingApproval')} · {item.pending.toolName}</span>
+                        {item.pending.reason === undefined
+                          ? null
+                          : <span className={css.contextText}>{item.pending.reason}</span>}
+                        {item.row.toolCall === undefined
+                          ? null
+                          : <code className={css.contextCode}>{item.row.toolCall.arguments}</code>}
+                      </>
+                    )
+                    : null}
+                  {item.pending?.kind === 'question' || item.pending?.kind === 'plan-review'
+                    ? (
+                      <>
+                        <span className={css.contextText}>{item.pending.firstQuestion.question}</span>
+                        {item.pending.firstQuestion.options === undefined
+                          ? null
+                          : (
+                            <span className={css.contextOptions}>
+                              {item.pending.firstQuestion.options.map(option => (
+                                <span key={option.label} className={css.chip}>{option.label}</span>
+                              ))}
+                            </span>
+                          )}
+                      </>
+                    )
+                    : null}
+                  {item.failed?.reason === undefined
+                    ? null
+                    : <span className={css.contextText}>{t('failed')} · {item.failed.reason}</span>}
+                  {item.row.changes === undefined
+                    ? null
+                    : (
+                      <span className={css.contextText}>
+                        {t('changesSummary', { n: item.row.changes.total, added: item.row.changes.added, deleted: item.row.changes.deleted })}
+                      </span>
+                    )}
+                  <span className={css.contextMeta}>
+                    {t('activityTrack')} · {item.row.activity.length === 0 ? t('noActivity') : item.row.activity.map(entry => entry.kind).join(' / ')}
+                    {' · '}
+                    {t('focusSession')}
+                  </span>
+                </div>
                 <div className={css.rowActions}>
                   <button type="button" className={css.select} onClick={() => { actions.open(item.sessionId) }}>{t('view')}</button>
                   <button type="button" className={css.select} onClick={() => { actions.focus(item.sessionId) }}>{t('focusSession')}</button>
@@ -146,6 +246,56 @@ export function AttentionInbox({
                   {item.row.changes === undefined
                     ? null
                     : <span className={css.chip}>{t('changesSummary', { n: item.row.changes.total, added: item.row.changes.added, deleted: item.row.changes.deleted })}</span>}
+                </div>
+                <div className={css.attentionContext}>
+                  <span className={css.contextLabel}>{t('contextLabel')}</span>
+                  {item.row.title === undefined
+                    ? null
+                    : <span className={css.contextText}>{item.row.title}</span>}
+                  {item.pending?.kind === 'approval'
+                    ? (
+                      <>
+                        <span className={css.contextText}>{t('pendingApproval')} · {item.pending.toolName}</span>
+                        {item.pending.reason === undefined
+                          ? null
+                          : <span className={css.contextText}>{item.pending.reason}</span>}
+                        {item.row.toolCall === undefined
+                          ? null
+                          : <code className={css.contextCode}>{item.row.toolCall.arguments}</code>}
+                      </>
+                    )
+                    : null}
+                  {item.pending?.kind === 'question' || item.pending?.kind === 'plan-review'
+                    ? (
+                      <>
+                        <span className={css.contextText}>{item.pending.firstQuestion.question}</span>
+                        {item.pending.firstQuestion.options === undefined
+                          ? null
+                          : (
+                            <span className={css.contextOptions}>
+                              {item.pending.firstQuestion.options.map(option => (
+                                <span key={option.label} className={css.chip}>{option.label}</span>
+                              ))}
+                            </span>
+                          )}
+                      </>
+                    )
+                    : null}
+                  {item.failed?.reason === undefined
+                    ? null
+                    : <span className={css.contextText}>{t('failed')} · {item.failed.reason}</span>}
+                  {item.row.changes === undefined
+                    ? null
+                    : (
+                      <span className={css.contextText}>
+                        {t('changesSummary', { n: item.row.changes.total, added: item.row.changes.added, deleted: item.row.changes.deleted })}
+                      </span>
+                    )}
+                  <span className={css.contextMeta}>
+                    {t('activityTrack')} · {item.row.activity.length === 0 ? t('noActivity') : item.row.activity.map(entry => entry.kind).join(' / ')}
+                    {' · '}
+                    {t('focusSession')}
+                  </span>
                 </div>
                 <div className={css.rowActions}>
                   <button type="button" className={css.select} onClick={() => { actions.open(item.sessionId) }}>{t('view')}</button>

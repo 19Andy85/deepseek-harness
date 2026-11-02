@@ -3,7 +3,7 @@ import type { SessionTaskView } from '@deepseek-ai/dsh-experimental-api-session-
 
 /** Presentation facts of a pending interaction, normalized for the attention lane. */
 export type AttentionDescriptor =
-  | { readonly kind: 'approval'; readonly toolName: string; readonly answerable: boolean }
+  | { readonly kind: 'approval'; readonly toolName: string; readonly answerable: boolean; readonly reason?: string }
   | {
     readonly kind: 'question' | 'plan-review'
     readonly firstQuestion: {

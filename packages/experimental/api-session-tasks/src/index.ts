@@ -14,6 +14,7 @@ import type { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-title'
 import type {} from '@deepseek-ai/dsh-session-query'
 import type {} from '@deepseek-ai/dsh-workspace-changes'
+import type {} from '@deepseek-ai/dsh-tool-todo'
 import type { Domain } from '@deepseek-ai/dsh-storage-domain'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
@@ -230,9 +231,28 @@ export class SessionTasksController extends TypertRemoteService {
     const agent = this.ctx.agents.list().find(item => item.session.id === sessionId)
     const projections = this.ctx.get('sessionProjections')
     if (agent === undefined || projections === undefined) return undefined
-    const snapshot = projections.snapshot(agent.session, ['title', 'sessionListMetadata', 'sessionTaskOutcome'])
+    const snapshot = projections.snapshot(agent.session, ['title', 'sessionListMetadata', 'sessionTaskOutcome', 'todos'])
     const title = snapshot.values.title
     const metadata = snapshot.values.sessionListMetadata
+    const todos = snapshot.values.todos
+    const firstInProgress = todos?.find(todo => todo.status === 'in_progress')
+    const progress = todos === null || todos === undefined || todos.length === 0
+      ? undefined
+      : {
+        total: todos.length,
+        completed: todos.filter(todo => todo.status === 'completed').length,
+        inProgress: todos.filter(todo => todo.status === 'in_progress').length,
+        ...firstInProgress === undefined ? {} : { current: firstInProgress.content },
+      }
+    const lastCall = agent.session.snapshotEvents().findLast(event => event.type === 'tool/call')
+    const toolCall = lastCall === undefined
+      ? undefined
+      : {
+        name: lastCall.data.name,
+        arguments: lastCall.data.arguments.length > 240
+          ? `${lastCall.data.arguments.slice(0, 240)}…`
+          : lastCall.data.arguments,
+      }
     const outcome = snapshot.values.sessionTaskOutcome
     const lastPromptAt = metadata?.lastPromptAt
     const relations = this.relationsOf(agent.session.id)
@@ -257,6 +277,8 @@ export class SessionTasksController extends TypertRemoteService {
       ...outcome?.kind === undefined ? {} : { outcome: outcome.kind },
       ...outcome?.at === undefined ? {} : { outcomeAt: outcome.at },
       ...outcome?.reason === undefined ? {} : { outcomeReason: outcome.reason },
+      ...progress === undefined ? {} : { progress },
+      ...toolCall === undefined ? {} : { toolCall },
       ...changes === undefined ? {} : { changes },
       ...relations === undefined ? {} : { relations },
     }
