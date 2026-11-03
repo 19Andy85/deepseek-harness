@@ -15,6 +15,7 @@ import type {} from '@deepseek-ai/dsh-session-title'
 import type {} from '@deepseek-ai/dsh-session-query'
 import type {} from '@deepseek-ai/dsh-workspace-changes'
 import type {} from '@deepseek-ai/dsh-tool-todo'
+import type {} from '@deepseek-ai/dsh-user-approval'
 import type { Domain } from '@deepseek-ai/dsh-storage-domain'
 import { RemoteError } from '@deepseek-ai/dsh-typert-protocol'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
@@ -279,6 +280,39 @@ export class SessionTasksController extends TypertRemoteService {
         ...usage.cacheWriteTokens === undefined ? {} : { cacheWriteTokens: usage.cacheWriteTokens },
       }
     }
+    const decided = new Set<string>()
+    let pendingAsk: { toolName: string; callId?: string; reason?: string } | undefined
+    for (const event of events) {
+      if (event.type === 'approval/decided') decided.add(String(event.data.id))
+      if (event.type === 'approval/asked' && !decided.has(String(event.data.id))) {
+        pendingAsk = {
+          toolName: event.data.toolName,
+          ...event.data.callId === undefined ? {} : { callId: String(event.data.callId) },
+          ...event.data.reason === undefined ? {} : { reason: event.data.reason },
+        }
+      }
+    }
+    let exactCall: { arguments: string } | undefined
+    if (pendingAsk?.callId !== undefined) {
+      for (const event of events) {
+        if (event.type === 'tool/call' && String(event.data.callId) === pendingAsk.callId) {
+          exactCall = { arguments: event.data.arguments }
+          break
+        }
+      }
+    }
+    const approval = pendingAsk === undefined
+      ? undefined
+      : {
+        ...pendingAsk,
+        ...exactCall === undefined
+          ? {}
+          : {
+            arguments: exactCall.arguments.length > 1200
+              ? `${exactCall.arguments.slice(0, 1200)}…`
+              : exactCall.arguments,
+          },
+      }
     const lastCall = events.findLast(event => event.type === 'tool/call')
     const toolCall = lastCall === undefined
       ? undefined
@@ -324,6 +358,7 @@ export class SessionTasksController extends TypertRemoteService {
       },
       ...progress === undefined ? {} : { progress },
       ...toolCall === undefined ? {} : { toolCall },
+      ...approval === undefined ? {} : { approval },
       ...changes === undefined ? {} : { changes },
       ...relations === undefined ? {} : { relations },
     }

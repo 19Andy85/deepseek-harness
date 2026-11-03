@@ -66,13 +66,25 @@ export function AttentionInbox({
                   {item.pending?.kind === 'approval'
                     ? (
                       <>
-                        <span className={css.contextText}>{t('pendingApproval')} · {item.pending.toolName}</span>
-                        {item.pending.reason === undefined
+                        <span className={css.contextText}>{t('pendingApproval')} · {item.row.approval?.toolName ?? item.pending.toolName}</span>
+                        {item.row.approval?.reason === undefined
                           ? null
-                          : <span className={css.contextText}>{item.pending.reason}</span>}
-                        {item.row.toolCall === undefined
-                          ? null
-                          : <code className={css.contextCode}>{item.row.toolCall.arguments}</code>}
+                          : <span className={css.contextText}>{item.row.approval.reason}</span>}
+                        {item.row.approval?.arguments === undefined
+                          ? item.row.toolCall === undefined
+                            ? <span className={css.contextText}>{t('approvalArgsUnavailable')}</span>
+                            : (
+                              <>
+                                <span className={css.contextLabel}>{t('approvalArgsFallback')}</span>
+                                <code className={css.contextCode}>{item.row.toolCall.arguments}</code>
+                              </>
+                            )
+                          : (
+                            <>
+                              <span className={css.contextLabel}>{t('approvalExactArgs')}</span>
+                              <code className={css.contextCode}>{item.row.approval.arguments}</code>
+                            </>
+                          )}
                       </>
                     )
                     : null}
@@ -187,13 +199,25 @@ export function AttentionInbox({
                   {item.pending?.kind === 'approval'
                     ? (
                       <>
-                        <span className={css.contextText}>{t('pendingApproval')} · {item.pending.toolName}</span>
-                        {item.pending.reason === undefined
+                        <span className={css.contextText}>{t('pendingApproval')} · {item.row.approval?.toolName ?? item.pending.toolName}</span>
+                        {item.row.approval?.reason === undefined
                           ? null
-                          : <span className={css.contextText}>{item.pending.reason}</span>}
-                        {item.row.toolCall === undefined
-                          ? null
-                          : <code className={css.contextCode}>{item.row.toolCall.arguments}</code>}
+                          : <span className={css.contextText}>{item.row.approval.reason}</span>}
+                        {item.row.approval?.arguments === undefined
+                          ? item.row.toolCall === undefined
+                            ? <span className={css.contextText}>{t('approvalArgsUnavailable')}</span>
+                            : (
+                              <>
+                                <span className={css.contextLabel}>{t('approvalArgsFallback')}</span>
+                                <code className={css.contextCode}>{item.row.toolCall.arguments}</code>
+                              </>
+                            )
+                          : (
+                            <>
+                              <span className={css.contextLabel}>{t('approvalExactArgs')}</span>
+                              <code className={css.contextCode}>{item.row.approval.arguments}</code>
+                            </>
+                          )}
                       </>
                     )
                     : null}
@@ -255,13 +279,25 @@ export function AttentionInbox({
                   {item.pending?.kind === 'approval'
                     ? (
                       <>
-                        <span className={css.contextText}>{t('pendingApproval')} · {item.pending.toolName}</span>
-                        {item.pending.reason === undefined
+                        <span className={css.contextText}>{t('pendingApproval')} · {item.row.approval?.toolName ?? item.pending.toolName}</span>
+                        {item.row.approval?.reason === undefined
                           ? null
-                          : <span className={css.contextText}>{item.pending.reason}</span>}
-                        {item.row.toolCall === undefined
-                          ? null
-                          : <code className={css.contextCode}>{item.row.toolCall.arguments}</code>}
+                          : <span className={css.contextText}>{item.row.approval.reason}</span>}
+                        {item.row.approval?.arguments === undefined
+                          ? item.row.toolCall === undefined
+                            ? <span className={css.contextText}>{t('approvalArgsUnavailable')}</span>
+                            : (
+                              <>
+                                <span className={css.contextLabel}>{t('approvalArgsFallback')}</span>
+                                <code className={css.contextCode}>{item.row.toolCall.arguments}</code>
+                              </>
+                            )
+                          : (
+                            <>
+                              <span className={css.contextLabel}>{t('approvalExactArgs')}</span>
+                              <code className={css.contextCode}>{item.row.approval.arguments}</code>
+                            </>
+                          )}
                       </>
                     )
                     : null}

@@ -141,6 +141,7 @@ async function readRow(
     ...metadata?.lastUsage === undefined ? {} : { lastUsage: metadata.lastUsage },
     ...metadata?.progress === undefined ? {} : { progress: metadata.progress },
     ...metadata?.toolCall === undefined ? {} : { toolCall: metadata.toolCall },
+    ...metadata?.approval === undefined ? {} : { approval: metadata.approval },
     ...metadata?.changes === undefined ? {} : { changes: metadata.changes },
     ...metadata?.relations === undefined ? {} : { relations: metadata.relations },
     activity,

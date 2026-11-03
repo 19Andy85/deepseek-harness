@@ -58,6 +58,8 @@ export interface SessionTaskMetadata {
   readonly progress?: SessionTaskProgress
   /** Latest tool call, when available. */
   readonly toolCall?: SessionTaskToolCall
+  /** Pending approval, when available. */
+  readonly approval?: SessionTaskApproval
   /** Current Session title, when a title provider has produced one. */
   readonly title?: string
   /** Time of the latest human-authored prompt, when the projection carries one. */
@@ -100,6 +102,18 @@ export interface SessionTaskUsage {
   readonly cacheReadTokens?: number
   /** Cache write tokens, when reported. */
   readonly cacheWriteTokens?: number
+}
+
+/** Pending approval in one Session, with the exact call it decides when available. */
+export interface SessionTaskApproval {
+  /** Tool requesting the decision. */
+  readonly toolName: string
+  /** Exact tool call being decided, when the asker supplied one. */
+  readonly callId?: string
+  /** Human-readable reason supplied by the asker. */
+  readonly reason?: string
+  /** Truncated arguments of that exact call, when its log event is available. */
+  readonly arguments?: string
 }
 
 /** Latest tool call observed in the Session log. */
@@ -154,6 +168,8 @@ export interface SessionTaskView {
   readonly progress?: SessionTaskProgress
   /** Latest tool call, when the Session log has one. */
   readonly toolCall?: SessionTaskToolCall
+  /** Pending approval, when the session log has an undecided approval/asked event. */
+  readonly approval?: SessionTaskApproval
   /** Changed files summarized for the latest finished turn, when the Host kept one. */
   readonly changes?: SessionTaskChanges
   /** Durable derivation relations of this Session. */

@@ -1027,3 +1027,14 @@
   font-variant-numeric: tabular-nums;
   padding: 2px 0 0;
 }
+
+.approvalBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border: 1px solid #5a4825;
+  border-radius: var(--pc-radius);
+  background: #2e291c;
+}

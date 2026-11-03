@@ -995,6 +995,17 @@ export function ProjectConsolePage({
                   running={focus.row?.status === 'running'}
                   now={now}
                 />
+                {focus.row?.approval === undefined
+                  ? null
+                  : (
+                    <div className={css.approvalBlock}>
+                      <span className={css.meta}>{t('pendingApproval')} · {focus.row.approval.toolName}</span>
+                      {focus.row.approval.reason === undefined ? null : <span className={css.meta}>{focus.row.approval.reason}</span>}
+                      {focus.row.approval.arguments === undefined
+                        ? <span className={css.meta}>{t('approvalArgsUnavailable')}</span>
+                        : <code className={css.toolCallArgs}>{focus.row.approval.arguments}</code>}
+                    </div>
+                  )}
                 <div className={css.usageBlock}>
                   <span className={css.meta}>{t('tokensTotalLabel')}</span>
                   {focus.row?.usage === undefined

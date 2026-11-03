@@ -1,6 +1,6 @@
 
 --- a/packages/experimental/tool-session-tasks/package.json	2026-10-29 04:02:07
-+++ b/packages/experimental/tool-session-tasks/package.json	2026-11-03 22:29:43
++++ b/packages/experimental/tool-session-tasks/package.json	2026-11-04 00:03:32
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-tool-session-tasks",
@@ -20,8 +20,8 @@
      "@deepseek-ai/dsh-experimental-api-session-tasks": "workspace:*"
    }
 
---- a/packages/experimental/api-session-tasks/package.json	2026-11-02 22:37:28
-+++ b/packages/experimental/api-session-tasks/package.json	2026-11-03 22:29:43
+--- a/packages/experimental/api-session-tasks/package.json	2026-11-03 23:56:22
++++ b/packages/experimental/api-session-tasks/package.json	2026-11-04 00:03:32
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-api-session-tasks",
@@ -32,9 +32,9 @@
      "access": "public"
    },
 
---- a/packages/experimental/api-session-tasks/src/index.ts	2026-11-03 22:26:13
-+++ b/packages/experimental/api-session-tasks/src/index.ts	2026-11-03 22:29:43
-@@ -101,8 +101,8 @@
+--- a/packages/experimental/api-session-tasks/src/index.ts	2026-11-03 23:57:05
++++ b/packages/experimental/api-session-tasks/src/index.ts	2026-11-04 00:03:32
+@@ -102,8 +102,8 @@
      })
      if (this.ctx.get('storageDomain') !== undefined) await seenBinding
      const binding = this.ctx.inject(['sessionProjections'], async (projectionCtx) => {
@@ -47,7 +47,7 @@
    }
 
 --- a/packages/experimental/api-session-tasks/src/outcome.ts	2026-10-31 02:14:10
-+++ b/packages/experimental/api-session-tasks/src/outcome.ts	2026-11-03 22:29:43
++++ b/packages/experimental/api-session-tasks/src/outcome.ts	2026-11-04 00:03:32
 @@ -8,7 +8,6 @@
  import type { SessionEvent } from '@deepseek-ai/dsh-session'
  import type {} from '@deepseek-ai/dsh-workspace-changes'
@@ -81,7 +81,7 @@
  } satisfies ProjectionDefinition<'sessionTaskOutcome', SessionTaskOutcome>
 
 --- a/packages/experimental/client-ui-project-console/package.json	2026-11-02 23:15:32
-+++ b/packages/experimental/client-ui-project-console/package.json	2026-11-03 22:29:43
++++ b/packages/experimental/client-ui-project-console/package.json	2026-11-04 00:03:32
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-client-ui-project-console",
@@ -93,7 +93,7 @@
    },
 
 --- a/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-10-29 04:06:48
-+++ b/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-11-03 22:29:43
++++ b/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-11-04 00:03:32
 @@ -1,6 +1,5 @@
 -/** Workspace row menu entry that opens the project console on that Workspace. */
 +/** Session row menu entry that opens the project console for the row's workspace. */
@@ -140,7 +140,7 @@
        {t('openConsole')}
 
 --- a/packages/experimental/client-ui-project-console/src/client/index.ts	2026-11-02 23:42:48
-+++ b/packages/experimental/client-ui-project-console/src/client/index.ts	2026-11-03 22:29:43
++++ b/packages/experimental/client-ui-project-console/src/client/index.ts	2026-11-04 00:03:32
 @@ -24,7 +24,7 @@
  import { BalanceBadge, type BalanceWallet } from './BalanceBadge.tsx'
  import { ProjectConsoleStore } from './ProjectConsoleStore.ts'
@@ -188,7 +188,7 @@
      id: PANEL_ID,
 
 --- a/packages/experimental/session-tasks-bundle/package.json	2026-10-29 04:02:07
-+++ b/packages/experimental/session-tasks-bundle/package.json	2026-11-03 22:29:43
++++ b/packages/experimental/session-tasks-bundle/package.json	2026-11-04 00:03:32
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-session-tasks-bundle",

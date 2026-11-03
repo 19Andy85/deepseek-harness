@@ -44,6 +44,9 @@
     },
     {
       "path": "../../todo/tool-todo"
+    },
+    {
+      "path": "../../interaction/user-approval"
     }
   ]
 }
