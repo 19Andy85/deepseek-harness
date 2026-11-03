@@ -584,7 +584,17 @@ export function ProjectConsolePage({
             )
             : null}
           {surface === 'main'
-            ? <button type="button" className={css.select} onClick={openInSidebar}>{t('openInSidebar')}</button>
+            ? (
+              <button
+                type="button"
+                className={css.select}
+                disabled={rows.length === 0 && focus === undefined}
+                title={rows.length === 0 && focus === undefined ? t('railNeedsSession') : undefined}
+                onClick={openInSidebar}
+              >
+                {t('openInSidebar')}
+              </button>
+            )
             : null}
           <button
             type="button"
