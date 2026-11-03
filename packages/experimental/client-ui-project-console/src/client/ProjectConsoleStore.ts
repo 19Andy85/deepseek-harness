@@ -121,6 +121,7 @@ export class ProjectConsoleStore {
   private disposed = false
   private tail: Promise<void> = Promise.resolve()
   private readonly cache = new Map<string, { sessions: readonly SessionTaskView[]; updatedAt: number }>()
+  private readonly prefetching = new Set<string>()
   private inFlight: { readonly workspaceId: string | undefined; readonly promise: Promise<void> } | undefined
   private focusAbort: AbortController | undefined
   private focusRun = 0
@@ -408,6 +409,26 @@ export class ProjectConsoleStore {
     this.emit()
   }
 
+  /**
+   * Warm the cache for other Workspaces in the background so switching back is
+   * immediate; reads are staggered and never change the visible state.
+   */
+  private prefetchOtherWorkspaces(): void {
+    if (this.disposed) return
+    for (const workspace of this.workspaces) {
+      const workspaceId = workspace.id
+      if (workspaceId === this.panelId || this.cache.has(workspaceId) || this.prefetching.has(workspaceId)) continue
+      this.prefetching.add(workspaceId)
+      setTimeout(() => {
+        this.prefetching.delete(workspaceId)
+        if (this.disposed || this.panelId === workspaceId || this.cache.has(workspaceId)) return
+        void this.host.snapshot(workspaceId).then((result) => {
+          if (result.ok) this.cache.set(workspaceId, { sessions: result.value.sessions, updatedAt: Date.now() })
+        }).catch(() => undefined)
+      }, 1_500 * (this.prefetching.size + 1))
+    }
+  }
+
   /** Coalesce event-triggered re-reads of the selected Workspace. */
   scheduleRefresh(): void {
     if (this.disposed || this.timer !== undefined) return
@@ -452,6 +473,7 @@ export class ProjectConsoleStore {
         if (result.ok) {
           const rows = result.value.sessions
           this.cache.set(workspaceId, { sessions: rows, updatedAt: Date.now() })
+          this.prefetchOtherWorkspaces()
           this.currentRows = rows
           const observed: ShiftEvent[] = []
           if (this.knownSessions.size > 0) {

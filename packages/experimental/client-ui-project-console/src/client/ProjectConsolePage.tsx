@@ -416,7 +416,11 @@ export function ProjectConsolePage({
           : null}
         {usageTotals === 0
           ? null
-          : <div className={css.usageSummary}>{t('tokensTotalLabel')} · {formatTokens(usageTotals)}</div>}
+          : (
+            <div className={css.usageSummary} title={t('workspaceTokensHint')}>
+              {t('workspaceTokens')} · {formatTokens(usageTotals)}
+            </div>
+          )}
         <div className={css.toolbar}>
           <label className={css.meta} htmlFor="project-console-workspace">{t('workspace')}</label>
           <select
