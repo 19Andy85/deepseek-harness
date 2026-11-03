@@ -1,7 +1,7 @@
 /** Workspace console page: the attention inbox, the project state bar, and the session work surface. */
 import { Fragment, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import type { HostObservable, InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SessionStatus, SessionStatusSnapshot } from '@deepseek-ai/dsh-client-ui-session/client'
+import type { HostObservable, InjectFace, PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import type { SessionStatus, SessionStatusSnapshot, UseSessionStatus } from '@deepseek-ai/dsh-client-ui-session/client'
 import type { SessionTaskView } from '@deepseek-ai/dsh-experimental-api-session-tasks/types'
 import type {} from '@deepseek-ai/dsh-client-ui-user-questions/client'
 import type { QuestionAnswer } from '@deepseek-ai/dsh-client-ui-user-questions/client'
@@ -78,10 +78,23 @@ export interface ProjectConsoleInjected {
   readonly answerQuestion: (sessionId: string, answer: QuestionAnswer) => Promise<boolean>
   /** Live pending-interaction state per Session. */
   readonly hooks: { readonly sessionStatus: HostObservable<SessionStatusSnapshot> }
+  /** Open the console for the current project in the right rail. */
+  readonly openInSidebar: () => void
 }
 
 /** Framework props of the workspace console page. */
-export type ProjectConsolePageProps = PropsRuntime<'main'> & PropsLocale<'projectConsole'> & InjectFace<ProjectConsoleInjected>
+export type ProjectConsolePageProps = PropsLocale<'projectConsole'> & InjectFace<ProjectConsoleInjected> & {
+  /** Live pending-interaction hook supplied by the surface wrapper. */
+  readonly useSessionStatus: UseSessionStatus
+  /** Narrow rail surface: hide side columns and keep the board compact. */
+  readonly compact?: boolean
+  /** Which surface renders the page. */
+  readonly surface?: 'main' | 'rail'
+  /** Session the rail console follows. */
+  readonly railSessionId?: string
+  /** Float the rail console into a floating panel. */
+  readonly onFloat?: () => void
+}
 
 function relativeTime(at: number, t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string): string {
   const minutes = Math.floor((Date.now() - at) / 60_000)
@@ -108,7 +121,8 @@ function statusText(
  */
 export function ProjectConsolePage({
   t, store, workspaceOptions, workspaceSessions, selectedWorkspaceId, selectWorkspace, refresh, openSession, focusSession,
-  closeFocus, resetShift, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus,
+  closeFocus, resetShift, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus, openInSidebar,
+  compact = false, surface = 'main', railSessionId, onFloat,
 }: ProjectConsolePageProps) {
   const [now, setNow] = useState(() => Date.now())
   const [activeId, setActiveId] = useState<string | undefined>(undefined)
@@ -136,8 +150,8 @@ export function ProjectConsolePage({
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
   const [filter, setFilter] = useState<HealthFilter>(undefined)
-  const [view, setView] = useState<ConsoleView>(() => readViewPreference())
-  const [studioMode, setStudioMode] = useState(() => readStudioMode())
+  const [view, setView] = useState<ConsoleView>(() => (compact ? 'studio' : readViewPreference()))
+  const [studioMode, setStudioMode] = useState(() => (compact ? 'board' : readStudioMode()))
   const statuses = useSessionStatus(state => state)
   const state = useSyncExternalStore(
     listener => store.subscribe(listener),
@@ -449,10 +463,46 @@ export function ProjectConsolePage({
   const focusIdentity = focus?.row === undefined ? undefined : identityOf(focus.row, aliasesMap)
 
   return (
-    <section className={css.page} data-reading={readingLevel}>
+    <section
+      className={css.page}
+      data-reading={readingLevel}
+      data-compact={compact ? 'true' : undefined}
+      data-surface={surface}
+    >
       <header className={css.head}>
         <h1 className={css.title}>{t('title')}</h1>
         <p className={css.subtitle}>{t('description')}</p>
+        {surface !== 'rail' || railSessionId === undefined
+          ? null
+          : railSessionId !== undefined
+            ? (
+              <div className={css.railScope}>
+                <button
+                  type="button"
+                  className={css.select}
+                  onClick={() => {
+                    const workspaceId = workspaceSessions().find(item => item.sessionIds.includes(railSessionId))?.id
+                    if (workspaceId !== undefined) selectWorkspace(workspaceId)
+                    focusSession(railSessionId)
+                  }}
+                >
+                  {t('railFollowSession')}
+                </button>
+                <button
+                  type="button"
+                  className={css.select}
+                  onClick={() => {
+                    const workspaceId = workspaceSessions().find(item => item.sessionIds.includes(railSessionId))?.id
+                    if (workspaceId !== undefined) selectWorkspace(workspaceId)
+                    closeFocus()
+                  }}
+                >
+                  {t('railWholeProject')}
+                </button>
+                {onFloat === undefined ? null : <button type="button" className={css.select} onClick={onFloat}>{t('floatPanel')}</button>}
+              </div>
+            )
+            : null}
         {state.status === 'ready' && hasRows
           ? <HealthSegments counts={health} filter={filter} t={t} onFilter={setFilter} />
           : null}
@@ -532,6 +582,9 @@ export function ProjectConsolePage({
                 </button>
               </div>
             )
+            : null}
+          {surface === 'main'
+            ? <button type="button" className={css.select} onClick={openInSidebar}>{t('openInSidebar')}</button>
             : null}
           <button
             type="button"

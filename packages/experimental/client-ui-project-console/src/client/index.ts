@@ -10,6 +10,8 @@ import { randomUUID } from '@deepseek-ai/dsh-util-crypto'
 import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller/types'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
+import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type {} from '@deepseek-ai/dsh-client-ui-approval/client'
@@ -19,7 +21,9 @@ import type {} from '@deepseek-ai/dsh-client-ui-workspace/client'
 import type {} from '@deepseek-ai/dsh-api-account-controller/remote'
 import sessionTasksRemote from '@deepseek-ai/dsh-experimental-api-session-tasks/remote'
 import { ProjectConsoleMenuItem, type ProjectConsoleMenuInjected } from './ProjectConsoleMenu.tsx'
-import { ProjectConsolePage, type ProjectConsoleInjected } from './ProjectConsolePage.tsx'
+import { type ProjectConsoleInjected } from './ProjectConsolePage.tsx'
+import { ConsoleMainPage, ConsoleRailPage, type RailInjected } from './ConsoleSurface.tsx'
+import { SessionRailMenuItem, type SessionRailMenuInjected } from './SessionRailMenuItem.tsx'
 import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
 import { BalanceBadge, type BalanceWallet } from './BalanceBadge.tsx'
 import { RestartAppButton } from './RestartAppButton.tsx'
@@ -47,7 +51,7 @@ function readVisitMemory(workspaceId: string): VisitMemory | undefined {
 export const PANEL_ID = 'project-console' as MainPanelId
 
 /** Client capabilities the page contributes through. */
-export const inject = ['slots', 'locale', 'remote', 'remote.session', 'remote.account', 'workspaces', 'layout', 'uiWorkspace', 'uiSession']
+export const inject = ['slots', 'locale', 'remote', 'remote.session', 'remote.account', 'workspaces', 'layout', 'uiWorkspace', 'uiSession', 'sidebarRight', 'sidebarRightTabs']
 
 /**
  * Mount the overview Remote, then contribute the console entry, the page it
@@ -137,33 +141,78 @@ function registerUi(ctx: Context): void {
     const offReset = ctx.on('connection/reset', () => { store.scheduleRefresh() })
     return () => { offAdded(); offRemoved(); offStatus(); offActivity(); offReset() }
   }, 'project-console: live refresh')
+  let railApi: { readonly openTabIn: (sessionId: SessionId, kind: string) => void } | undefined
+  const pageInjected = (): ProjectConsoleInjected => ({
+    store,
+    workspaceOptions: () => store.workspaceOptions(),
+    workspaceSessions: () => ctx.workspaces.list.getSnapshot().items.map(workspace => ({
+      id: String(workspace.workspaceId),
+      title: workspace.title,
+      sessionIds: workspace.sessionIds.map(String),
+    })),
+    selectedWorkspaceId: () => store.selectedWorkspaceId(),
+    selectWorkspace: (workspaceId) => { void store.selectWorkspace(workspaceId) },
+    refresh: () => { void store.refresh() },
+    openSession: (sessionId) => { store.openSession(sessionId) },
+    focusSession: (sessionId) => { store.focusSession(sessionId) },
+    closeFocus: () => { store.closeFocus() },
+    resetShift: () => { store.resetShift() },
+    dispatch: prompt => store.dispatch(prompt),
+    sendToSession: (sessionId, prompt, mode) => store.sendToSession(sessionId, prompt, mode),
+    cancelSession: sessionId => store.cancelSession(sessionId),
+    answerApproval: (sessionId, decision) => store.answerApproval(sessionId, decision),
+    answerQuestion: (sessionId, answer) => store.answerQuestion(sessionId, answer),
+    hooks: { sessionStatus: ctx.uiSession.sessionStatus },
+    openInSidebar: () => {
+      if (railApi === undefined) return
+      const snapshot = store.getSnapshot()
+      const target = snapshot.focus?.sessionId ?? snapshot.sessions[0]?.sessionId
+      if (target === undefined) return
+      // The rail tab is session-scoped: mount the row's session first, then
+      // place the console beside it.
+      ctx.uiWorkspace.openSession(brandString<SessionId>(target))
+      setTimeout(() => { railApi?.openTabIn(brandString<SessionId>(target), 'project-console') }, 150)
+    },
+  })
   ctx.effect(() => ctx.slots.inject('main', () => ctx.slots.register({
     name: 'main',
     key: PANEL_ID,
     locale: NS,
-    inject: (): ProjectConsoleInjected => ({
-      store,
-      workspaceOptions: () => store.workspaceOptions(),
-      workspaceSessions: () => ctx.workspaces.list.getSnapshot().items.map(workspace => ({
-        id: String(workspace.workspaceId),
-        title: workspace.title,
-        sessionIds: workspace.sessionIds.map(String),
-      })),
-      selectedWorkspaceId: () => store.selectedWorkspaceId(),
-      selectWorkspace: (workspaceId) => { void store.selectWorkspace(workspaceId) },
-      refresh: () => { void store.refresh() },
-      openSession: (sessionId) => { store.openSession(sessionId) },
-      focusSession: (sessionId) => { store.focusSession(sessionId) },
-      closeFocus: () => { store.closeFocus() },
-      resetShift: () => { store.resetShift() },
-      dispatch: prompt => store.dispatch(prompt),
-      sendToSession: (sessionId, prompt, mode) => store.sendToSession(sessionId, prompt, mode),
-      cancelSession: sessionId => store.cancelSession(sessionId),
-      answerApproval: (sessionId, decision) => store.answerApproval(sessionId, decision),
-      answerQuestion: (sessionId, answer) => store.answerQuestion(sessionId, answer),
-      hooks: { sessionStatus: ctx.uiSession.sessionStatus },
-    }),
-  }, ProjectConsolePage)), 'project-console: page')
+    inject: pageInjected,
+  }, ConsoleMainPage)), 'project-console: page')
+  ctx.effect(() => {
+    const rail = { sidebarRight: ctx.sidebarRight, sidebarRightTabs: ctx.sidebarRightTabs }
+    railApi = { openTabIn: (sessionId, kind) => { rail.sidebarRight.openTabIn(sessionId, kind) } }
+    const disposeType = rail.sidebarRightTabs.register({
+      id: 'project-console-rail',
+      kind: 'project-console',
+      title: () => t('title'),
+    })
+    const disposeBody = ctx.slots.register({
+      name: 'sidebar.right.pane.tab',
+      key: 'project-console-rail',
+      locale: NS,
+      inject: (): RailInjected => ({
+        ...pageInjected(),
+        floatTab: (tabId: string) => { rail.sidebarRight.float(tabId as TabId) },
+      }),
+    }, ConsoleRailPage)
+    const disposeMenu = ctx.slots.inject('sidebar.workspaces.session.menu.item', () => ctx.slots.register({
+      name: 'sidebar.workspaces.session.menu.item',
+      id: 'project-console-rail',
+      order: 461,
+      locale: NS,
+      inject: (): SessionRailMenuInjected => ({
+        openRail: (sessionId) => {
+          const workspace = ctx.workspaces.list.getSnapshot().items
+            .find(item => item.sessionIds.includes(brandString<SessionId>(sessionId)))
+          if (workspace !== undefined) void store.selectWorkspace(String(workspace.workspaceId))
+          rail.sidebarRight.openTabIn(brandString<SessionId>(sessionId), 'project-console')
+        },
+      }),
+    }, SessionRailMenuItem))
+    return () => { railApi = undefined; disposeMenu(); disposeBody(); disposeType() }
+  }, 'project-console: rail')
   const readBalance = async (): Promise<readonly BalanceWallet[] | undefined> => {
     const result = await ctx.remote.account.getBalance({
       version: process.env.DSH_CLIENT_VERSION ?? '0.0.0',

@@ -1038,3 +1038,31 @@
   border-radius: var(--pc-radius);
   background: #2e291c;
 }
+
+.railScope {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.page[data-compact="true"] .subtitle {
+  display: none;
+}
+
+.page[data-compact="true"] .relationColumn,
+.page[data-compact="true"] .inboxColumn,
+.page[data-compact="true"] .studioSide {
+  display: none !important;
+}
+
+.page[data-compact="true"] .body {
+  flex-direction: column;
+}
+
+.page[data-compact="true"] .toolbar {
+  gap: 6px;
+}
+
+.page[data-compact="true"] .title {
+  font-size: 18px;
+}
