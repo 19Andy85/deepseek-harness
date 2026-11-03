@@ -754,7 +754,7 @@ export function ProjectConsolePage({
                                   : <span className={css.chip}>{t('progressOf', { done: session.progress.completed, total: session.progress.total })}</span>}
                                 {session.usage === undefined
                                   ? null
-                                  : <span className={css.chip}>{t('tokensSummary', { input: formatTokens(session.usage.inputTokens), output: formatTokens(session.usage.outputTokens) })}</span>}
+                                  : <span className={css.chip} title={t('tokensCumulativeHint')}>{t('tokensCumulative', { input: formatTokens(session.usage.inputTokens), output: formatTokens(session.usage.outputTokens) })}</span>}
                                 {session.toolCall === undefined
                                   ? null
                                   : <span className={css.chip} title={session.toolCall.arguments}>{t('toolCallLabel', { name: session.toolCall.name })}</span>}
@@ -995,6 +995,20 @@ export function ProjectConsolePage({
                   running={focus.row?.status === 'running'}
                   now={now}
                 />
+                <div className={css.usageBlock}>
+                  <span className={css.meta}>{t('tokensTotalLabel')}</span>
+                  {focus.row?.usage === undefined
+                    ? <span className={css.meta}>{t('tokensPending')}</span>
+                    : (
+                      <>
+                        <span className={css.meta}>{t('tokensCumulative', { input: formatTokens(focus.row.usage.inputTokens), output: formatTokens(focus.row.usage.outputTokens) })}</span>
+                        <span className={css.meta}>{t('tokensTotal', { total: formatTokens(focus.row.usage.totalTokens) })}</span>
+                      </>
+                    )}
+                  {focus.row?.lastUsage === undefined
+                    ? null
+                    : <span className={css.meta}>{t('tokensLastStep', { input: formatTokens(focus.row.lastUsage.inputTokens), output: formatTokens(focus.row.lastUsage.outputTokens) })}</span>}
+                </div>
                 {focus.row === undefined ? null : (
                   <h2 className={css.sectionTitle}>{t('timeline')}</h2>
                 )}

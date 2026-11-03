@@ -138,6 +138,7 @@ async function readRow(
     ...metadata?.outcomeAt === undefined ? {} : { outcomeAt: metadata.outcomeAt },
     ...metadata?.outcomeReason === undefined ? {} : { outcomeReason: metadata.outcomeReason },
     ...metadata?.usage === undefined ? {} : { usage: metadata.usage },
+    ...metadata?.lastUsage === undefined ? {} : { lastUsage: metadata.lastUsage },
     ...metadata?.progress === undefined ? {} : { progress: metadata.progress },
     ...metadata?.toolCall === undefined ? {} : { toolCall: metadata.toolCall },
     ...metadata?.changes === undefined ? {} : { changes: metadata.changes },

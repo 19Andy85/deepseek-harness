@@ -6,7 +6,7 @@ import type { ProjectConsoleKey } from './locales.ts'
 import { DeskIcon } from './icons.tsx'
 import { identityOf, type PartnerRole } from './partner-identity.ts'
 import { PartnerAvatar } from './PartnerAvatar.tsx'
-import { ActivityTrack, StatusDot } from './visual/visual.tsx'
+import { ActivityTrack, formatTokens, StatusDot } from './visual/visual.tsx'
 import css from './StudioView.module.css'
 
 /** Per-Session UI facts the studio card reads. */
@@ -117,6 +117,13 @@ export function StudioView({
               {' · '}
               <StatusDot state={lamp} />
               {stateLabel(row)}
+              {row.usage === undefined
+                ? null
+                : (
+                  <span className={css.teamToken} title={t('tokensCumulativeHint')}>
+                    {t('tokensCumulative', { input: formatTokens(row.usage.inputTokens), output: formatTokens(row.usage.outputTokens) })}
+                  </span>
+                )}
             </span>
           </div>
           {children.length === 0 ? null : <span className={css.collabBadge}>{children.length + ' ' + t('activitySubagent')}</span>}

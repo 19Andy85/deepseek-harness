@@ -52,6 +52,8 @@ export interface SessionTaskActivityViewEntry {
 export interface SessionTaskMetadata {
   /** Cumulative token usage, when available. */
   readonly usage?: SessionTaskUsage
+  /** Usage reported by the latest completed assistant step, when available. */
+  readonly lastUsage?: SessionTaskUsage
   /** Agent-maintained todo progress, when available. */
   readonly progress?: SessionTaskProgress
   /** Latest tool call, when available. */
@@ -146,6 +148,8 @@ export interface SessionTaskView {
   readonly outcomeReason?: string
   /** Cumulative token usage, when the Session log reported any. */
   readonly usage?: SessionTaskUsage
+  /** Usage reported by the latest completed assistant step, when available. */
+  readonly lastUsage?: SessionTaskUsage
   /** Agent-maintained todo progress, when the Session has a todo list. */
   readonly progress?: SessionTaskProgress
   /** Latest tool call, when the Session log has one. */

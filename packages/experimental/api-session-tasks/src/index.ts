@@ -261,6 +261,24 @@ export class SessionTasksController extends TypertRemoteService {
       usage.cacheReadTokens += event.data.usage.cacheReadTokens ?? 0
       usage.cacheWriteTokens += event.data.usage.cacheWriteTokens ?? 0
     }
+    let lastUsage: {
+      inputTokens: number
+      outputTokens: number
+      totalTokens: number
+      cacheReadTokens?: number
+      cacheWriteTokens?: number
+    } | undefined
+    for (const event of events) {
+      if (event.type !== 'assistant/message' || event.data.usage === undefined) continue
+      const usage = event.data.usage
+      lastUsage = {
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        totalTokens: usage.totalTokens ?? usage.inputTokens + usage.outputTokens,
+        ...usage.cacheReadTokens === undefined ? {} : { cacheReadTokens: usage.cacheReadTokens },
+        ...usage.cacheWriteTokens === undefined ? {} : { cacheWriteTokens: usage.cacheWriteTokens },
+      }
+    }
     const lastCall = events.findLast(event => event.type === 'tool/call')
     const toolCall = lastCall === undefined
       ? undefined
@@ -294,6 +312,7 @@ export class SessionTasksController extends TypertRemoteService {
       ...outcome?.kind === undefined ? {} : { outcome: outcome.kind },
       ...outcome?.at === undefined ? {} : { outcomeAt: outcome.at },
       ...outcome?.reason === undefined ? {} : { outcomeReason: outcome.reason },
+      ...lastUsage === undefined ? {} : { lastUsage },
       ...usage === undefined ? {} : {
         usage: {
           inputTokens: usage.inputTokens,

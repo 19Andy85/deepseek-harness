@@ -8213,6 +8213,12 @@ importers:
         specifier: ^4.3.2
         version: 4.3.2
 
+  packages/experimental/ai-detox:
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:~
+        version: link:../../../vendor/cordis
+
   packages/experimental/api-session-tasks:
     dependencies:
       '@deepseek-ai/dsh-brand':

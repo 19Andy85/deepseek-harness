@@ -1,0 +1,6 @@
+# AI trace cleanup: writing guidance for the models this profile runs.
+- insert:
+    - id: ai-detox
+      name: '@deepseek-ai/dsh-experimental-ai-detox'
+      config:
+        promptGuard: true
