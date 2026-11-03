@@ -141,7 +141,7 @@ function registerUi(ctx: Context): void {
     const offReset = ctx.on('connection/reset', () => { store.scheduleRefresh() })
     return () => { offAdded(); offRemoved(); offStatus(); offActivity(); offReset() }
   }, 'project-console: live refresh')
-  let railApi: { readonly openTabIn: (sessionId: SessionId, kind: string) => void } | undefined
+  let railApi: { readonly openTabIn: (sessionId: SessionId, kind: string) => void; readonly mounted: () => string | undefined } | undefined
   const pageInjected = (): ProjectConsoleInjected => ({
     store,
     workspaceOptions: () => store.workspaceOptions(),
@@ -165,13 +165,11 @@ function registerUi(ctx: Context): void {
     hooks: { sessionStatus: ctx.uiSession.sessionStatus },
     openInSidebar: () => {
       if (railApi === undefined) return
-      const snapshot = store.getSnapshot()
-      const target = snapshot.focus?.sessionId ?? snapshot.sessions[0]?.sessionId
-      if (target === undefined) return
-      // The rail tab is session-scoped: mount the row's session first, then
-      // place the console beside it.
-      ctx.uiWorkspace.openSession(brandString<SessionId>(target))
-      setTimeout(() => { railApi?.openTabIn(brandString<SessionId>(target), 'project-console') }, 150)
+      // The rail belongs to the session already on screen; opening another
+      // session here would replace the conversation the user is reading.
+      const active = railApi.mounted()
+      if (active === undefined) return
+      railApi.openTabIn(brandString<SessionId>(active), 'project-console')
     },
   })
   ctx.effect(() => ctx.slots.inject('main', () => ctx.slots.register({
@@ -182,7 +180,13 @@ function registerUi(ctx: Context): void {
   }, ConsoleMainPage)), 'project-console: page')
   ctx.effect(() => {
     const rail = { sidebarRight: ctx.sidebarRight, sidebarRightTabs: ctx.sidebarRightTabs }
-    railApi = { openTabIn: (sessionId, kind) => { rail.sidebarRight.openTabIn(sessionId, kind) } }
+    railApi = {
+      openTabIn: (sessionId, kind) => { rail.sidebarRight.openTabIn(sessionId, kind) },
+      mounted: () => {
+        const active = rail.sidebarRight.mounted.getSnapshot()
+        return active === undefined ? undefined : String(active)
+      },
+    }
     const disposeType = rail.sidebarRightTabs.register({
       id: 'project-console-rail',
       kind: 'project-console',
