@@ -36,6 +36,7 @@ export const DESKTOP_IPC = {
   windowFullscreen: 'dsh-desktop:window-fullscreen',
   windowsAppearance: 'dsh-desktop:windows-appearance',
   windowsMenu: 'dsh-desktop:windows-menu',
+  restartApp: 'dsh-desktop:restart-app',
 } as const
 
 /** Desktop release update state rendered by desktop-owned UI. */

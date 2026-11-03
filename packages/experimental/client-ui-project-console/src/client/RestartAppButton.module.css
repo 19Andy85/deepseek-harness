@@ -1,0 +1,21 @@
+.restart {
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-settings-card-stroke);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.restart:hover {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.confirming {
+  border-color: #6a5426;
+  color: var(--dsw-alias-state-warning-primary, #d9a441);
+}

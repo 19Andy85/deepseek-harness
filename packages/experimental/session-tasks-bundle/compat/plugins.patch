@@ -81,7 +81,7 @@
  } satisfies ProjectionDefinition<'sessionTaskOutcome', SessionTaskOutcome>
 
 --- a/packages/experimental/client-ui-project-console/package.json	2026-11-02 23:15:32
-+++ b/packages/experimental/client-ui-project-console/package.json	2026-11-04 00:03:32
++++ b/packages/experimental/client-ui-project-console/package.json	2026-11-04 02:42:25
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-client-ui-project-console",
@@ -93,7 +93,7 @@
    },
 
 --- a/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-10-29 04:06:48
-+++ b/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-11-04 00:03:32
++++ b/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-11-04 02:42:25
 @@ -1,6 +1,5 @@
 -/** Workspace row menu entry that opens the project console on that Workspace. */
 +/** Session row menu entry that opens the project console for the row's workspace. */
@@ -139,10 +139,10 @@
      >
        {t('openConsole')}
 
---- a/packages/experimental/client-ui-project-console/src/client/index.ts	2026-11-02 23:42:48
-+++ b/packages/experimental/client-ui-project-console/src/client/index.ts	2026-11-04 00:03:32
-@@ -24,7 +24,7 @@
- import { BalanceBadge, type BalanceWallet } from './BalanceBadge.tsx'
+--- a/packages/experimental/client-ui-project-console/src/client/index.ts	2026-11-04 02:36:18
++++ b/packages/experimental/client-ui-project-console/src/client/index.ts	2026-11-04 02:42:25
+@@ -25,7 +25,7 @@
+ import { RestartAppButton } from './RestartAppButton.tsx'
  import { ProjectConsoleStore } from './ProjectConsoleStore.ts'
  import type { VisitMemory } from './visit-memory.ts'
 -import { de, en, es, fr, ja, pt, ru, zh } from './locales.ts'
@@ -150,7 +150,7 @@
 
  /** Locale namespace of the page copy. */
  export const NS = 'projectConsole'
-@@ -55,7 +55,7 @@
+@@ -56,7 +56,7 @@
   * @returns disposer that unmounts the Remote contribution.
   */
  export async function apply(ctx: Context): Promise<() => Promise<void>> {
@@ -159,10 +159,10 @@
    const unmount = await ctx.remote.$mount(sessionTasksRemote)
    try {
      await ctx.inject(['remote.sessionTasks'], (inner) => { registerUi(inner) })
-@@ -177,18 +177,20 @@
-     id: 'project-console-balance',
-     inject: () => ({ read: readBalance, label: t('dsBalance') }),
-   }, BalanceBadge)), 'project-console: balance badge')
+@@ -183,18 +183,20 @@
+     id: 'project-console-restart',
+     locale: NS,
+   }, RestartAppButton)), 'project-console: restart app')
 -  ctx.effect(() => ctx.slots.inject('sidebar.workspaces.workspace.menu.item', () => ctx.slots.register({
 -    name: 'sidebar.workspaces.workspace.menu.item',
 +  ctx.effect(() => ctx.slots.inject('sidebar.workspaces.session.menu.item', () => ctx.slots.register({

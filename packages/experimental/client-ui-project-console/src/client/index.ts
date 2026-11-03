@@ -22,6 +22,7 @@ import { ProjectConsoleMenuItem, type ProjectConsoleMenuInjected } from './Proje
 import { ProjectConsolePage, type ProjectConsoleInjected } from './ProjectConsolePage.tsx'
 import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
 import { BalanceBadge, type BalanceWallet } from './BalanceBadge.tsx'
+import { RestartAppButton } from './RestartAppButton.tsx'
 import { ProjectConsoleStore } from './ProjectConsoleStore.ts'
 import type { VisitMemory } from './visit-memory.ts'
 import { de, en, es, fr, ja, pt, ru, zh } from './locales.ts'
@@ -177,6 +178,11 @@ function registerUi(ctx: Context): void {
     id: 'project-console-balance',
     inject: () => ({ read: readBalance, label: t('dsBalance') }),
   }, BalanceBadge)), 'project-console: balance badge')
+  ctx.effect(() => ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
+    name: 'sidebar.footer.action',
+    id: 'project-console-restart',
+    locale: NS,
+  }, RestartAppButton)), 'project-console: restart app')
   ctx.effect(() => ctx.slots.inject('sidebar.workspaces.workspace.menu.item', () => ctx.slots.register({
     name: 'sidebar.workspaces.workspace.menu.item',
     id: 'project-console',

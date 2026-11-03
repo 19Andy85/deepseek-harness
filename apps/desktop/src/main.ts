@@ -840,6 +840,11 @@ async function main(): Promise<void> {
     platformView.setBounds(platformBounds(bounds))
   })
   ipcMain.handle(PLATFORM_IPC.close, (event) => { assertMainApplication(event); platformView.close() })
+  ipcMain.handle(DESKTOP_IPC.restartApp, (event) => {
+    assertMainApplication(event)
+    app.relaunch()
+    quitWithoutConfirmation()
+  })
   // Only the main window may synchronize its palette with the native material.
   ipcMain.on(DESKTOP_IPC.nativeThemeSet, (event, source: unknown) => {
     if (mainWindow === undefined || event.sender !== mainWindow.webContents) return
