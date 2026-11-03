@@ -15,6 +15,10 @@ import { readPartnerAliases, writePartnerAlias } from './partner-aliases.ts'
 import { createTaskCard, parseTaskCard, readTaskCards, writeTaskCards, type TaskCard } from './task-cards.ts'
 import { readUiState, writeUiState, type ConsoleUiState } from './ui-state.ts'
 import {
+  CONSOLE_CHANNEL, readActions, readDraft, readReplyDraft, writeActions, writeDraft, writeReplyDraft,
+  type ConsoleAction, type ConsoleMessage,
+} from './durable.ts'
+import {
   displayFacts, readReadingMode, resolveReadingLevel, writeReadingMode, type ReadingMode, type ReadingLevel,
 } from './reading-scale.ts'
 import { PartnerAvatar } from './PartnerAvatar.tsx'
@@ -110,7 +114,10 @@ export function ProjectConsolePage({
   const [inboxOpen, setInboxOpen] = useState(false)
   const [workspaceBack, setWorkspaceBack] = useState<string | undefined>(undefined)
   const [reloadNotice, setReloadNotice] = useState(false)
-  const [actions, setActions] = useState<{ readonly id: number; readonly label: string; readonly at: number }[]>([])
+  const [actions, setActions] = useState<readonly ConsoleAction[]>([])
+  const channel = useRef<BroadcastChannel | undefined>(undefined)
+  const workspaceRef = useRef<string | undefined>(undefined)
+  const replyRef = useRef<string | null>(null)
   const [relationView, setRelationView] = useState<'inline' | 'canvas'>('inline')
   const [relationExpanded, setRelationExpanded] = useState(false)
   const [aliases, setAliases] = useState<Record<string, string>>(() => readPartnerAliases())
@@ -153,7 +160,12 @@ export function ProjectConsolePage({
     general: 'roleGeneral',
   }
   const logAction = (label: string) => {
-    setActions(previous => [{ id: Date.now(), label, at: Date.now() }, ...previous].slice(0, 6))
+    setActions((previous) => {
+      const next = [{ id: Date.now(), label, at: Date.now() }, ...previous].slice(0, 50)
+      writeActions(selected, next)
+      if (selected !== undefined) channel.current?.postMessage({ kind: 'actions', workspace: selected, actions: next } satisfies ConsoleMessage)
+      return next
+    })
   }
   const approve = (sessionId: string, decision: 'allowed-once' | 'rejected') => {
     void answerApproval(sessionId, decision).then((accepted) => {
@@ -178,6 +190,8 @@ export function ProjectConsolePage({
     if (card === undefined) return
     persistCards([...cards, card])
     setCardText('')
+    writeDraft(selected, 'card', '')
+    if (selected !== undefined) channel.current?.postMessage({ kind: 'card', workspace: selected, value: '' } satisfies ConsoleMessage)
   }
   const removeCard = (id: string) => {
     persistCards(cards.filter(card => card.id !== id))
@@ -362,6 +376,32 @@ export function ProjectConsolePage({
     writeUiState(selected, { activeId, filter, relationView, cardBoardOpen })
   }, [selected, activeId, filter, relationView, cardBoardOpen])
   useEffect(() => {
+    if (typeof BroadcastChannel === 'undefined') return
+    const bus = new BroadcastChannel(CONSOLE_CHANNEL)
+    bus.onmessage = (event: MessageEvent<ConsoleMessage>) => {
+      const message = event.data
+      if (message.workspace !== workspaceRef.current) return
+      if (message.kind === 'actions') setActions(message.actions)
+      else if (message.kind === 'prompt') setPrompt(message.value)
+      else if (message.kind === 'card') setCardText(message.value)
+      else if (message.sessionId === replyRef.current) setReplyText(message.value)
+    }
+    channel.current = bus
+    return () => { channel.current = undefined; bus.close() }
+  }, [])
+  useEffect(() => {
+    workspaceRef.current = selected
+    if (selected === undefined) return
+    setActions(readActions(selected))
+    setPrompt(readDraft(selected, 'prompt'))
+    setCardText(readDraft(selected, 'card'))
+  }, [selected])
+  useEffect(() => {
+    replyRef.current = replyingTo
+    if (replyingTo === null) return
+    setReplyText(readReplyDraft(replyingTo))
+  }, [replyingTo])
+  useEffect(() => {
     if (focus?.sessionId !== undefined) setActiveId(focus.sessionId)
   }, [focus?.sessionId])
   useEffect(() => () => {
@@ -541,14 +581,24 @@ export function ProjectConsolePage({
           : (
             <form className={css.compose} onSubmit={(event) => {
               event.preventDefault()
-              void dispatch(prompt).then((accepted) => { if (accepted) setPrompt('') })
+              void dispatch(prompt).then((accepted) => {
+                if (!accepted) return
+                setPrompt('')
+                writeDraft(selected, 'prompt', '')
+                if (selected !== undefined) channel.current?.postMessage({ kind: 'prompt', workspace: selected, value: '' } satisfies ConsoleMessage)
+              })
             }}>
               <textarea
                 className={css.prompt}
                 value={prompt}
                 rows={2}
                 placeholder={t('newSessionPrompt')}
-                onChange={(event) => { setPrompt(event.currentTarget.value) }}
+                onChange={(event) => {
+                  const value = event.currentTarget.value
+                  setPrompt(value)
+                  writeDraft(selected, 'prompt', value)
+                  if (selected !== undefined) channel.current?.postMessage({ kind: 'prompt', workspace: selected, value } satisfies ConsoleMessage)
+                }}
               />
               <button type="submit" className={css.select} disabled={state.dispatch === 'sending' || prompt.trim() === ''}>
                 {state.dispatch === 'sending' ? t('newSessionSending') : t('newSessionSend')}
@@ -589,7 +639,12 @@ export function ProjectConsolePage({
                         className={css.cardInput}
                         value={cardText}
                         placeholder={t('taskCardPlaceholder')}
-                        onChange={(event) => { setCardText(event.currentTarget.value) }}
+                        onChange={(event) => {
+                          const value = event.currentTarget.value
+                          setCardText(value)
+                          writeDraft(selected, 'card', value)
+                          if (selected !== undefined) channel.current?.postMessage({ kind: 'card', workspace: selected, value } satisfies ConsoleMessage)
+                        }}
                         onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addCard() } }}
                       />
                       <button type="button" className={css.select} onClick={addCard}>{t('addTaskCard')}</button>
@@ -817,7 +872,12 @@ export function ProjectConsolePage({
                                   rows={2}
                                   value={replyText}
                                   placeholder={t('replyPlaceholder')}
-                                  onChange={(event) => { setReplyText(event.currentTarget.value) }}
+                                  onChange={(event) => {
+                                    const value = event.currentTarget.value
+                                    setReplyText(value)
+                                    writeReplyDraft(replyingTo, value)
+                                    if (selected !== undefined) channel.current?.postMessage({ kind: 'reply', workspace: selected, sessionId: replyingTo ?? '', value } satisfies ConsoleMessage)
+                                  }}
                                 />
                                 <button
                                   type="button"
@@ -828,6 +888,7 @@ export function ProjectConsolePage({
                                       if (!accepted) return
                                       setReplyingTo(null)
                                       setReplyText('')
+                                      writeReplyDraft(session.sessionId, '')
                                     })
                                   }}
                                 >
@@ -1086,7 +1147,12 @@ export function ProjectConsolePage({
                         rows={2}
                         value={replyText}
                         placeholder={t('replyPlaceholder')}
-                        onChange={(event) => { setReplyText(event.currentTarget.value) }}
+                        onChange={(event) => {
+                          const value = event.currentTarget.value
+                          setReplyText(value)
+                          writeReplyDraft(replyingTo, value)
+                          if (selected !== undefined) channel.current?.postMessage({ kind: 'reply', workspace: selected, sessionId: replyingTo ?? '', value } satisfies ConsoleMessage)
+                        }}
                       />
                       <button
                         type="button"
@@ -1097,6 +1163,7 @@ export function ProjectConsolePage({
                             if (!accepted) return
                             setReplyingTo(null)
                             setReplyText('')
+                            writeReplyDraft(focus.sessionId, '')
                           })
                         }}
                       >
