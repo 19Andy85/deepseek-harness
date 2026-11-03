@@ -1,0 +1,23 @@
+.studio { display: flex; flex-direction: column; gap: 12px; }
+.head { display: flex; align-items: baseline; gap: 10px; }
+.title { color: var(--dsw-alias-label-secondary); font-size: var(--pc-font-s, 12px); font-weight: 500; }
+.hint { color: var(--dsw-alias-label-tertiary); font-size: var(--pc-font-xs, 11px); }
+.switch { margin-left: auto; height: 24px; padding: 0 9px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 7px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 11px; cursor: pointer; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; }
+.room { position: relative; display: flex; flex-direction: column; min-width: 0; padding: 10px 10px 8px; border: 1px solid #34343c; border-radius: 13px; background: linear-gradient(180deg, #222228, #1e1e23); cursor: pointer; }
+.room:hover { border-color: #4a4a58; }
+.room.running { border-color: #335c48; }
+.room.needs { border-color: #6a5426; box-shadow: 0 0 0 1px rgba(217, 164, 65, 0.18) inset; }
+.roomHead { display: flex; align-items: baseline; gap: 8px; }
+.roomName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; }
+.roomMeta { margin-left: auto; color: var(--dsw-alias-label-tertiary); font-size: 10px; white-space: nowrap; }
+.canvas { width: 100%; height: 230px; overflow: hidden; }
+.seat { cursor: pointer; }
+.seatLabel { fill: #b9b9c6; font-size: 8.5px; }
+.hintText { fill: #7e7e8e; font-size: 8px; }
+.foot { display: flex; gap: 10px; align-items: center; padding-top: 2px; }
+.live { color: #43b581; font-size: 10.5px; }
+.muted { color: var(--dsw-alias-label-tertiary); font-size: 10.5px; }
+.empty { display: flex; flex-direction: column; gap: 6px; padding: 28px 10px; color: var(--dsw-alias-label-secondary); font-size: 13px; text-align: center; }
+.emptyHint { color: var(--dsw-alias-label-tertiary); font-size: 11px; }
+@media (max-width: 700px) { .grid { grid-template-columns: 1fr; } .canvas { height: 160px; } }

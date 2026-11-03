@@ -81,7 +81,7 @@
  } satisfies ProjectionDefinition<'sessionTaskOutcome', SessionTaskOutcome>
 
 --- a/packages/experimental/client-ui-project-console/package.json	2026-11-02 23:15:32
-+++ b/packages/experimental/client-ui-project-console/package.json	2026-11-04 02:54:29
++++ b/packages/experimental/client-ui-project-console/package.json	2026-11-04 03:42:33
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-client-ui-project-console",
@@ -92,8 +92,31 @@
      "access": "public"
    },
 
+--- a/packages/experimental/client-ui-project-console/src/client/IsoStudioView.tsx	2026-11-04 03:58:37
++++ b/packages/experimental/client-ui-project-console/src/client/IsoStudioView.tsx	2026-11-04 03:20:07
+@@ -48,7 +48,7 @@
+   for (const row of rows) for (const child of row.relations?.children ?? []) if (visible.has(child.sessionId)) childIds.add(child.sessionId)
+   const parents = rows.filter(row => !childIds.has(row.sessionId))
+   const teams = parents.length > 0 ? parents : rows
+-  return teams.map(parent => ({
++  return teams.map((parent) => ({
+     parent,
+     children: (parent.relations?.children ?? [])
+       .map(child => visible.get(child.sessionId))
+@@ -146,9 +146,7 @@
+               <div className={css.foot}>
+                 <span className={state === 'running' ? css.live : css.muted}>{t(state === 'running' ? 'running' : state === 'error' ? 'failed' : unread ? 'completedUnread' : 'idle')}</span>
+                 {row.usage === undefined ? null : <span className={css.muted}>{formatTokens(row.usage.totalTokens)} tok</span>}
+-                {row.lastPromptAt === undefined
+-                  ? null
+-                  : <span className={css.muted}>{Math.max(0, Math.round((now - row.lastPromptAt) / 60_000))}m</span>}
++                {row.lastPromptAt === undefined ? null : <span className={css.muted}>{Math.max(0, Math.round((now - row.lastPromptAt) / 60_000))}m</span>}
+               </div>
+             </div>
+           )
+
 --- a/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-10-29 04:06:48
-+++ b/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-11-04 02:54:29
++++ b/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-11-04 03:42:33
 @@ -1,6 +1,5 @@
 -/** Workspace row menu entry that opens the project console on that Workspace. */
 +/** Session row menu entry that opens the project console for the row's workspace. */
@@ -140,7 +163,7 @@
        {t('openConsole')}
 
 --- a/packages/experimental/client-ui-project-console/src/client/index.ts	2026-11-04 02:36:18
-+++ b/packages/experimental/client-ui-project-console/src/client/index.ts	2026-11-04 02:54:29
++++ b/packages/experimental/client-ui-project-console/src/client/index.ts	2026-11-04 03:42:34
 @@ -25,7 +25,7 @@
  import { RestartAppButton } from './RestartAppButton.tsx'
  import { ProjectConsoleStore } from './ProjectConsoleStore.ts'

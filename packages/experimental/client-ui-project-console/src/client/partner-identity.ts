@@ -43,6 +43,7 @@ export function normalizePartnerName(title: string | undefined): string | undefi
   for (const filler of FILLERS) value = value.split(filler).join(' ')
   value = value.replace(/\s+/g, ' ').trim()
   if ([...value].length > 24 && /[=]|--|\//.test(value)) return undefined
+  if (/^(?:bash|sh|zsh|pnpm|npm|node|npx|python3?|git|sleep|cd|curl|ls|rg|grep)\b/i.test(value)) return undefined
   for (const prefix of PREFIXES) {
     if (value.startsWith(prefix) && value.length > prefix.length) {
       value = value.slice(prefix.length).trim()

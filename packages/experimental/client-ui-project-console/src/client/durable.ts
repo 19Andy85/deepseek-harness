@@ -14,6 +14,19 @@ export interface ConsoleAction {
   readonly at: number
 }
 
+/** Studio projection mode. */
+export type StudioMode = 'iso' | 'board'
+
+/** @returns the persisted studio projection, defaulting to isometric. */
+export function readStudioMode(): StudioMode {
+  return read(`${PREFIX}studio-mode`, 'iso' as StudioMode) === 'board' ? 'board' : 'iso'
+}
+
+/** @param mode - projection to persist. */
+export function writeStudioMode(mode: StudioMode): void {
+  write(`${PREFIX}studio-mode`, mode)
+}
+
 /** A cross-window durable-state update. */
 export type ConsoleMessage =
   | { readonly kind: 'actions'; readonly workspace: string; readonly actions: readonly ConsoleAction[] }

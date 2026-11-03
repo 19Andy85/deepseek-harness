@@ -15,7 +15,7 @@ import { readPartnerAliases, writePartnerAlias } from './partner-aliases.ts'
 import { createTaskCard, parseTaskCard, readTaskCards, writeTaskCards, type TaskCard } from './task-cards.ts'
 import { readUiState, writeUiState, type ConsoleUiState } from './ui-state.ts'
 import {
-  CONSOLE_CHANNEL, readActions, readDraft, readReplyDraft, writeActions, writeDraft, writeReplyDraft,
+  CONSOLE_CHANNEL, readActions, readDraft, readReplyDraft, readStudioMode, writeActions, writeDraft, writeReplyDraft, writeStudioMode,
   type ConsoleAction, type ConsoleMessage,
 } from './durable.ts'
 import {
@@ -28,6 +28,7 @@ import { GlobalInbox } from './GlobalInbox.tsx'
 import { RelationGraph } from './RelationGraph.tsx'
 import { AttentionInbox } from './AttentionInbox.tsx'
 import { StudioView } from './StudioView.tsx'
+import { IsoStudioView } from './IsoStudioView.tsx'
 import { readViewPreference, writeViewPreference, type ConsoleView } from './view-preference.ts'
 import { ActivityTrack, formatDuration, formatTokens, HealthSegments, StatusDot, Timeline, type HealthFilter } from './visual/visual.tsx'
 import type { ProjectConsoleKey } from './locales.ts'
@@ -136,6 +137,7 @@ export function ProjectConsolePage({
   const [replyText, setReplyText] = useState('')
   const [filter, setFilter] = useState<HealthFilter>(undefined)
   const [view, setView] = useState<ConsoleView>(() => readViewPreference())
+  const [studioMode, setStudioMode] = useState(() => readStudioMode())
   const statuses = useSessionStatus(state => state)
   const state = useSyncExternalStore(
     listener => store.subscribe(listener),
@@ -511,6 +513,26 @@ export function ProjectConsolePage({
               {t('viewStudio')}
             </button>
           </div>
+          {view === 'studio'
+            ? (
+              <div className={css.viewToggle} role="group" aria-label={t('isoStudioTitle')}>
+                <button
+                  type="button"
+                  className={studioMode === 'iso' ? `${css.viewButton} ${css.viewButtonActive}` : css.viewButton}
+                  onClick={() => { setStudioMode('iso'); writeStudioMode('iso') }}
+                >
+                  {t('isoStudioTitle')}
+                </button>
+                <button
+                  type="button"
+                  className={studioMode === 'board' ? `${css.viewButton} ${css.viewButtonActive}` : css.viewButton}
+                  onClick={() => { setStudioMode('board'); writeStudioMode('board') }}
+                >
+                  {t('boardMode')}
+                </button>
+              </div>
+            )
+            : null}
           <button
             type="button"
             className={css.select}
@@ -920,19 +942,35 @@ export function ProjectConsolePage({
                 {!inboxOpen && inboxSideNode !== null
                   ? <aside className={css.studioSide}>{inboxSideNode}</aside>
                   : null}
-                <StudioView
-                  rows={rows}
-                  aliases={aliasesMap}
-                  statusFacts={statusFacts}
-                  descriptorOf={descriptorOf}
-                  shift={state.shift}
-                  now={now}
-                  t={t}
-                  onFocus={focusSession}
-                  onResetShift={resetShift}
-                  onOpen={openSession}
-                  onDropCard={(sessionId, raw) => { dispatchCard(sessionId, raw) }}
-                />
+                {studioMode === 'iso'
+                  ? (
+                    <IsoStudioView
+                      rows={rows}
+                      aliases={aliasesMap}
+                      statusFacts={statusFacts}
+                      descriptorOf={descriptorOf}
+                      now={now}
+                      t={t}
+                      onFocus={focusSession}
+                      onOpen={openSession}
+                      onDropCard={(sessionId, raw) => { dispatchCard(sessionId, raw) }}
+                    />
+                  )
+                  : (
+                    <StudioView
+                      rows={rows}
+                      aliases={aliasesMap}
+                      statusFacts={statusFacts}
+                      descriptorOf={descriptorOf}
+                      shift={state.shift}
+                      now={now}
+                      t={t}
+                      onFocus={focusSession}
+                      onResetShift={resetShift}
+                      onOpen={openSession}
+                      onDropCard={(sessionId, raw) => { dispatchCard(sessionId, raw) }}
+                    />
+                  )}
               </div>
             ))}
         </div>
