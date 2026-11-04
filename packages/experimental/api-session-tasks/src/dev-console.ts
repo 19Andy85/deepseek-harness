@@ -2,6 +2,62 @@
 import type { DevConsoleConfig, DevConsoleConfigProblem, DevConsoleDomainConfig } from './dev-console-config.ts'
 import type { DomainInspection } from './dev-console-domain.ts'
 
+/** One Session whose cwd belongs to a configured domain. */
+export interface DevConsoleSessionSummary {
+  /** Session identity. */
+  readonly sessionId: string
+  /** Session cwd. */
+  readonly cwd: string
+  /** Whether the Session is currently live. */
+  readonly live: boolean
+}
+
+/** Git read request. */
+export interface DevConsoleGitRequest {
+  /** Domain id. */
+  readonly domainId: string
+  /** Read-only git action. */
+  readonly action: 'status' | 'log' | 'diff'
+}
+
+/** Git read result. */
+export interface DevConsoleGitValue {
+  /** Text output. */
+  readonly text: string
+}
+
+/** AGENTS read request. */
+export interface DevConsoleAgentsRequest {
+  /** Domain id. */
+  readonly domainId: string
+}
+
+/** AGENTS read result. */
+export interface DevConsoleAgentsValue {
+  /** Path read. */
+  readonly path: string
+  /** File text. */
+  readonly text: string
+  /** Content hash. */
+  readonly hash: string
+}
+
+/** Save one AGENTS.md with optimistic hash protection. */
+export interface DevConsoleSaveAgentsRequest {
+  /** Domain id. */
+  readonly domainId: string
+  /** Complete replacement text. */
+  readonly text: string
+  /** Hash read before editing. */
+  readonly baseHash: string
+}
+
+/** Result of saving AGENTS.md. */
+export interface DevConsoleSaveAgentsValue {
+  /** New content hash. */
+  readonly hash: string
+}
+
 /** One configured domain plus its live inspection. */
 export interface DevConsoleDomainStatus {
   /** Owning project. */
@@ -10,6 +66,8 @@ export interface DevConsoleDomainStatus {
   readonly domain: DevConsoleDomainConfig
   /** Live git/cwd inspection. */
   readonly inspection: DomainInspection
+  /** Sessions whose cwd belongs to this domain. */
+  readonly sessions: readonly DevConsoleSessionSummary[]
 }
 
 /** Snapshot of the configured registry and its domains. */

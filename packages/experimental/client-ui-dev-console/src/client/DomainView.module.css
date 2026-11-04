@@ -20,3 +20,7 @@
 .opened { color: var(--dsw-alias-label-secondary); font-size: 12px; }
 .linkButton { margin-left: 10px; border: 0; background: none; color: #5b8def; font: inherit; font-size: 12px; cursor: pointer; }
 .error { color: #e5534b; font-size: 12px; }
+.detail { max-height: 220px; overflow: auto; margin: 12px 0 0; padding: 10px; border-radius: 8px; background: var(--dsw-alias-bg-skeleton); color: var(--dsw-alias-label-secondary); font-size: 11px; white-space: pre-wrap; }
+.detailBox { margin-top: 12px; }
+.detailHead { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 11px; color: var(--dsw-alias-label-tertiary); }
+.agentsEditor { width: 100%; min-height: 160px; max-height: 300px; margin-top: 6px; padding: 10px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 8px; background: var(--dsw-alias-bg-skeleton); color: var(--dsw-alias-label-secondary); font-family: "SF Mono", Menlo, monospace; font-size: 11px; }

@@ -20,6 +20,8 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
     'session-tasks/session-not-found': Record<string, never>
     /** Server-side read state is unavailable because no storage domain is mounted. */
     'session-tasks/seen-unavailable': Record<string, never>
+    /** A Dev Console file changed after the caller read it. */
+    'dev-console/conflict': Record<string, never>
   }
 }
 

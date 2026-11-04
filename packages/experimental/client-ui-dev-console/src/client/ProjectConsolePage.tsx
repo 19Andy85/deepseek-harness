@@ -85,6 +85,12 @@ export interface ProjectConsoleInjected {
   readonly devConsoleSnapshot: () => Promise<DomainSnapshotView>
   /** Open one configured domain in a cwd Session. */
   readonly devConsoleOpenDomain: (domainId: string) => Promise<DomainOpenView>
+  /** Read git output for a domain. */
+  readonly devConsoleGit: (domainId: string, action: 'status' | 'log' | 'diff') => Promise<{ readonly text: string }>
+  /** Read the domain AGENTS.md. */
+  readonly devConsoleAgents: (domainId: string) => Promise<{ readonly path: string; readonly text: string; readonly hash: string }>
+  /** Save the domain AGENTS.md. */
+  readonly devConsoleSaveAgents: (domainId: string, text: string, baseHash: string) => Promise<{ readonly hash: string }>
 }
 
 /** Framework props of the workspace console page. */
@@ -129,7 +135,7 @@ function statusText(
 export function ProjectConsolePage({
   t, store, workspaceOptions, workspaceSessions, selectedWorkspaceId, selectWorkspace, refresh, openSession, focusSession,
   closeFocus, resetShift, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus, openInSidebar,
-  devConsoleSnapshot, devConsoleOpenDomain,
+  devConsoleSnapshot, devConsoleOpenDomain, devConsoleGit, devConsoleAgents, devConsoleSaveAgents,
   compact = false, surface = 'main', railSessionId, onFloat, onDock,
 }: ProjectConsolePageProps) {
   const [now, setNow] = useState(() => Date.now())
@@ -1307,6 +1313,9 @@ export function ProjectConsolePage({
             t={t}
             snapshot={devConsoleSnapshot}
             openDomain={devConsoleOpenDomain}
+            git={devConsoleGit}
+            agents={devConsoleAgents}
+            saveAgents={devConsoleSaveAgents}
             openSession={openSession}
             onClose={() => { setDomainsOpen(false) }}
           />

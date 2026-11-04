@@ -173,6 +173,21 @@ function registerUi(ctx: Context): void {
       if (!result.ok) throw new Error(result.error.message)
       return result.value
     },
+    devConsoleGit: async (domainId, action) => {
+      const result = await ctx.remote.sessionTasks.devConsoleGit({ domainId, action })
+      if (!result.ok) throw new Error(result.error.message)
+      return result.value
+    },
+    devConsoleAgents: async (domainId) => {
+      const result = await ctx.remote.sessionTasks.devConsoleAgents({ domainId })
+      if (!result.ok) throw new Error(result.error.message)
+      return result.value
+    },
+    devConsoleSaveAgents: async (domainId, text, baseHash) => {
+      const result = await ctx.remote.sessionTasks.devConsoleSaveAgents({ domainId, text, baseHash })
+      if (!result.ok) throw new Error(result.error.message)
+      return result.value
+    },
     openInSidebar: () => {
       if (railApi === undefined) return
       // The rail belongs to the session already on screen; opening another

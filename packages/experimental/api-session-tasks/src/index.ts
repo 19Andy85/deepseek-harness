@@ -22,9 +22,18 @@ import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import z from '@deepseek-ai/schemastery'
 import type { SessionActivity } from '@deepseek-ai/dsh-workspace'
 import { followSessionTask, observeActivity, readSessionTasks, type ObservedActivity } from './aggregation.ts'
+import { execFile } from 'node:child_process'
+import { createHash } from 'node:crypto'
+import { readFile, realpath, writeFile } from 'node:fs/promises'
+import { promisify } from 'node:util'
 import { loadDevConsoleConfig } from './dev-console-config.ts'
 import { inspectDomain, openDomain } from './dev-console-domain.ts'
-import type { DevConsoleDomainStatus, DevConsoleOpenDomainRequest, DevConsoleOpenDomainValue, DevConsoleSnapshot } from './dev-console.ts'
+import type { DevConsoleDomainConfig } from './dev-console-config.ts'
+import type {
+  DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleDomainStatus, DevConsoleGitRequest, DevConsoleGitValue,
+  DevConsoleSaveAgentsRequest, DevConsoleSaveAgentsValue,
+  DevConsoleOpenDomainRequest, DevConsoleOpenDomainValue, DevConsoleSessionSummary, DevConsoleSnapshot,
+} from './dev-console.ts'
 import { sessionTaskOutcomeProjection } from './outcome.ts'
 import { buildChildRelations, type SessionRelationChild } from './relations.ts'
 import {
@@ -384,10 +393,65 @@ export class SessionTasksController extends TypertRemoteService {
     const domains: DevConsoleDomainStatus[] = []
     for (const project of result.config.projects) {
       for (const domain of project.domains) {
-        domains.push({ projectId: project.id, domain, inspection: await inspectDomain(domain) })
+        const inspection = await inspectDomain(domain)
+        domains.push({ projectId: project.id, domain, inspection, sessions: await this.devConsoleSessions(inspection) })
       }
     }
     return { config: result.config, problems: result.problems, warnings: result.warnings, domains }
+  }
+
+  @Remote('devConsoleGit')
+  async devConsoleGit(request: DevConsoleGitRequest): Promise<DevConsoleGitValue> {
+    const domain = this.devConsoleDomain(request.domainId)
+    const args = request.action === 'status'
+      ? ['status', '--porcelain']
+      : request.action === 'log'
+        ? ['log', '--oneline', '-20']
+        : ['diff', '--stat']
+    const result = await promisify(execFile)('git', args, { cwd: domain.canonicalWorktree ?? domain.worktree, encoding: 'utf8' })
+    return { text: result.stdout.trim() }
+  }
+
+  @Remote('devConsoleAgents')
+  async devConsoleAgents(request: DevConsoleAgentsRequest): Promise<DevConsoleAgentsValue> {
+    const domain = this.devConsoleDomain(request.domainId)
+    const path = `${domain.canonicalWorktree ?? domain.worktree}/AGENTS.md`
+    const text = await readFile(path, 'utf8')
+    return { path, text, hash: createHash('sha256').update(text).digest('hex') }
+  }
+
+  @Remote('devConsoleSaveAgents')
+  async devConsoleSaveAgents(request: DevConsoleSaveAgentsRequest): Promise<DevConsoleSaveAgentsValue> {
+    const domain = this.devConsoleDomain(request.domainId)
+    const path = `${domain.canonicalWorktree ?? domain.worktree}/AGENTS.md`
+    const current = await readFile(path, 'utf8')
+    const currentHash = createHash('sha256').update(current).digest('hex')
+    if (currentHash !== request.baseHash) throw new RemoteError('dev-console/conflict', 'AGENTS.md changed externally', {})
+    await writeFile(path, request.text)
+    return { hash: createHash('sha256').update(request.text).digest('hex') }
+  }
+
+  private devConsoleDomain(domainId: string): DevConsoleDomainConfig {
+    const result = loadDevConsoleConfig(this.devConsoleConfigFile)
+    if (result.config === undefined) throw new RemoteError('gateway/bad-request', 'Dev Console config is invalid', {})
+    const domain = result.config.projects.flatMap(project => project.domains).find(item => item.id === domainId)
+    if (domain === undefined) throw new RemoteError('gateway/bad-request', `domain ${domainId} is not configured`, {})
+    return domain
+  }
+
+  private async devConsoleSessions(inspection: import('./dev-console-domain.ts').DomainInspection): Promise<readonly DevConsoleSessionSummary[]> {
+    const query = this.ctx.get('sessionQuery')
+    if (query === undefined || inspection.canonicalWorktree === undefined) return []
+    const records = await query.listSessions()
+    const sessions: DevConsoleSessionSummary[] = []
+    for (const record of records) {
+      if (record.header.cwd === undefined) continue
+      let canonical: string
+      try { canonical = await realpath(record.header.cwd) } catch { continue }
+      if (canonical !== inspection.canonicalWorktree) continue
+      sessions.push({ sessionId: record.header.id, cwd: canonical, live: record.live })
+    }
+    return sessions
   }
 
   /**
