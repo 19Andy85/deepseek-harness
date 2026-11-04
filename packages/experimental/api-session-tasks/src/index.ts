@@ -407,9 +407,10 @@ export class SessionTasksController extends TypertRemoteService {
       ? ['status', '--porcelain']
       : request.action === 'log'
         ? ['log', '--oneline', '-20']
-        : ['diff', '--stat']
+        : ['diff']
     const result = await promisify(execFile)('git', args, { cwd: domain.canonicalWorktree ?? domain.worktree, encoding: 'utf8' })
-    return { text: result.stdout.trim() }
+    const text = result.stdout.trim()
+    return { text: text.length > 24_000 ? `${text.slice(0, 24_000)}\n…` : text }
   }
 
   @Remote('devConsoleAgents')
