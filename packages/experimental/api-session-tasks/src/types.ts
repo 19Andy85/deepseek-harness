@@ -253,3 +253,5 @@ export interface CollectSessionTasksOptions {
   /** Keep only these activity families; omission keeps every family. */
   readonly include?: readonly string[]
 }
+
+export type * from './dev-console.ts'

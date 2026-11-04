@@ -163,6 +163,16 @@ function registerUi(ctx: Context): void {
     answerApproval: (sessionId, decision) => store.answerApproval(sessionId, decision),
     answerQuestion: (sessionId, answer) => store.answerQuestion(sessionId, answer),
     hooks: { sessionStatus: ctx.uiSession.sessionStatus },
+    devConsoleSnapshot: async () => {
+      const result = await ctx.remote.sessionTasks.devConsoleSnapshot()
+      if (!result.ok) throw new Error(result.error.message)
+      return result.value
+    },
+    devConsoleOpenDomain: async (domainId) => {
+      const result = await ctx.remote.sessionTasks.devConsoleOpenDomain({ domainId })
+      if (!result.ok) throw new Error(result.error.message)
+      return result.value
+    },
     openInSidebar: () => {
       if (railApi === undefined) return
       // The rail belongs to the session already on screen; opening another

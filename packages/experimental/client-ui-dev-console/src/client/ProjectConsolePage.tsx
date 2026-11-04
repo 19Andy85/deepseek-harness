@@ -29,6 +29,7 @@ import { RelationGraph } from './RelationGraph.tsx'
 import { AttentionInbox } from './AttentionInbox.tsx'
 import { StudioView } from './StudioView.tsx'
 import { IsoStudioView } from './IsoStudioView.tsx'
+import { DomainView, type DomainOpenView, type DomainSnapshotView } from './DomainView.tsx'
 import { readViewPreference, writeViewPreference, type ConsoleView } from './view-preference.ts'
 import { ActivityTrack, formatDuration, formatTokens, HealthSegments, StatusDot, Timeline, type HealthFilter } from './visual/visual.tsx'
 import type { ProjectConsoleKey } from './locales.ts'
@@ -80,6 +81,10 @@ export interface ProjectConsoleInjected {
   readonly hooks: { readonly sessionStatus: HostObservable<SessionStatusSnapshot> }
   /** Open the console for the current project in the right rail. */
   readonly openInSidebar: () => void
+  /** Read the Dev Console domain registry. */
+  readonly devConsoleSnapshot: () => Promise<DomainSnapshotView>
+  /** Open one configured domain in a cwd Session. */
+  readonly devConsoleOpenDomain: (domainId: string) => Promise<DomainOpenView>
 }
 
 /** Framework props of the workspace console page. */
@@ -124,6 +129,7 @@ function statusText(
 export function ProjectConsolePage({
   t, store, workspaceOptions, workspaceSessions, selectedWorkspaceId, selectWorkspace, refresh, openSession, focusSession,
   closeFocus, resetShift, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus, openInSidebar,
+  devConsoleSnapshot, devConsoleOpenDomain,
   compact = false, surface = 'main', railSessionId, onFloat, onDock,
 }: ProjectConsolePageProps) {
   const [now, setNow] = useState(() => Date.now())
@@ -131,6 +137,7 @@ export function ProjectConsolePage({
   const [inboxOpen, setInboxOpen] = useState(false)
   const [workspaceBack, setWorkspaceBack] = useState<string | undefined>(undefined)
   const [reloadNotice, setReloadNotice] = useState(false)
+  const [domainsOpen, setDomainsOpen] = useState(false)
   const [actions, setActions] = useState<readonly ConsoleAction[]>([])
   const channel = useRef<BroadcastChannel | undefined>(undefined)
   const workspaceRef = useRef<string | undefined>(undefined)
@@ -598,6 +605,9 @@ export function ProjectConsolePage({
                 {t('openInSidebar')}
               </button>
             )
+            : null}
+          {surface === 'main'
+            ? <button type="button" className={css.select} onClick={() => { setDomainsOpen(true) }}>{t('domainsTitle')}</button>
             : null}
           <button
             type="button"
@@ -1291,6 +1301,17 @@ export function ProjectConsolePage({
             </aside>
           )}
       </div>
+      {domainsOpen
+        ? (
+          <DomainView
+            t={t}
+            snapshot={devConsoleSnapshot}
+            openDomain={devConsoleOpenDomain}
+            openSession={openSession}
+            onClose={() => { setDomainsOpen(false) }}
+          />
+        )
+        : null}
     </section>
   )
 }

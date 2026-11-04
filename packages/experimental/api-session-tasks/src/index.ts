@@ -22,6 +22,9 @@ import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import z from '@deepseek-ai/schemastery'
 import type { SessionActivity } from '@deepseek-ai/dsh-workspace'
 import { followSessionTask, observeActivity, readSessionTasks, type ObservedActivity } from './aggregation.ts'
+import { loadDevConsoleConfig } from './dev-console-config.ts'
+import { inspectDomain, openDomain } from './dev-console-domain.ts'
+import type { DevConsoleDomainStatus, DevConsoleOpenDomainRequest, DevConsoleOpenDomainValue, DevConsoleSnapshot } from './dev-console.ts'
 import { sessionTaskOutcomeProjection } from './outcome.ts'
 import { buildChildRelations, type SessionRelationChild } from './relations.ts'
 import {
@@ -60,21 +63,25 @@ export interface Config {
   readonly stallAfterMs?: number
   /** Refresh cadence of the durable derivation relation cache, in milliseconds (default 5000). */
   readonly relationsRefreshMs?: number
+  /** Registry file for Dev Console, relative to the Host working directory. */
+  readonly devConsoleConfigFile?: string
 }
 
 /** Host service backing the generated `ctx.remote.sessionTasks` namespace. */
 export class SessionTasksController extends TypertRemoteService {
-  static inject = ['typert', 'agents']
+  static inject = ['typert', 'agents', 'sessionController']
 
   static Config: z<Config> = z.object({
     followIntervalMs: z.natural().min(100).default(DEFAULT_FOLLOW_INTERVAL_MS),
     stallAfterMs: z.natural().min(60_000).default(DEFAULT_STALL_AFTER_MS),
     relationsRefreshMs: z.natural().min(1_000).default(DEFAULT_RELATIONS_REFRESH_MS),
+    devConsoleConfigFile: z.string().default('.dsh/dev-console.yaml'),
   })
 
   private readonly followIntervalMs: number
   private readonly stallAfterMs: number
   private readonly relationsRefreshMs: number
+  private readonly devConsoleConfigFile: string
   private readonly observed = new Map<string, ObservedActivity>()
   private seenDomain: Domain<typeof sessionTasksSeenDomain> | undefined
   private relationsByParent = new Map<string, SessionRelationChild[]>()
@@ -92,6 +99,7 @@ export class SessionTasksController extends TypertRemoteService {
     this.followIntervalMs = resolved.followIntervalMs
     this.stallAfterMs = resolved.stallAfterMs
     this.relationsRefreshMs = resolved.relationsRefreshMs
+    this.devConsoleConfigFile = resolved.devConsoleConfigFile
   }
 
   protected async [Service.init](): Promise<void> {
@@ -363,6 +371,45 @@ export class SessionTasksController extends TypertRemoteService {
       ...relations === undefined ? {} : { relations },
     }
   }
+  /**
+   * Read the configured Dev Console registry and inspect each domain.
+   * @returns configured domains with canonical git/cwd facts.
+   */
+  @Remote('devConsoleSnapshot')
+  async devConsoleSnapshot(): Promise<DevConsoleSnapshot> {
+    const result = loadDevConsoleConfig(this.devConsoleConfigFile)
+    if (result.config === undefined) {
+      return { problems: result.problems, warnings: result.warnings, domains: [] }
+    }
+    const domains: DevConsoleDomainStatus[] = []
+    for (const project of result.config.projects) {
+      for (const domain of project.domains) {
+        domains.push({ projectId: project.id, domain, inspection: await inspectDomain(domain) })
+      }
+    }
+    return { config: result.config, problems: result.problems, warnings: result.warnings, domains }
+  }
+
+  /**
+   * Open a configured domain in a Session whose cwd is its worktree.
+   * @param request - domain id.
+   * @returns created Session and cwd.
+   */
+  @Remote('devConsoleOpenDomain')
+  async devConsoleOpenDomain(request: DevConsoleOpenDomainRequest): Promise<DevConsoleOpenDomainValue> {
+    const result = loadDevConsoleConfig(this.devConsoleConfigFile)
+    if (result.config === undefined) throw new RemoteError('gateway/bad-request', 'Dev Console config is invalid', {})
+    const domain = result.config.projects.flatMap(project => project.domains).find(item => item.id === request.domainId)
+    if (domain === undefined) throw new RemoteError('gateway/bad-request', `domain ${request.domainId} is not configured`, {})
+    const created = await openDomain({
+      create: async (input) => {
+        const value = await this.ctx.sessionController.create({ cwd: input.cwd })
+        return { sessionId: value.sessionId }
+      },
+    }, domain)
+    return created
+  }
+
 }
 
 export default SessionTasksController

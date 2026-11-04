@@ -55,6 +55,7 @@
     "@deepseek-ai/dsh-brand": "workspace:*",
     "@deepseek-ai/dsh-typert-protocol": "workspace:*",
     "@deepseek-ai/schemastery": "workspace:~",
+    "js-yaml": "^4.3.2",
     "zod": "4.4.3"
   },
   "devDependencies": {
@@ -71,6 +72,7 @@
     "@deepseek-ai/dsh-typert-protocol": "workspace:*",
     "@deepseek-ai/dsh-user-approval": "workspace:*",
     "@deepseek-ai/dsh-workspace": "workspace:*",
-    "@deepseek-ai/dsh-workspace-changes": "workspace:*"
+    "@deepseek-ai/dsh-workspace-changes": "workspace:*",
+    "@types/js-yaml": "^4.0.9"
   }
 }
