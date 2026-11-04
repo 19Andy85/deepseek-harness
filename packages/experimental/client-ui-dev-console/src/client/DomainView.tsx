@@ -91,7 +91,7 @@ export interface DomainViewInjected {
   /** Save the domain AGENTS.md with hash protection. */
   readonly saveAgents: (domainId: string, text: string, baseHash: string) => Promise<{ readonly hash: string }>
   /** Generate a registry from connected workspaces. */
-  readonly autoConfig: () => Promise<{ readonly path: string; readonly projects: number }>
+  readonly autoConfig: (overwrite: boolean) => Promise<{ readonly path: string; readonly projects: number }>
   /** Open a created Session's conversation. */
   readonly openSession: (sessionId: string) => void
 }
@@ -148,15 +148,17 @@ export function DomainView({ snapshot, openDomain, git, agents, saveAgents, auto
             <p className={css.hint}>{t('domainsHint')}</p>
           </div>
           <div className={css.actions}>
-            {data?.domains.length === 0 || data?.problems.some(problem => problem.code === 'missing-config') === true
-              ? (
-                <button type="button" className={css.button} onClick={() => {
-                  void autoConfig().then(() => { void load() }).catch((reason: unknown) => {
-                    setError(reason instanceof Error ? reason.message : String(reason))
-                  })
-                }}>{t('autoConfig')}</button>
-              )
-              : null}
+            {data === undefined ? null : (
+              <button type="button" className={css.button} onClick={() => {
+                const overwrite = (data.domains.length > 0)
+                if (overwrite && !window.confirm(t('regenerateConfirm'))) return
+                void autoConfig(overwrite).then(() => {
+                  void load()
+                }).catch((reason: unknown) => {
+                  setError(reason instanceof Error ? reason.message : String(reason))
+                })
+              }}>{data.domains.length === 0 ? t('autoConfig') : t('regenerateConfig')}</button>
+            )}
             <button type="button" className={css.button} onClick={() => { void load() }}>{t('refresh')}</button>
             <button type="button" className={css.button} onClick={onClose}>{t('close')}</button>
           </div>

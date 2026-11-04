@@ -1,6 +1,6 @@
 
 --- a/packages/experimental/tool-session-tasks/package.json	2026-10-29 04:02:07
-+++ b/packages/experimental/tool-session-tasks/package.json	2026-11-05 03:18:41
++++ b/packages/experimental/tool-session-tasks/package.json	2026-11-05 04:12:33
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-tool-session-tasks",
@@ -12,7 +12,7 @@
    },
 
 --- a/packages/experimental/api-session-tasks/package.json	2026-11-04 20:12:50
-+++ b/packages/experimental/api-session-tasks/package.json	2026-11-05 03:18:41
++++ b/packages/experimental/api-session-tasks/package.json	2026-11-05 04:12:33
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-api-session-tasks",
@@ -23,19 +23,8 @@
      "access": "public"
    },
 
---- a/packages/experimental/api-session-tasks/src/index.ts	2026-11-05 03:20:55
-+++ b/packages/experimental/api-session-tasks/src/index.ts	2026-11-05 03:18:41
-@@ -34,8 +34,8 @@
- import { inspectDomain, openDomain } from './dev-console-domain.ts'
- import type { DevConsoleDomainConfig } from './dev-console-config.ts'
- import type {
--  DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleAutoConfigRequest, DevConsoleAutoConfigValue,
--  DevConsoleDomainStatus, DevConsoleGitRequest, DevConsoleGitValue, DevConsoleSaveAgentsRequest, DevConsoleSaveAgentsValue,
-+  DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleAutoConfigRequest, DevConsoleAutoConfigValue, DevConsoleDomainStatus, DevConsoleGitRequest, DevConsoleGitValue,
-+  DevConsoleSaveAgentsRequest, DevConsoleSaveAgentsValue,
-   DevConsoleOpenDomainRequest, DevConsoleOpenDomainValue, DevConsoleSessionSummary, DevConsoleSnapshot,
- } from './dev-console.ts'
- import { sessionTaskOutcomeProjection } from './outcome.ts'
+--- a/packages/experimental/api-session-tasks/src/index.ts	2026-11-05 04:14:54
++++ b/packages/experimental/api-session-tasks/src/index.ts	2026-11-05 04:12:33
 @@ -123,8 +123,8 @@
      })
      if (this.ctx.get('storageDomain') !== undefined) await seenBinding
@@ -47,9 +36,34 @@
      })
      if (this.ctx.get('sessionProjections') !== undefined) await binding
    }
+@@ -425,20 +425,10 @@
+     if (registry === undefined) throw new RemoteError('gateway/bad-request', 'workspace registry is unavailable', {})
+     const target = join(process.env['DSH_HOME'] ?? join(homedir(), '.dsh'), 'dev-console.yaml')
+     if (!request.overwrite && existsSync(target)) throw new RemoteError('dev-console/conflict', `config already exists: ${target}`, {})
+-    const grouped = new Map<string, {
+-      id: string
+-      name: string
+-      root: string
+-      domains: Array<{
+-        id: string
+-        name: string
+-        worktree: string
+-        branch: string
+-        base: string
+-        agent: { adapter: 'dsh-session' }
+-        hooks: { expectedBranch: string; expectedToplevel: string }
+-      }>
+-    }>()
++    const grouped = new Map<string, { id: string; name: string; root: string; domains: {
++      id: string; name: string; worktree: string; branch: string; base: string;
++      agent: { adapter: 'dsh-session' }; hooks: { expectedBranch: string; expectedToplevel: string }
++    }[] }>()
+     for (const workspace of registry.list()) {
+       const git = async (args: readonly string[]) => promisify(execFile)('git', [...args], { cwd: workspace.path, encoding: 'utf8' })
+         .then(result => result.stdout.trim()).catch(() => undefined)
 
 --- a/packages/experimental/api-session-tasks/src/outcome.ts	2026-10-31 02:14:10
-+++ b/packages/experimental/api-session-tasks/src/outcome.ts	2026-11-05 03:18:41
++++ b/packages/experimental/api-session-tasks/src/outcome.ts	2026-11-05 04:12:33
 @@ -8,7 +8,6 @@
  import type { SessionEvent } from '@deepseek-ai/dsh-session'
  import type {} from '@deepseek-ai/dsh-workspace-changes'
@@ -83,7 +97,7 @@
  } satisfies ProjectionDefinition<'sessionTaskOutcome', SessionTaskOutcome>
 
 --- a/packages/experimental/client-ui-dev-console/package.json	2026-11-04 17:38:05
-+++ b/packages/experimental/client-ui-dev-console/package.json	2026-11-05 03:18:41
++++ b/packages/experimental/client-ui-dev-console/package.json	2026-11-05 04:12:33
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-client-ui-dev-console",
@@ -94,22 +108,8 @@
      "access": "public"
    },
 
---- a/packages/experimental/client-ui-dev-console/src/client/DomainView.tsx	2026-11-05 03:20:55
-+++ b/packages/experimental/client-ui-dev-console/src/client/DomainView.tsx	2026-11-05 03:16:53
-@@ -151,9 +151,7 @@
-             {data?.domains.length === 0 || data?.problems.some(problem => problem.code === 'missing-config') === true
-               ? (
-                 <button type="button" className={css.button} onClick={() => {
--                  void autoConfig().then(() => { void load() }).catch((reason: unknown) => {
--                    setError(reason instanceof Error ? reason.message : String(reason))
--                  })
-+                  void autoConfig().then(() => { void load() }).catch((reason: unknown) => { setError(reason instanceof Error ? reason.message : String(reason)) })
-                 }}>{t('autoConfig')}</button>
-               )
-               : null}
-
 --- a/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-10-29 04:06:48
-+++ b/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-11-05 03:18:41
++++ b/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-11-05 04:12:33
 @@ -1,6 +1,5 @@
 -/** Workspace row menu entry that opens the project console on that Workspace. */
 +/** Session row menu entry that opens the project console for the row's workspace. */
@@ -155,8 +155,8 @@
      >
        {t('openConsole')}
 
---- a/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-05 03:16:53
-+++ b/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-05 03:18:41
+--- a/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-05 04:10:36
++++ b/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-05 04:12:33
 @@ -29,7 +29,7 @@
  import { RestartAppButton } from './RestartAppButton.tsx'
  import { ProjectConsoleStore } from './ProjectConsoleStore.ts'
@@ -204,7 +204,7 @@
      id: PANEL_ID,
 
 --- a/packages/experimental/dev-console-bundle/package.json	2026-11-04 20:04:46
-+++ b/packages/experimental/dev-console-bundle/package.json	2026-11-05 03:18:41
++++ b/packages/experimental/dev-console-bundle/package.json	2026-11-05 04:12:33
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-dev-console-bundle",

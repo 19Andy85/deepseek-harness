@@ -92,7 +92,7 @@ export interface ProjectConsoleInjected {
   /** Save the domain AGENTS.md. */
   readonly devConsoleSaveAgents: (domainId: string, text: string, baseHash: string) => Promise<{ readonly hash: string }>
   /** Generate a registry from connected workspaces. */
-  readonly devConsoleAutoConfig: () => Promise<{ readonly path: string; readonly projects: number }>
+  readonly devConsoleAutoConfig: (overwrite: boolean) => Promise<{ readonly path: string; readonly projects: number }>
 }
 
 /** Framework props of the workspace console page. */

@@ -188,8 +188,8 @@ function registerUi(ctx: Context): void {
       if (!result.ok) throw new Error(result.error.message)
       return result.value
     },
-    devConsoleAutoConfig: async () => {
-      const result = await ctx.remote.sessionTasks.devConsoleAutoConfig({ overwrite: false })
+    devConsoleAutoConfig: async (overwrite) => {
+      const result = await ctx.remote.sessionTasks.devConsoleAutoConfig({ overwrite })
       if (!result.ok) throw new Error(result.error.message)
       return result.value
     },

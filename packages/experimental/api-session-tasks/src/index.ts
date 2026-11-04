@@ -25,7 +25,7 @@ import { followSessionTask, observeActivity, readSessionTasks, type ObservedActi
 import { execFile } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { isAbsolute, join, resolve } from 'node:path'
+import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
 import { readFile, realpath, writeFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
@@ -425,26 +425,49 @@ export class SessionTasksController extends TypertRemoteService {
     if (registry === undefined) throw new RemoteError('gateway/bad-request', 'workspace registry is unavailable', {})
     const target = join(process.env['DSH_HOME'] ?? join(homedir(), '.dsh'), 'dev-console.yaml')
     if (!request.overwrite && existsSync(target)) throw new RemoteError('dev-console/conflict', `config already exists: ${target}`, {})
-    const projects = []
+    const grouped = new Map<string, {
+      id: string
+      name: string
+      root: string
+      domains: Array<{
+        id: string
+        name: string
+        worktree: string
+        branch: string
+        base: string
+        agent: { adapter: 'dsh-session' }
+        hooks: { expectedBranch: string; expectedToplevel: string }
+      }>
+    }>()
     for (const workspace of registry.list()) {
-      const branch = await promisify(execFile)('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: workspace.path, encoding: 'utf8' }).then(result => result.stdout.trim()).catch(() => undefined)
-      if (branch === undefined) continue
-      const slug = workspace.path.split('/').filter(Boolean).pop() ?? workspace.path
-      projects.push({
-        id: slug,
-        name: workspace.title,
-        root: workspace.path,
-        domains: [{
-          id: `${slug}-main`,
-          name: `${workspace.title} · 当前工作树`,
-          worktree: workspace.path,
-          branch,
-          base: 'main',
-          agent: { adapter: 'dsh-session' as const },
-          hooks: { expectedBranch: branch, expectedToplevel: workspace.path },
-        }],
+      const git = async (args: readonly string[]) => promisify(execFile)('git', [...args], { cwd: workspace.path, encoding: 'utf8' })
+        .then(result => result.stdout.trim()).catch(() => undefined)
+      const branch = await git(['rev-parse', '--abbrev-ref', 'HEAD'])
+      const toplevel = await git(['rev-parse', '--show-toplevel'])
+      const common = await git(['rev-parse', '--git-common-dir'])
+      if (branch === undefined || toplevel === undefined || common === undefined) continue
+      const commonPath = resolve(workspace.path, common)
+      const projectRoot = basename(commonPath) === '.git' ? dirname(commonPath) : commonPath
+      const projectId = basename(projectRoot).replace(/[^a-zA-Z0-9_-]/g, '-')
+      const domainSlug = basename(toplevel).replace(/[^a-zA-Z0-9_-]/g, '-')
+      let group = grouped.get(projectId)
+      if (group === undefined) {
+        group = { id: projectId, name: basename(projectRoot), root: projectRoot, domains: [] }
+        grouped.set(projectId, group)
+      }
+      const baseId = toplevel === projectRoot ? `${projectId}-root` : `${projectId}-${domainSlug}`
+      const id = group.domains.some(domain => domain.id === baseId) ? `${baseId}-${String(group.domains.length + 1)}` : baseId
+      group.domains.push({
+        id,
+        name: toplevel === projectRoot ? `${basename(projectRoot)} · 根工作树` : domainSlug,
+        worktree: toplevel,
+        branch,
+        base: 'main',
+        agent: { adapter: 'dsh-session' },
+        hooks: { expectedBranch: branch, expectedToplevel: toplevel },
       })
     }
+    const projects = [...grouped.values()]
     if (projects.length === 0) throw new RemoteError('gateway/bad-request', 'no connected workspace is a git repository', {})
     await writeFile(target, dump({ version: 1, projects }))
     return { path: target, projects: projects.length }
