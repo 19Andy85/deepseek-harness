@@ -3,7 +3,7 @@
  * bundle and the packages its patch composes into a dsh profile without
  * publishing anything to npm.
  *
- * @module @deepseek-ai/dsh-experimental-session-tasks-bundle/enable-local
+ * @module @deepseek-ai/dsh-experimental-dev-console-bundle/enable-local
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
@@ -12,12 +12,12 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 /** The bundle this script enables. */
-export const BUNDLE_NAME = '@deepseek-ai/dsh-experimental-session-tasks-bundle'
+export const BUNDLE_NAME = '@deepseek-ai/dsh-experimental-dev-console-bundle'
 
 /** Packages the bundle's patch inserts; each row resolves through the same profile. */
 export const COMPOSED_PACKAGES = [
   '@deepseek-ai/dsh-experimental-api-session-tasks',
-  '@deepseek-ai/dsh-experimental-client-ui-project-console',
+  '@deepseek-ai/dsh-experimental-client-ui-dev-console',
   '@deepseek-ai/dsh-experimental-tool-session-tasks',
 ] as const
 
@@ -38,9 +38,9 @@ export interface ProfileManifest {
 
 /** One package directory relative to the repository root. */
 const PACKAGE_DIRS: Readonly<Record<string, string>> = {
-  [BUNDLE_NAME]: 'packages/experimental/session-tasks-bundle',
+  [BUNDLE_NAME]: 'packages/experimental/dev-console-bundle',
   '@deepseek-ai/dsh-experimental-api-session-tasks': 'packages/experimental/api-session-tasks',
-  '@deepseek-ai/dsh-experimental-client-ui-project-console': 'packages/experimental/client-ui-project-console',
+  '@deepseek-ai/dsh-experimental-client-ui-dev-console': 'packages/experimental/client-ui-dev-console',
   '@deepseek-ai/dsh-experimental-tool-session-tasks': 'packages/experimental/tool-session-tasks',
 }
 

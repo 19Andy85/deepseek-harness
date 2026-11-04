@@ -1,0 +1,55 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/client-ui-dev-console/README.md
+/:
+  en: 1021aa5c1b2d7c3c
+  zh: 79d68d7e72015d11
+/deepseek-ai-dsh-experimental-client-ui-dev-console:
+  en: 8dbb3daaa9518e04
+  zh: 1e8bbba752d82da6
+/deepseek-ai-dsh-experimental-client-ui-dev-console/summary:
+  en: 7f303fa8f39b1db4
+  zh: ffdbe36c2d58b983
+/deepseek-ai-dsh-experimental-client-ui-dev-console/table-of-contents:
+  en: d152484eb41ac6b4
+  zh: 1db86285abf6c499
+/deepseek-ai-dsh-experimental-client-ui-dev-console/use-this-package:
+  en: 0c8b3a1d35776ae5
+  zh: 819535c12da5f957
+/deepseek-ai-dsh-experimental-client-ui-dev-console/use-this-package/what-the-page-can-do:
+  en: 4ff416f5e8ee0a65
+  zh: 76171792d984956e
+/deepseek-ai-dsh-experimental-client-ui-dev-console/use-this-package/failures-and-recovery:
+  en: 449315238034132d
+  zh: b78ba5c2cd10db78
+/deepseek-ai-dsh-experimental-client-ui-dev-console/understand-the-implementation:
+  en: ee4615a04fa6503d
+  zh: ee2c5fb2204a43cf
+/deepseek-ai-dsh-experimental-client-ui-dev-console/understand-the-implementation/design-philosophy:
+  en: 5e8b81f7745c6968
+  zh: 6596c26960b1a6fe
+/deepseek-ai-dsh-experimental-client-ui-dev-console/understand-the-implementation/source-map:
+  en: a12ff32f1c5bdbcc
+  zh: 3b2420b19dca4ccb
+/deepseek-ai-dsh-experimental-client-ui-dev-console/understand-the-implementation/operation-flow:
+  en: 8a3442dd6508d8f3
+  zh: 06b6b56fc8703bd0
+/deepseek-ai-dsh-experimental-client-ui-dev-console/further-exploration:
+  en: bb3863c74a85f62b
+  zh: 3a5aced4219018eb
+/deepseek-ai-dsh-experimental-client-ui-dev-console/model-experience:
+  en: a57a78497da04111
+  zh: 82858081f473b073
+/deepseek-ai-dsh-experimental-client-ui-dev-console/model-experience/kv-cache-effect:
+  en: 512baabc4607d49a
+  zh: dc7d35bf0a73784a
+/deepseek-ai-dsh-experimental-client-ui-dev-console/known-limitations-and-deferred-work:
+  en: 267d2d3e509b9825
+  zh: aeefde3c5d5455bb
+/deepseek-ai-dsh-experimental-client-ui-dev-console/known-limitations-and-deferred-work/dev-note:
+  en: d2f0d68fe29fb750
+  zh: 6fc592fcae35a34d
+/deepseek-ai-dsh-experimental-client-ui-dev-console/known-limitations-and-deferred-work/dev-note/future-data-and-entry-placement:
+  en: 6eca6650cdd0b6e9
+  zh: 280bb7cde7c49a4f

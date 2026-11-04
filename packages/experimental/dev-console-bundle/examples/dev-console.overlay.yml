@@ -3,7 +3,7 @@
 - insert:
     - id: api-session-tasks
       name: '@deepseek-ai/dsh-experimental-api-session-tasks'
-    - id: client-ui-project-console
-      name: '@deepseek-ai/dsh-experimental-client-ui-project-console'
+    - id: client-ui-dev-console
+      name: '@deepseek-ai/dsh-experimental-client-ui-dev-console'
     - id: tool-session-tasks
       name: '@deepseek-ai/dsh-experimental-tool-session-tasks'

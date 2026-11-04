@@ -389,7 +389,7 @@
     { "path": "./packages/credentials/credentials-local" },
     { "path": "./packages/credentials/authorization" },
     { "path": "./packages/experimental/tool-session-query" },
-    { "path": "./packages/experimental/session-tasks-bundle" },
+    { "path": "./packages/experimental/dev-console-bundle" },
     { "path": "./packages/experimental/api-session-tasks" },
     { "path": "./packages/experimental/tool-session-tasks" },
     { "path": "./packages/storage/storage" },

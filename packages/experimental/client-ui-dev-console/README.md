@@ -3,7 +3,7 @@ description: "Workspace console page: the live session task overview of one proj
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-experimental-client-ui-project-console
+# @deepseek-ai/dsh-experimental-client-ui-dev-console
 
 English | [中文](README.zh.md)
 

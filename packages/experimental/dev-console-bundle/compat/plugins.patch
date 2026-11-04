@@ -92,11 +92,11 @@
 +  wire: { viewSchema: outcomeSchema, view: (state: SessionTaskOutcome) => state },
  } satisfies ProjectionDefinition<'sessionTaskOutcome', SessionTaskOutcome>
 
---- a/packages/experimental/client-ui-project-console/package.json	2026-11-02 23:15:32
-+++ b/packages/experimental/client-ui-project-console/package.json	2026-11-04 15:51:17
+--- a/packages/experimental/client-ui-dev-console/package.json	2026-11-02 23:15:32
++++ b/packages/experimental/client-ui-dev-console/package.json	2026-11-04 15:51:17
 @@ -1,7 +1,7 @@
  {
-   "name": "@deepseek-ai/dsh-experimental-client-ui-project-console",
+   "name": "@deepseek-ai/dsh-experimental-client-ui-dev-console",
    "description": "Workspace console page: the read-only live session task overview of one project",
 -  "version": "0.2.2-alpha.2",
 +  "version": "0.2.1-rc.3",
@@ -104,8 +104,8 @@
      "access": "public"
    },
 
---- a/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-10-29 04:06:48
-+++ b/packages/experimental/client-ui-project-console/src/client/ProjectConsoleMenu.tsx	2026-11-04 15:51:17
+--- a/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-10-29 04:06:48
++++ b/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-11-04 15:51:17
 @@ -1,6 +1,5 @@
 -/** Workspace row menu entry that opens the project console on that Workspace. */
 +/** Session row menu entry that opens the project console for the row's workspace. */
@@ -151,8 +151,8 @@
      >
        {t('openConsole')}
 
---- a/packages/experimental/client-ui-project-console/src/client/index.ts	2026-11-04 15:03:40
-+++ b/packages/experimental/client-ui-project-console/src/client/index.ts	2026-11-04 15:51:17
+--- a/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-04 15:03:40
++++ b/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-04 15:51:17
 @@ -29,7 +29,7 @@
  import { RestartAppButton } from './RestartAppButton.tsx'
  import { ProjectConsoleStore } from './ProjectConsoleStore.ts'
@@ -199,11 +199,11 @@
      name: 'sidebar.panellist',
      id: PANEL_ID,
 
---- a/packages/experimental/session-tasks-bundle/package.json	2026-10-29 04:02:07
-+++ b/packages/experimental/session-tasks-bundle/package.json	2026-11-04 00:03:32
+--- a/packages/experimental/dev-console-bundle/package.json	2026-10-29 04:02:07
++++ b/packages/experimental/dev-console-bundle/package.json	2026-11-04 00:03:32
 @@ -1,7 +1,7 @@
  {
-   "name": "@deepseek-ai/dsh-experimental-session-tasks-bundle",
+   "name": "@deepseek-ai/dsh-experimental-dev-console-bundle",
    "description": "Experimental project console: workspace-level live session task overview with its browser page and the model-facing session_tasks tool",
 -  "version": "0.2.2-alpha.2",
 +  "version": "0.2.1-rc.3",

@@ -5,7 +5,7 @@
  * workspace, then optionally link the build into a dsh profile.
  *
  * Usage:
- *   node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs \
+ *   node packages/experimental/dev-console-bundle/scripts/prepare-compat.mjs \
  *     --tag dsh-v0.2.1-rc.3 [--dir ~/dsh-builds/<tag>] [--skip-build] [--link-profile desktop]
  */
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url'
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const bundleDir = resolve(scriptDir, '..')
 const repoRoot = resolve(bundleDir, '../../..')
-const PACKAGES = ['tool-session-tasks', 'api-session-tasks', 'client-ui-project-console', 'session-tasks-bundle']
+const PACKAGES = ['tool-session-tasks', 'api-session-tasks', 'client-ui-dev-console', 'dev-console-bundle']
 const DEFAULT_APP = '/Applications/DeepSeek Harness.app'
 const COPY_ENTRIES = ['src', 'tests', 'locale', 'examples', 'package.json', 'tsconfig.json', 'tsdown.config.ts', 'cordis.patch.yml', 'README.md', 'README.zh.md', 'README.i18n.yaml']
 
@@ -131,7 +131,7 @@ function main() {
     '',
     `prepare-compat: build ready at ${target}`,
     args.linkProfile === undefined
-      ? `Link it with: cd ${target} && pnpm exec tsx packages/experimental/session-tasks-bundle/src/enable-local.ts --profile <name>`
+      ? `Link it with: cd ${target} && pnpm exec tsx packages/experimental/dev-console-bundle/src/enable-local.ts --profile <name>`
       : `Profile "${args.linkProfile}" now links this build; restart that profile/app to load it.`,
     '',
   ].join('\n'))

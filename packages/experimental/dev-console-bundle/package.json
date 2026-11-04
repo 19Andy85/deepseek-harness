@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-experimental-session-tasks-bundle",
+  "name": "@deepseek-ai/dsh-experimental-dev-console-bundle",
   "description": "Experimental project console: workspace-level live session task overview with its browser page and the model-facing session_tasks tool",
   "version": "0.2.2-alpha.2",
   "publishConfig": {
@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
-    "directory": "packages/experimental/session-tasks-bundle"
+    "directory": "packages/experimental/dev-console-bundle"
   },
   "type": "module",
   "main": "lib/index.js",
@@ -45,7 +45,7 @@
   },
   "dependencies": {
     "@deepseek-ai/dsh-experimental-api-session-tasks": "workspace:*",
-    "@deepseek-ai/dsh-experimental-client-ui-project-console": "workspace:*",
+    "@deepseek-ai/dsh-experimental-client-ui-dev-console": "workspace:*",
     "@deepseek-ai/dsh-experimental-tool-session-tasks": "workspace:*"
   }
 }

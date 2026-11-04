@@ -3,7 +3,7 @@ description: "项目控制台的实验性组合：浏览器中的工作区级实
 kind: "package-bundle"
 ---
 
-# @deepseek-ai/dsh-experimental-session-tasks-bundle
+# @deepseek-ai/dsh-experimental-dev-console-bundle
 
 [English](README.md) | 中文
 
@@ -12,7 +12,7 @@ kind: "package-bundle"
 本实验性 bundle 把三个插件组合成一个可选择性启用的能力：
 
 - `@deepseek-ai/dsh-experimental-api-session-tasks`——Host 侧 `sessionTasks` Remote，读取活跃会话及其仍在运行的活动家族；
-- `@deepseek-ai/dsh-experimental-client-ui-project-console`——渲染该总览的 **项目控制台** 主面板与侧栏入口；
+- `@deepseek-ai/dsh-experimental-client-ui-dev-console`——渲染该总览的 **项目控制台** 主面板与侧栏入口；
 - `@deepseek-ai/dsh-experimental-tool-session-tasks`——基于同一聚合的模型侧 `session_tasks` 工具。
 
 三者默认都不启用：必须显式把本 bundle 安装进 profile。
@@ -31,7 +31,7 @@ kind: "package-bundle"
 <a id="use-this-bundle"></a>
 ## 使用本组合
 
-在 Web profile 中安装并启用 `@deepseek-ai/dsh-experimental-session-tasks-bundle`，然后打开侧栏的 **项目控制台** 入口。同一 profile 中的模型会获得 `session_tasks` 工具。
+在 Web profile 中安装并启用 `@deepseek-ai/dsh-experimental-dev-console-bundle`，然后打开侧栏的 **项目控制台** 入口。同一 profile 中的模型会获得 `session_tasks` 工具。
 
 ### 本组合提供什么
 
@@ -44,9 +44,9 @@ kind: "package-bundle"
 Host 的 Web 服务器会对每个被服务的客户端 bundle 做 stat 轮询，发现重写后广播 rebuilt 帧，因此运行中的 profile 会热更新客户端改动。只重建客户端 bundle：
 
 ```sh
-node packages/experimental/session-tasks-bundle/scripts/rebuild-client.mjs
+node packages/experimental/dev-console-bundle/scripts/rebuild-client.mjs
 # A linked compatibility build: point the rebuild at that checkout.
-node packages/experimental/session-tasks-bundle/scripts/rebuild-client.mjs --repo ~/dsh-builds/dsh-0.2.1-rc.3
+node packages/experimental/dev-console-bundle/scripts/rebuild-client.mjs --repo ~/dsh-builds/dsh-0.2.1-rc.3
 ```
 
 页面会自动更新；若未出现，刷新页面。Host 侧改动（控制器、流、profile 条目）仍需重建产物并重启 profile。
@@ -57,10 +57,10 @@ node packages/experimental/session-tasks-bundle/scripts/rebuild-client.mjs --rep
 
 ```sh
 # Detect the installed application version and build the matching line.
-node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs --link-profile desktop
+node packages/experimental/dev-console-bundle/scripts/prepare-compat.mjs --link-profile desktop
 # Or pin a tag / preview the plan without changing anything.
-node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs --tag dsh-v0.2.1-rc.3 --link-profile desktop
-node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs --detect
+node packages/experimental/dev-console-bundle/scripts/prepare-compat.mjs --tag dsh-v0.2.1-rc.3 --link-profile desktop
+node packages/experimental/dev-console-bundle/scripts/prepare-compat.mjs --detect
 ```
 
 未指定 tag 时脚本从安装包读取 `CFBundleShortVersionString`（可用 `--app` 覆盖），拒绝与 app 不匹配的版本线，打印目标版本行，并在复制后校验四个包的版本是否与之一致。随后为该 tag 创建 detached worktree、复制四个包、应用 `compat/target.patch`（版本线注册与缺失的 prompt section id）和 `compat/plugins.patch`（该版本线需要的客户端适配），安装并构建该 worktree，再把结果链接进指定 profile。之后重启 app 生效。修改包源码后需重新生成两个 patch；`--skip-build` 只复现源码树。
@@ -71,7 +71,7 @@ node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs --det
 
 ```sh
 pnpm run build:artifacts
-pnpm exec tsx packages/experimental/session-tasks-bundle/src/enable-local.ts --profile web
+pnpm exec tsx packages/experimental/dev-console-bundle/src/enable-local.ts --profile web
 pnpm dsh --profile web
 ```
 
@@ -97,7 +97,7 @@ bundle 只是组合层：每一行仍保留自己的包、测试与启用选项�
 ## 进一步探索
 
 - [会话任务总览 Remote](../api-session-tasks/README.zh.md)
-- [项目控制台页面](../client-ui-project-console/README.zh.md)
+- [项目控制台页面](../client-ui-dev-console/README.zh.md)
 - [会话任务总览工具](../tool-session-tasks/README.zh.md)
 
 <a id="model-experience"></a>

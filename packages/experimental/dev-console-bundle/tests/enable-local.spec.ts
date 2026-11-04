@@ -18,7 +18,7 @@ describe('profile enablement', () => {
   it('links the bundle and every composed package', () => {
     const linked = linkDependencies(repoRoot)
     expect(Object.keys(linked)).toEqual([BUNDLE_NAME, ...COMPOSED_PACKAGES])
-    expect(linked[BUNDLE_NAME]).toBe('link:/repo/packages/experimental/session-tasks-bundle')
+    expect(linked[BUNDLE_NAME]).toBe('link:/repo/packages/experimental/dev-console-bundle')
     expect(linked['@deepseek-ai/dsh-experimental-api-session-tasks']).toBe('link:/repo/packages/experimental/api-session-tasks')
   })
 

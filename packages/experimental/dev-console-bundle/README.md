@@ -3,7 +3,7 @@ description: "Experimental composition of the project console: workspace-level l
 kind: "package-bundle"
 ---
 
-# @deepseek-ai/dsh-experimental-session-tasks-bundle
+# @deepseek-ai/dsh-experimental-dev-console-bundle
 
 English | [中文](README.zh.md)
 
@@ -12,7 +12,7 @@ English | [中文](README.zh.md)
 This experimental bundle composes three plugins into one opt-in capability:
 
 - `@deepseek-ai/dsh-experimental-api-session-tasks` — the Host `sessionTasks` Remote that reads live sessions and their running activity families;
-- `@deepseek-ai/dsh-experimental-client-ui-project-console` — the **Project console** main panel and sidebar entry that render that overview;
+- `@deepseek-ai/dsh-experimental-client-ui-dev-console` — the **Project console** main panel and sidebar entry that render that overview;
 - `@deepseek-ai/dsh-experimental-tool-session-tasks` — the model-facing `session_tasks` tool over the same aggregation.
 
 Nothing is enabled by default: the bundle must be installed into a profile explicitly.
@@ -31,7 +31,7 @@ Nothing is enabled by default: the bundle must be installed into a profile expli
 <a id="use-this-bundle"></a>
 ## Use this bundle
 
-Install and enable `@deepseek-ai/dsh-experimental-session-tasks-bundle` in a Web profile, then open the **Project console** entry in the sidebar. The model gets the `session_tasks` tool in the same profile.
+Install and enable `@deepseek-ai/dsh-experimental-dev-console-bundle` in a Web profile, then open the **Project console** entry in the sidebar. The model gets the `session_tasks` tool in the same profile.
 
 ### What the bundle provides
 
@@ -44,9 +44,9 @@ Install and enable `@deepseek-ai/dsh-experimental-session-tasks-bundle` in a Web
 The Host's webserver stat-polls every client bundle it serves and broadcasts a rebuilt frame when one is rewritten, so a running profile hot-reloads client changes. Rebuild only the client bundles:
 
 ```sh
-node packages/experimental/session-tasks-bundle/scripts/rebuild-client.mjs
+node packages/experimental/dev-console-bundle/scripts/rebuild-client.mjs
 # A linked compatibility build: point the rebuild at that checkout.
-node packages/experimental/session-tasks-bundle/scripts/rebuild-client.mjs --repo ~/dsh-builds/dsh-0.2.1-rc.3
+node packages/experimental/dev-console-bundle/scripts/rebuild-client.mjs --repo ~/dsh-builds/dsh-0.2.1-rc.3
 ```
 
 The page updates on its own; refresh it if the reload did not appear. Host-side changes (controllers, streams, profile entries) still need a rebuilt artifact tree and a profile restart.
@@ -57,10 +57,10 @@ A profile that runs an older app needs packages built against that app's depende
 
 ```sh
 # Detect the installed application version and build the matching line.
-node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs --link-profile desktop
+node packages/experimental/dev-console-bundle/scripts/prepare-compat.mjs --link-profile desktop
 # Or pin a tag / preview the plan without changing anything.
-node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs --tag dsh-v0.2.1-rc.3 --link-profile desktop
-node packages/experimental/session-tasks-bundle/scripts/prepare-compat.mjs --detect
+node packages/experimental/dev-console-bundle/scripts/prepare-compat.mjs --tag dsh-v0.2.1-rc.3 --link-profile desktop
+node packages/experimental/dev-console-bundle/scripts/prepare-compat.mjs --detect
 ```
 
 The script reads `CFBundleShortVersionString` from the install (override with `--app`) when no tag is given, rejects a tag the application cannot match, prints the target line, and fails when the copied packages' versions differ from it. It then creates a detached worktree for the tag, copies the four packages, applies `compat/target.patch` (release-line registrations and the missing prompt section id) and `compat/plugins.patch` (the client adaptations that release line needs), installs and builds that worktree, and links the result into the named profile. Restart the app afterwards. Regenerate both patches after changing the package sources; `--skip-build` reproduces only the source tree.
@@ -71,7 +71,7 @@ The bundle is experimental and not published. Link it into one profile from this
 
 ```sh
 pnpm run build:artifacts
-pnpm exec tsx packages/experimental/session-tasks-bundle/src/enable-local.ts --profile web
+pnpm exec tsx packages/experimental/dev-console-bundle/src/enable-local.ts --profile web
 pnpm dsh --profile web
 ```
 
@@ -96,7 +96,7 @@ The bundle is only a composition layer: each row keeps its own package, tests, a
 ## Further Exploration
 
 - [Session task overview Remote](../api-session-tasks/README.md)
-- [Project console page](../client-ui-project-console/README.md)
+- [Project console page](../client-ui-dev-console/README.md)
 - [Session task overview tool](../tool-session-tasks/README.md)
 
 ## Model Experience

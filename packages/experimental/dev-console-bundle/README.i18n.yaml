@@ -1,0 +1,61 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write packages/experimental/dev-console-bundle/README.md
+/:
+  en: 9bd9941607b54c3a
+  zh: 2ebe70dc8074cb22
+/deepseek-ai-dsh-experimental-dev-console-bundle:
+  en: e412a554a5fe1923
+  zh: 87ca9bd971fecb86
+/deepseek-ai-dsh-experimental-dev-console-bundle/summary:
+  en: 23c5db106ea26417
+  zh: b3cb10a99bdec777
+/deepseek-ai-dsh-experimental-dev-console-bundle/table-of-contents:
+  en: 4c42347e02106f3d
+  zh: 18bb1e6333ed61cc
+/deepseek-ai-dsh-experimental-dev-console-bundle/use-this-bundle:
+  en: 0a835b857b164849
+  zh: 834e9a6ba30ba14c
+/deepseek-ai-dsh-experimental-dev-console-bundle/use-this-bundle/what-the-bundle-provides:
+  en: ac82e3dccd24ea1e
+  zh: c8e2681b1461420a
+/deepseek-ai-dsh-experimental-dev-console-bundle/use-this-bundle/iterate-on-the-client-without-restarting-the-profile:
+  en: 62332ce5aa704300
+  zh: 874ba4acc685431c
+/deepseek-ai-dsh-experimental-dev-console-bundle/use-this-bundle/build-for-a-shipped-release-line:
+  en: 786b40679b6dc8e3
+  zh: 2437b5966742af53
+/deepseek-ai-dsh-experimental-dev-console-bundle/use-this-bundle/enable-locally-without-publishing:
+  en: b1bfe7862294073a
+  zh: 89c168e26f73431b
+/deepseek-ai-dsh-experimental-dev-console-bundle/use-this-bundle/failures-and-recovery:
+  en: aced5196f719bd52
+  zh: 95dc923c4466e65f
+/deepseek-ai-dsh-experimental-dev-console-bundle/understand-the-implementation:
+  en: ee4615a04fa6503d
+  zh: ee2c5fb2204a43cf
+/deepseek-ai-dsh-experimental-dev-console-bundle/understand-the-implementation/design-philosophy:
+  en: e1a662b765f9f898
+  zh: 3b4748d27482d602
+/deepseek-ai-dsh-experimental-dev-console-bundle/understand-the-implementation/source-map:
+  en: 01909e6b6cbe2ee0
+  zh: ed9fd63d253faef8
+/deepseek-ai-dsh-experimental-dev-console-bundle/further-exploration:
+  en: 7168f2ab0f70dc50
+  zh: fc19f8f3abd9f88e
+/deepseek-ai-dsh-experimental-dev-console-bundle/model-experience:
+  en: 40d0dfb38321b150
+  zh: a1fc23172a44dfae
+/deepseek-ai-dsh-experimental-dev-console-bundle/model-experience/kv-cache-effect:
+  en: d9c6ec03d8981914
+  zh: 013e498f8ce47eeb
+/deepseek-ai-dsh-experimental-dev-console-bundle/known-limitations-and-deferred-work:
+  en: 9ec8d7760a8af500
+  zh: 2eb279f6c4e139f7
+/deepseek-ai-dsh-experimental-dev-console-bundle/known-limitations-and-deferred-work/dev-note:
+  en: d2f0d68fe29fb750
+  zh: 6fc592fcae35a34d
+/deepseek-ai-dsh-experimental-dev-console-bundle/known-limitations-and-deferred-work/dev-note/future-one-step-enablement-and-artwork:
+  en: 2f4c71b690f7f576
+  zh: 825c0a0dd15777b5

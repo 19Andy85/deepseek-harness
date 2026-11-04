@@ -10,8 +10,8 @@ index d6d1d78168..13d08b2829 100644
 +    "@deepseek-ai/dsh-experimental-cua-macos": "workspace:*",
 +    "@deepseek-ai/dsh-experimental-tool-session-tasks": "workspace:*",
 +    "@deepseek-ai/dsh-experimental-api-session-tasks": "workspace:*",
-+    "@deepseek-ai/dsh-experimental-client-ui-project-console": "workspace:*",
-+    "@deepseek-ai/dsh-experimental-session-tasks-bundle": "workspace:*"
++    "@deepseek-ai/dsh-experimental-client-ui-dev-console": "workspace:*",
++    "@deepseek-ai/dsh-experimental-dev-console-bundle": "workspace:*"
    }
  }
 diff --git a/packages/core/system-prompt/src/index.ts b/packages/core/system-prompt/src/index.ts
@@ -68,9 +68,9 @@ index d6df9aae42..93db9ec98d 100644
        '@deepseek-ai/dsh-experimental-claude-code-mods':
          specifier: workspace:*
          version: link:packages/experimental/claude-code-mods
-+      '@deepseek-ai/dsh-experimental-client-ui-project-console':
++      '@deepseek-ai/dsh-experimental-client-ui-dev-console':
 +        specifier: workspace:*
-+        version: link:packages/experimental/client-ui-project-console
++        version: link:packages/experimental/client-ui-dev-console
        '@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp':
          specifier: workspace:*
          version: link:packages/experimental/computer-use-cua-driver-mcp
@@ -78,9 +78,9 @@ index d6df9aae42..93db9ec98d 100644
        '@deepseek-ai/dsh-experimental-cua-macos':
          specifier: workspace:*
          version: link:packages/experimental/cua-macos
-+      '@deepseek-ai/dsh-experimental-session-tasks-bundle':
++      '@deepseek-ai/dsh-experimental-dev-console-bundle':
 +        specifier: workspace:*
-+        version: link:packages/experimental/session-tasks-bundle
++        version: link:packages/experimental/dev-console-bundle
 +      '@deepseek-ai/dsh-experimental-tool-session-tasks':
 +        specifier: workspace:*
 +        version: link:packages/experimental/tool-session-tasks
@@ -144,7 +144,7 @@ index d6df9aae42..93db9ec98d 100644
          specifier: ^18.2.0
          version: 18.3.1(react@18.3.1)
 
-+  packages/experimental/client-ui-project-console:
++  packages/experimental/client-ui-dev-console:
 +    dependencies:
 +      '@deepseek-ai/dsh-experimental-api-session-tasks':
 +        specifier: workspace:*
@@ -209,14 +209,14 @@ index d6df9aae42..93db9ec98d 100644
          specifier: workspace:~
          version: link:../../../vendor/cordis
 
-+  packages/experimental/session-tasks-bundle:
++  packages/experimental/dev-console-bundle:
 +    dependencies:
 +      '@deepseek-ai/dsh-experimental-api-session-tasks':
 +        specifier: workspace:*
 +        version: link:../api-session-tasks
-+      '@deepseek-ai/dsh-experimental-client-ui-project-console':
++      '@deepseek-ai/dsh-experimental-client-ui-dev-console':
 +        specifier: workspace:*
-+        version: link:../client-ui-project-console
++        version: link:../client-ui-dev-console
 +      '@deepseek-ai/dsh-experimental-tool-session-tasks':
 +        specifier: workspace:*
 +        version: link:../tool-session-tasks
@@ -313,9 +313,9 @@ index f083f9b35e..85c90c6b8b 100644
 -      "@deepseek-ai/dsh-experimental-session-search": ["./packages/experimental/session-search/src/index.ts"],
 +        "@deepseek-ai/dsh-experimental-tool-session-tasks": ["./packages/experimental/tool-session-tasks/src/index.ts"],
 +      "@deepseek-ai/dsh-experimental-api-session-tasks": ["./packages/experimental/api-session-tasks/src/index.ts"],
-+      "@deepseek-ai/dsh-experimental-client-ui-project-console": ["./packages/experimental/client-ui-project-console/src/index.ts"],
-+      "@deepseek-ai/dsh-experimental-client-ui-project-console/client": ["./packages/experimental/client-ui-project-console/src/client/index.ts"],
-+      "@deepseek-ai/dsh-experimental-session-tasks-bundle": ["./packages/experimental/session-tasks-bundle/src/index.ts"],
++      "@deepseek-ai/dsh-experimental-client-ui-dev-console": ["./packages/experimental/client-ui-dev-console/src/index.ts"],
++      "@deepseek-ai/dsh-experimental-client-ui-dev-console/client": ["./packages/experimental/client-ui-dev-console/src/client/index.ts"],
++      "@deepseek-ai/dsh-experimental-dev-console-bundle": ["./packages/experimental/dev-console-bundle/src/index.ts"],
 +    "@deepseek-ai/dsh-experimental-session-search": ["./packages/experimental/session-search/src/index.ts"],
        "@deepseek-ai/dsh-experimental-ralph-bundle": ["./packages/experimental/ralph-bundle/src/index.ts"],
        "@deepseek-ai/dsh-experimental-terminal-bundle": ["./packages/experimental/terminal-bundle/src/index.ts"],
@@ -328,7 +328,7 @@ index e8bb0d4408..a6b6961651 100644
      "packages/client/*/tests/**/*.host.ts"
    ],
    "references": [
-+    { "path": "./packages/experimental/client-ui-project-console" },
++    { "path": "./packages/experimental/client-ui-dev-console" },
      { "path": "./packages/experimental/client-ui-cot-translation/tsconfig.client.json" },
      { "path": "./packages/client/product-analytics/tsconfig.client.json" },
      { "path": "./apps/desktop/tsconfig.client.json" },
@@ -340,7 +340,7 @@ index 5298e67528..0257d29c10 100644
      "scripts/client-bundle-purity.spec.ts"
    ],
    "references": [
-+    { "path": "./packages/experimental/session-tasks-bundle" },
++    { "path": "./packages/experimental/dev-console-bundle" },
 +    { "path": "./packages/experimental/api-session-tasks" },
 +    { "path": "./packages/experimental/tool-session-tasks" },
      { "path": "./packages/experimental/client-ui-cot-translation/tsconfig.host.json" },

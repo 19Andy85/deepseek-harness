@@ -19,7 +19,7 @@ describe('project console bundle patch', () => {
     const rows = patch.flatMap(operation => operation.insert ?? [])
     expect(rows.map(row => row.name)).toEqual([
       '@deepseek-ai/dsh-experimental-api-session-tasks',
-      '@deepseek-ai/dsh-experimental-client-ui-project-console',
+      '@deepseek-ai/dsh-experimental-client-ui-dev-console',
       '@deepseek-ai/dsh-experimental-tool-session-tasks',
     ])
     expect(new Set(rows.map(row => row.id)).size).toBe(rows.length)

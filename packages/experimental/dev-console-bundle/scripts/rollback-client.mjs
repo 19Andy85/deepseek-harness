@@ -3,7 +3,7 @@
  * Restore the client bundles saved before the latest rebuild.
  *
  * Usage:
- *   node packages/experimental/session-tasks-bundle/scripts/rollback-client.mjs [--repo <checkout>] [--dry-run]
+ *   node packages/experimental/dev-console-bundle/scripts/rollback-client.mjs [--repo <checkout>] [--dry-run]
  */
 import { copyFileSync, existsSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url'
 
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const defaultRepo = resolve(scriptDir, '../../../..')
-const PACKAGES = ['tool-session-tasks', 'api-session-tasks', 'client-ui-project-console', 'session-tasks-bundle']
+const PACKAGES = ['tool-session-tasks', 'api-session-tasks', 'client-ui-dev-console', 'dev-console-bundle']
 
 const args = process.argv.slice(2)
 let repo = defaultRepo

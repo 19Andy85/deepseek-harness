@@ -63,9 +63,9 @@ importers:
       '@deepseek-ai/dsh-experimental-claude-code-mods':
         specifier: workspace:*
         version: link:packages/experimental/claude-code-mods
-      '@deepseek-ai/dsh-experimental-client-ui-project-console':
+      '@deepseek-ai/dsh-experimental-client-ui-dev-console':
         specifier: workspace:*
-        version: link:packages/experimental/client-ui-project-console
+        version: link:packages/experimental/client-ui-dev-console
       '@deepseek-ai/dsh-experimental-computer-use-cua-driver-mcp':
         specifier: workspace:*
         version: link:packages/experimental/computer-use-cua-driver-mcp
@@ -75,6 +75,9 @@ importers:
       '@deepseek-ai/dsh-experimental-cua-macos':
         specifier: workspace:*
         version: link:packages/experimental/cua-macos
+      '@deepseek-ai/dsh-experimental-dev-console-bundle':
+        specifier: workspace:*
+        version: link:packages/experimental/dev-console-bundle
       '@deepseek-ai/dsh-experimental-forge':
         specifier: workspace:*
         version: link:packages/experimental/forge
@@ -84,9 +87,6 @@ importers:
       '@deepseek-ai/dsh-experimental-forge-session':
         specifier: workspace:*
         version: link:packages/experimental/forge-session
-      '@deepseek-ai/dsh-experimental-session-tasks-bundle':
-        specifier: workspace:*
-        version: link:packages/experimental/session-tasks-bundle
       '@deepseek-ai/dsh-experimental-subagent-oar':
         specifier: workspace:*
         version: link:packages/experimental/subagent-oar
@@ -9039,6 +9039,67 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
 
+  packages/experimental/client-ui-dev-console:
+    dependencies:
+      '@deepseek-ai/dsh-experimental-api-session-tasks':
+        specifier: workspace:*
+        version: link:../api-session-tasks
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:~
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-api-account-controller':
+        specifier: workspace:*
+        version: link:../../api/account-controller
+      '@deepseek-ai/dsh-api-session-controller':
+        specifier: workspace:*
+        version: link:../../api/session-controller
+      '@deepseek-ai/dsh-api-workspace-controller':
+        specifier: workspace:*
+        version: link:../../api/workspace-controller
+      '@deepseek-ai/dsh-brand':
+        specifier: workspace:*
+        version: link:../../util/brand
+      '@deepseek-ai/dsh-client-locale':
+        specifier: workspace:*
+        version: link:../../client/locale
+      '@deepseek-ai/dsh-client-ui-approval':
+        specifier: workspace:*
+        version: link:../../client/ui-approval
+      '@deepseek-ai/dsh-client-ui-layout':
+        specifier: workspace:*
+        version: link:../../client/ui-layout
+      '@deepseek-ai/dsh-client-ui-primitives':
+        specifier: workspace:*
+        version: link:../../client/ui-primitives
+      '@deepseek-ai/dsh-client-ui-renderer':
+        specifier: workspace:*
+        version: link:../../client/ui-renderer
+      '@deepseek-ai/dsh-client-ui-session':
+        specifier: workspace:*
+        version: link:../../client/ui-session
+      '@deepseek-ai/dsh-client-ui-sidebar':
+        specifier: workspace:*
+        version: link:../../client/ui-sidebar
+      '@deepseek-ai/dsh-client-ui-slots':
+        specifier: workspace:*
+        version: link:../../client/ui-slots
+      '@deepseek-ai/dsh-client-ui-user-questions':
+        specifier: workspace:*
+        version: link:../../client/ui-user-questions
+      '@deepseek-ai/dsh-client-ui-workspace':
+        specifier: workspace:*
+        version: link:../../client/ui-workspace
+      '@deepseek-ai/dsh-session':
+        specifier: workspace:*
+        version: link:../../core/session
+      '@deepseek-ai/dsh-typert-protocol':
+        specifier: workspace:*
+        version: link:../../typert/protocol
+      '@deepseek-ai/dsh-util-crypto':
+        specifier: workspace:*
+        version: link:../../util/crypto
+
   packages/experimental/client-ui-forge:
     dependencies:
       '@deepseek-ai/dsh-storage-domain':
@@ -9234,67 +9295,6 @@ importers:
       zod:
         specifier: 4.4.3
         version: 4.4.3
-
-  packages/experimental/client-ui-project-console:
-    dependencies:
-      '@deepseek-ai/dsh-experimental-api-session-tasks':
-        specifier: workspace:*
-        version: link:../api-session-tasks
-    devDependencies:
-      '@deepseek-ai/cordis':
-        specifier: workspace:~
-        version: link:../../../vendor/cordis
-      '@deepseek-ai/dsh-api-account-controller':
-        specifier: workspace:*
-        version: link:../../api/account-controller
-      '@deepseek-ai/dsh-api-session-controller':
-        specifier: workspace:*
-        version: link:../../api/session-controller
-      '@deepseek-ai/dsh-api-workspace-controller':
-        specifier: workspace:*
-        version: link:../../api/workspace-controller
-      '@deepseek-ai/dsh-brand':
-        specifier: workspace:*
-        version: link:../../util/brand
-      '@deepseek-ai/dsh-client-locale':
-        specifier: workspace:*
-        version: link:../../client/locale
-      '@deepseek-ai/dsh-client-ui-approval':
-        specifier: workspace:*
-        version: link:../../client/ui-approval
-      '@deepseek-ai/dsh-client-ui-layout':
-        specifier: workspace:*
-        version: link:../../client/ui-layout
-      '@deepseek-ai/dsh-client-ui-primitives':
-        specifier: workspace:*
-        version: link:../../client/ui-primitives
-      '@deepseek-ai/dsh-client-ui-renderer':
-        specifier: workspace:*
-        version: link:../../client/ui-renderer
-      '@deepseek-ai/dsh-client-ui-session':
-        specifier: workspace:*
-        version: link:../../client/ui-session
-      '@deepseek-ai/dsh-client-ui-sidebar':
-        specifier: workspace:*
-        version: link:../../client/ui-sidebar
-      '@deepseek-ai/dsh-client-ui-slots':
-        specifier: workspace:*
-        version: link:../../client/ui-slots
-      '@deepseek-ai/dsh-client-ui-user-questions':
-        specifier: workspace:*
-        version: link:../../client/ui-user-questions
-      '@deepseek-ai/dsh-client-ui-workspace':
-        specifier: workspace:*
-        version: link:../../client/ui-workspace
-      '@deepseek-ai/dsh-session':
-        specifier: workspace:*
-        version: link:../../core/session
-      '@deepseek-ai/dsh-typert-protocol':
-        specifier: workspace:*
-        version: link:../../typert/protocol
-      '@deepseek-ai/dsh-util-crypto':
-        specifier: workspace:*
-        version: link:../../util/crypto
 
   packages/experimental/client-ui-stats:
     devDependencies:
@@ -9951,6 +9951,28 @@ importers:
       sharp:
         specifier: ^0.35.3
         version: 0.35.5(@types/node@22.20.1)
+
+  packages/experimental/dev-console-bundle:
+    dependencies:
+      '@deepseek-ai/dsh-experimental-api-session-tasks':
+        specifier: workspace:*
+        version: link:../api-session-tasks
+      '@deepseek-ai/dsh-experimental-client-ui-dev-console':
+        specifier: workspace:*
+        version: link:../client-ui-dev-console
+      '@deepseek-ai/dsh-experimental-tool-session-tasks':
+        specifier: workspace:*
+        version: link:../tool-session-tasks
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:~
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/cordis-plugin-include':
+        specifier: workspace:~
+        version: link:../../../vendor/include
+      js-yaml:
+        specifier: ^4.3.2
+        version: 4.3.2
 
   packages/experimental/forge:
     dependencies:
@@ -10822,28 +10844,6 @@ importers:
       '@deepseek-ai/cordis':
         specifier: workspace:~
         version: link:../../../vendor/cordis
-
-  packages/experimental/session-tasks-bundle:
-    dependencies:
-      '@deepseek-ai/dsh-experimental-api-session-tasks':
-        specifier: workspace:*
-        version: link:../api-session-tasks
-      '@deepseek-ai/dsh-experimental-client-ui-project-console':
-        specifier: workspace:*
-        version: link:../client-ui-project-console
-      '@deepseek-ai/dsh-experimental-tool-session-tasks':
-        specifier: workspace:*
-        version: link:../tool-session-tasks
-    devDependencies:
-      '@deepseek-ai/cordis':
-        specifier: workspace:~
-        version: link:../../../vendor/cordis
-      '@deepseek-ai/cordis-plugin-include':
-        specifier: workspace:~
-        version: link:../../../vendor/include
-      js-yaml:
-        specifier: ^4.3.2
-        version: 4.3.2
 
   packages/experimental/session-title-all-prompts-llm:
     dependencies:

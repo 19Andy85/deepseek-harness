@@ -5,7 +5,7 @@
  * frame), without restarting the profile or rebuilding Host artifacts.
  *
  * Usage:
- *   node packages/experimental/session-tasks-bundle/scripts/rebuild-client.mjs [--repo <checkout>]
+ *   node packages/experimental/dev-console-bundle/scripts/rebuild-client.mjs [--repo <checkout>]
  */
 import { spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync } from 'node:fs'
@@ -31,8 +31,8 @@ if (!existsSync(join(repo, 'package.json'))) fail(`${repo} is not a checkout`)
 const PACKAGES = [
   'tool-session-tasks',
   'api-session-tasks',
-  'client-ui-project-console',
-  'session-tasks-bundle',
+  'client-ui-dev-console',
+  'dev-console-bundle',
 ]
 const bundlePaths = PACKAGES.map(pkg => join(repo, 'packages/experimental', pkg, 'lib/client.js'))
 // Keep the previous verified bundle next to each rebuilt one so a broken
@@ -49,7 +49,7 @@ for (const bundle of bundlePaths) {
   if (!existsSync(bundle)) continue
   const check = spawnSync(process.execPath, ['--check', bundle], { stdio: 'ignore' })
   if (check.status !== 0) {
-    fail(`built client bundle failed syntax validation: ${bundle}\nRun node packages/experimental/session-tasks-bundle/scripts/rollback-client.mjs to restore the previous bundle.`)
+    fail(`built client bundle failed syntax validation: ${bundle}\nRun node packages/experimental/dev-console-bundle/scripts/rollback-client.mjs to restore the previous bundle.`)
   }
 }
 process.stdout.write([

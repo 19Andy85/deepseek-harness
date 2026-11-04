@@ -3,7 +3,7 @@ description: "工作区控制台页面：以项目为维度的实时会话任务
 kind: "package-reference"
 ---
 
-# @deepseek-ai/dsh-experimental-client-ui-project-console
+# @deepseek-ai/dsh-experimental-client-ui-dev-console
 
 [English](README.md) | 中文
 
