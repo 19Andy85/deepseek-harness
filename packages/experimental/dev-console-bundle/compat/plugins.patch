@@ -92,22 +92,8 @@
 +  wire: { viewSchema: outcomeSchema, view: (state: SessionTaskOutcome) => state },
  } satisfies ProjectionDefinition<'sessionTaskOutcome', SessionTaskOutcome>
 
---- a/packages/experimental/client-ui-dev-console/README.i18n.yaml	2026-11-04 17:42:04
-+++ b/packages/experimental/client-ui-dev-console/README.i18n.yaml	2026-11-04 18:29:15
-@@ -6,8 +6,8 @@
-   en: 1021aa5c1b2d7c3c
-   zh: 79d68d7e72015d11
- /deepseek-ai-dsh-experimental-client-ui-dev-console:
--  en: 8dbb3daaa9518e04
--  zh: 1e8bbba752d82da6
-+  en: 8ab180af62aacfbd
-+  zh: 672b570744254953
- /deepseek-ai-dsh-experimental-client-ui-dev-console/summary:
-   en: 7f303fa8f39b1db4
-   zh: ffdbe36c2d58b983
-
 --- a/packages/experimental/client-ui-dev-console/package.json	2026-11-04 17:38:05
-+++ b/packages/experimental/client-ui-dev-console/package.json	2026-11-04 18:29:15
++++ b/packages/experimental/client-ui-dev-console/package.json	2026-11-04 18:56:14
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-client-ui-dev-console",
@@ -119,7 +105,7 @@
    },
 
 --- a/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-10-29 04:06:48
-+++ b/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-11-04 15:51:17
++++ b/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-11-04 18:56:14
 @@ -1,6 +1,5 @@
 -/** Workspace row menu entry that opens the project console on that Workspace. */
 +/** Session row menu entry that opens the project console for the row's workspace. */
@@ -166,7 +152,7 @@
        {t('openConsole')}
 
 --- a/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-04 15:03:40
-+++ b/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-04 15:51:17
++++ b/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-04 18:56:14
 @@ -29,7 +29,7 @@
  import { RestartAppButton } from './RestartAppButton.tsx'
  import { ProjectConsoleStore } from './ProjectConsoleStore.ts'

@@ -1,7 +1,7 @@
 /** English project console copy. */
 export const en = {
-  panel: 'Project console',
-  title: 'Project console',
+  panel: 'Dev Console',
+  title: 'Dev Console',
   description: 'Live sessions and the activity families still running in this project.',
   loading: 'Loading live sessions…',
   empty: 'No live sessions in this project yet.',
@@ -12,7 +12,7 @@ export const en = {
   refresh: 'Refresh',
   retry: 'Retry',
   noActivity: 'No activity',
-  openConsole: 'Open project console',
+  openConsole: 'Open Dev Console',
   summary: '{total} live sessions · {running} running',
   untitled: 'Untitled session',
   openSession: 'Open session',
@@ -186,7 +186,7 @@ export type ProjectConsoleKey = keyof typeof en
 /** Chinese project console copy. */
 export const zh: Record<ProjectConsoleKey, string> = {
   panel: '项目控制台',
-  title: '项目控制台',
+  title: '研发控制台',
   description: '本项目中的活跃会话，以及每个会话仍在运行的活动家族。',
   loading: '正在读取活跃会话…',
   empty: '本项目当前没有活跃会话。',
@@ -197,7 +197,7 @@ export const zh: Record<ProjectConsoleKey, string> = {
   refresh: '刷新',
   retry: '重试',
   noActivity: '无活动',
-  openConsole: '打开项目控制台',
+  openConsole: '打开研发控制台',
   summary: '活跃会话 {total} · 运行中 {running}',
   untitled: '未命名会话',
   openSession: '打开会话',
@@ -368,7 +368,7 @@ export const zh: Record<ProjectConsoleKey, string> = {
 /** Japanese copy. */
 export const ja: Record<ProjectConsoleKey, string> = {
   panel: 'プロジェクトコンソール',
-  title: 'プロジェクトコンソール',
+  title: '開発コンソール',
   description: 'このプロジェクトで稼働中のセッションと活動種別。',
   loading: '実行中セッションを読み込み中…',
   empty: 'このプロジェクトに実行中セッションはありません。',
@@ -379,7 +379,7 @@ export const ja: Record<ProjectConsoleKey, string> = {
   refresh: '更新',
   retry: '再試行',
   noActivity: 'アクティビティなし',
-  openConsole: 'プロジェクトコンソールを開く',
+  openConsole: '開発コンソールを開く',
   summary: '実行中セッション {total} · 稼働中 {running}',
   untitled: '無題のセッション',
   openSession: 'セッションを開く',
@@ -550,7 +550,7 @@ export const ja: Record<ProjectConsoleKey, string> = {
 /** Spanish copy. */
 export const es: Record<ProjectConsoleKey, string> = {
   panel: 'Consola del proyecto',
-  title: 'Consola del proyecto',
+  title: 'Consola de desarrollo',
   description: 'Sesiones activas y las familias de actividad que siguen ejecutándose en este proyecto.',
   loading: 'Cargando sesiones activas…',
   empty: 'Aún no hay sesiones activas en este proyecto.',
@@ -561,7 +561,7 @@ export const es: Record<ProjectConsoleKey, string> = {
   refresh: 'Actualizar',
   retry: 'Reintentar',
   noActivity: 'Sin actividad',
-  openConsole: 'Abrir la consola del proyecto',
+  openConsole: 'Abrir la consola de desarrollo',
   summary: '{total} sesiones activas · {running} en ejecución',
   untitled: 'Sesión sin título',
   openSession: 'Abrir sesión',
@@ -732,7 +732,7 @@ export const es: Record<ProjectConsoleKey, string> = {
 /** French copy. */
 export const fr: Record<ProjectConsoleKey, string> = {
   panel: 'Console du projet',
-  title: 'Console du projet',
+  title: 'Console de développement',
   description: 'Sessions actives et familles d’activité encore en cours dans ce projet.',
   loading: 'Chargement des sessions actives…',
   empty: 'Aucune session active dans ce projet pour l’instant.',
@@ -743,7 +743,7 @@ export const fr: Record<ProjectConsoleKey, string> = {
   refresh: 'Actualiser',
   retry: 'Réessayer',
   noActivity: 'Aucune activité',
-  openConsole: 'Ouvrir la console du projet',
+  openConsole: 'Ouvrir la console de développement',
   summary: '{total} sessions actives · {running} en cours',
   untitled: 'Session sans titre',
   openSession: 'Ouvrir la session',
@@ -914,7 +914,7 @@ export const fr: Record<ProjectConsoleKey, string> = {
 /** German copy. */
 export const de: Record<ProjectConsoleKey, string> = {
   panel: 'Projektkonsole',
-  title: 'Projektkonsole',
+  title: 'Entwicklungskonsole',
   description: 'Aktive Sitzungen und weiterhin laufende Aktivitätsfamilien in diesem Projekt.',
   loading: 'Aktive Sitzungen werden geladen…',
   empty: 'In diesem Projekt sind noch keine Sitzungen aktiv.',
@@ -925,7 +925,7 @@ export const de: Record<ProjectConsoleKey, string> = {
   refresh: 'Aktualisieren',
   retry: 'Erneut versuchen',
   noActivity: 'Keine Aktivität',
-  openConsole: 'Projektkonsole öffnen',
+  openConsole: 'Entwicklungskonsole öffnen',
   summary: '{total} aktive Sitzungen · {running} aktiv',
   untitled: 'Unbenannte Sitzung',
   openSession: 'Sitzung öffnen',
@@ -1096,7 +1096,7 @@ export const de: Record<ProjectConsoleKey, string> = {
 /** Russian copy. */
 export const ru: Record<ProjectConsoleKey, string> = {
   panel: 'Консоль проекта',
-  title: 'Консоль проекта',
+  title: 'Консоль разработки',
   description: 'Активные сеансы и продолжающиеся семейства активности в этом проекте.',
   loading: 'Загрузка активных сеансов…',
   empty: 'В этом проекте пока нет активных сеансов.',
@@ -1107,7 +1107,7 @@ export const ru: Record<ProjectConsoleKey, string> = {
   refresh: 'Обновить',
   retry: 'Повторить',
   noActivity: 'Нет активности',
-  openConsole: 'Открыть консоль проекта',
+  openConsole: 'Открыть консоль разработки',
   summary: 'Активных сеансов: {total} · выполняется: {running}',
   untitled: 'Сеанс без названия',
   openSession: 'Открыть сеанс',
@@ -1278,7 +1278,7 @@ export const ru: Record<ProjectConsoleKey, string> = {
 /** Portuguese copy. */
 export const pt: Record<ProjectConsoleKey, string> = {
   panel: 'Consola do projeto',
-  title: 'Consola do projeto',
+  title: 'Consola de desenvolvimento',
   description: 'Sessões ativas e as famílias de atividade ainda em execução neste projeto.',
   loading: 'A carregar sessões ativas…',
   empty: 'Ainda não há sessões ativas neste projeto.',
@@ -1289,7 +1289,7 @@ export const pt: Record<ProjectConsoleKey, string> = {
   refresh: 'Atualizar',
   retry: 'Repetir',
   noActivity: 'Sem atividade',
-  openConsole: 'Abrir a consola do projeto',
+  openConsole: 'Abrir a consola de desenvolvimento',
   summary: '{total} sessões ativas · {running} em execução',
   untitled: 'Sessão sem título',
   openSession: 'Abrir sessão',
