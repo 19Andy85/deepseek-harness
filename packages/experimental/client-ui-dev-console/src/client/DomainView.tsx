@@ -177,6 +177,7 @@ export function DomainView({ snapshot, openDomain, git, agents, saveAgents, open
               <div className={css.actions}>
                 <button type="button" className={css.button} onClick={() => { void git(domain.id, 'status').then((value) => { setDetail({ title: 'git status', text: value.text }) }).catch((reason: unknown) => { setError(String(reason)) }) }}>Git status</button>
                 <button type="button" className={css.button} onClick={() => { void git(domain.id, 'log').then((value) => { setDetail({ title: 'git log', text: value.text }) }).catch((reason: unknown) => { setError(String(reason)) }) }}>Git log</button>
+                <button type="button" className={css.button} onClick={() => { void git(domain.id, 'diff').then((value) => { setDetail({ title: 'git diff', text: value.text }) }).catch((reason: unknown) => { setError(String(reason)) }) }}>Git diff</button>
                 <button
                   type="button"
                   className={css.button}
@@ -228,11 +229,12 @@ export function DomainView({ snapshot, openDomain, git, agents, saveAgents, open
                 <>
                   <textarea className={css.agentsEditor} value={draft} onChange={(event) => { setDraft(event.currentTarget.value) }} />
                   <pre className={css.detail}>{lineDiff(agentsOriginal, draft)}</pre>
-                  {audit.length === 0 ? null : (
-                    <div className={css.detailHead}>
-                      {audit.slice(0, 3).map(entry => <span key={entry.at}>{new Date(entry.at).toLocaleTimeString()} · {entry.path.split('/').slice(-2).join('/')}</span>)}
-                    </div>
-                  )}
+                  <div className={css.detailHead}>
+                    <span>{t('agentsAudit')}</span>
+                    {audit.length === 0
+                      ? <span className={css.muted}>{t('noAudit')}</span>
+                      : audit.slice(0, 3).map(entry => <span key={entry.at}>{new Date(entry.at).toLocaleTimeString()} · {entry.path.split('/').slice(-2).join('/')}</span>)}
+                  </div>
                 </>
               )}
           </div>
