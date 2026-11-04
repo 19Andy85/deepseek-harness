@@ -185,7 +185,7 @@ export type ProjectConsoleKey = keyof typeof en
 
 /** Chinese project console copy. */
 export const zh: Record<ProjectConsoleKey, string> = {
-  panel: '项目控制台',
+  panel: '研发控制台',
   title: '研发控制台',
   description: '本项目中的活跃会话，以及每个会话仍在运行的活动家族。',
   loading: '正在读取活跃会话…',
@@ -367,7 +367,7 @@ export const zh: Record<ProjectConsoleKey, string> = {
 
 /** Japanese copy. */
 export const ja: Record<ProjectConsoleKey, string> = {
-  panel: 'プロジェクトコンソール',
+  panel: '開発コンソール',
   title: '開発コンソール',
   description: 'このプロジェクトで稼働中のセッションと活動種別。',
   loading: '実行中セッションを読み込み中…',
@@ -549,7 +549,7 @@ export const ja: Record<ProjectConsoleKey, string> = {
 
 /** Spanish copy. */
 export const es: Record<ProjectConsoleKey, string> = {
-  panel: 'Consola del proyecto',
+  panel: 'Consola de desarrollo',
   title: 'Consola de desarrollo',
   description: 'Sesiones activas y las familias de actividad que siguen ejecutándose en este proyecto.',
   loading: 'Cargando sesiones activas…',
@@ -731,7 +731,7 @@ export const es: Record<ProjectConsoleKey, string> = {
 
 /** French copy. */
 export const fr: Record<ProjectConsoleKey, string> = {
-  panel: 'Console du projet',
+  panel: 'Console de développement',
   title: 'Console de développement',
   description: 'Sessions actives et familles d’activité encore en cours dans ce projet.',
   loading: 'Chargement des sessions actives…',
@@ -913,7 +913,7 @@ export const fr: Record<ProjectConsoleKey, string> = {
 
 /** German copy. */
 export const de: Record<ProjectConsoleKey, string> = {
-  panel: 'Projektkonsole',
+  panel: 'Entwicklungskonsole',
   title: 'Entwicklungskonsole',
   description: 'Aktive Sitzungen und weiterhin laufende Aktivitätsfamilien in diesem Projekt.',
   loading: 'Aktive Sitzungen werden geladen…',
@@ -1095,7 +1095,7 @@ export const de: Record<ProjectConsoleKey, string> = {
 
 /** Russian copy. */
 export const ru: Record<ProjectConsoleKey, string> = {
-  panel: 'Консоль проекта',
+  panel: 'Консоль разработки',
   title: 'Консоль разработки',
   description: 'Активные сеансы и продолжающиеся семейства активности в этом проекте.',
   loading: 'Загрузка активных сеансов…',
@@ -1277,7 +1277,7 @@ export const ru: Record<ProjectConsoleKey, string> = {
 
 /** Portuguese copy. */
 export const pt: Record<ProjectConsoleKey, string> = {
-  panel: 'Consola do projeto',
+  panel: 'Consola de desenvolvimento',
   title: 'Consola de desenvolvimento',
   description: 'Sessões ativas e as famílias de atividade ainda em execução neste projeto.',
   loading: 'A carregar sessões ativas…',
