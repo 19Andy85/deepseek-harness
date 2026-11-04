@@ -612,9 +612,7 @@ export function ProjectConsolePage({
               </button>
             )
             : null}
-          {surface === 'main'
-            ? <button type="button" className={css.select} onClick={() => { setDomainsOpen(true) }}>{t('domainsTitle')}</button>
-            : null}
+          <button type="button" className={css.select} onClick={() => { setDomainsOpen(true) }}>{t('domainsTitle')}</button>
           <button
             type="button"
             className={css.select}
