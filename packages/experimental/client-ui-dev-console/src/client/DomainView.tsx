@@ -193,9 +193,15 @@ export function DomainView({ snapshot, openDomain, git, agents, saveAgents, open
                   type="button"
                   className={css.button}
                   disabled={inspection.problems.length > 0 || opening !== undefined}
-                  onClick={() => { open(domain.id) }}
+                  onClick={() => {
+                    const bound = bindings[domain.id]?.[0]
+                    if (bound === undefined) { open(domain.id); return }
+                    openSession(bound)
+                  }}
                 >
-                  {pendingEphemeral === domain.id ? t('confirmEphemeralOpen') : t('openDomain')}
+                  {pendingEphemeral === domain.id
+                    ? t('confirmEphemeralOpen')
+                    : bindings[domain.id]?.[0] === undefined ? t('openDomain') : t('openBoundSession')}
                 </button>
                 {pendingEphemeral === domain.id ? <span className={css.warning}>{t('ephemeralConfirmHint')}</span> : null}
               </div>
