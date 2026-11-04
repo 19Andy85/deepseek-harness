@@ -92,8 +92,22 @@
 +  wire: { viewSchema: outcomeSchema, view: (state: SessionTaskOutcome) => state },
  } satisfies ProjectionDefinition<'sessionTaskOutcome', SessionTaskOutcome>
 
---- a/packages/experimental/client-ui-dev-console/package.json	2026-11-02 23:15:32
-+++ b/packages/experimental/client-ui-dev-console/package.json	2026-11-04 15:51:17
+--- a/packages/experimental/client-ui-dev-console/README.i18n.yaml	2026-11-04 17:42:04
++++ b/packages/experimental/client-ui-dev-console/README.i18n.yaml	2026-11-04 18:29:15
+@@ -6,8 +6,8 @@
+   en: 1021aa5c1b2d7c3c
+   zh: 79d68d7e72015d11
+ /deepseek-ai-dsh-experimental-client-ui-dev-console:
+-  en: 8dbb3daaa9518e04
+-  zh: 1e8bbba752d82da6
++  en: 8ab180af62aacfbd
++  zh: 672b570744254953
+ /deepseek-ai-dsh-experimental-client-ui-dev-console/summary:
+   en: 7f303fa8f39b1db4
+   zh: ffdbe36c2d58b983
+
+--- a/packages/experimental/client-ui-dev-console/package.json	2026-11-04 17:38:05
++++ b/packages/experimental/client-ui-dev-console/package.json	2026-11-04 18:29:15
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-client-ui-dev-console",
@@ -199,8 +213,46 @@
      name: 'sidebar.panellist',
      id: PANEL_ID,
 
---- a/packages/experimental/dev-console-bundle/package.json	2026-10-29 04:02:07
-+++ b/packages/experimental/dev-console-bundle/package.json	2026-11-04 00:03:32
+--- a/packages/experimental/dev-console-bundle/README.i18n.yaml	2026-11-04 17:42:04
++++ b/packages/experimental/dev-console-bundle/README.i18n.yaml	2026-11-04 18:29:15
+@@ -6,17 +6,17 @@
+   en: 9bd9941607b54c3a
+   zh: 2ebe70dc8074cb22
+ /deepseek-ai-dsh-experimental-dev-console-bundle:
+-  en: e412a554a5fe1923
+-  zh: 87ca9bd971fecb86
++  en: beaacc5e81440ef4
++  zh: a73673c26f3d0797
+ /deepseek-ai-dsh-experimental-dev-console-bundle/summary:
+-  en: 23c5db106ea26417
+-  zh: b3cb10a99bdec777
++  en: 41c65a45033e92bc
++  zh: e9edc9f68612b29d
+ /deepseek-ai-dsh-experimental-dev-console-bundle/table-of-contents:
+   en: 4c42347e02106f3d
+   zh: 18bb1e6333ed61cc
+ /deepseek-ai-dsh-experimental-dev-console-bundle/use-this-bundle:
+-  en: 0a835b857b164849
+-  zh: 834e9a6ba30ba14c
++  en: ed79d54c111d319e
++  zh: fc851941b5ebd20e
+ /deepseek-ai-dsh-experimental-dev-console-bundle/use-this-bundle/what-the-bundle-provides:
+   en: ac82e3dccd24ea1e
+   zh: c8e2681b1461420a
+@@ -42,8 +42,8 @@
+   en: 01909e6b6cbe2ee0
+   zh: ed9fd63d253faef8
+ /deepseek-ai-dsh-experimental-dev-console-bundle/further-exploration:
+-  en: 7168f2ab0f70dc50
+-  zh: fc19f8f3abd9f88e
++  en: 49e0a559ada4be44
++  zh: a2102d0e9fb4107c
+ /deepseek-ai-dsh-experimental-dev-console-bundle/model-experience:
+   en: 40d0dfb38321b150
+   zh: a1fc23172a44dfae
+
+--- a/packages/experimental/dev-console-bundle/package.json	2026-11-04 17:38:05
++++ b/packages/experimental/dev-console-bundle/package.json	2026-11-04 18:29:15
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-dev-console-bundle",
