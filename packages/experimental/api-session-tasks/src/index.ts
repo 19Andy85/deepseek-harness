@@ -23,6 +23,9 @@ import z from '@deepseek-ai/schemastery'
 import type { SessionActivity } from '@deepseek-ai/dsh-workspace'
 import { followSessionTask, observeActivity, readSessionTasks, type ObservedActivity } from './aggregation.ts'
 import { execFile } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { isAbsolute, join, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
 import { readFile, realpath, writeFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
@@ -78,7 +81,7 @@ export interface Config {
 
 /** Host service backing the generated `ctx.remote.sessionTasks` namespace. */
 export class SessionTasksController extends TypertRemoteService {
-  static inject = ['typert', 'agents', 'sessionController']
+  static inject = ['typert', 'agents', 'sessionController', 'workspaceRegistry']
 
   static Config: z<Config> = z.object({
     followIntervalMs: z.natural().min(100).default(DEFAULT_FOLLOW_INTERVAL_MS),
@@ -386,7 +389,7 @@ export class SessionTasksController extends TypertRemoteService {
    */
   @Remote('devConsoleSnapshot')
   async devConsoleSnapshot(): Promise<DevConsoleSnapshot> {
-    const result = loadDevConsoleConfig(this.devConsoleConfigFile)
+    const result = loadDevConsoleConfig(this.resolveDevConsoleConfigFile())
     if (result.config === undefined) {
       return { problems: result.problems, warnings: result.warnings, domains: [] }
     }
@@ -398,6 +401,21 @@ export class SessionTasksController extends TypertRemoteService {
       }
     }
     return { config: result.config, problems: result.problems, warnings: result.warnings, domains }
+  }
+
+  private resolveDevConsoleConfigFile(): string {
+    const env = process.env['DSH_DEV_CONSOLE_CONFIG']
+    if (env !== undefined && existsSync(env)) return env
+    if (isAbsolute(this.devConsoleConfigFile) && existsSync(this.devConsoleConfigFile)) return this.devConsoleConfigFile
+    const candidates = [
+      resolve(process.cwd(), this.devConsoleConfigFile),
+      join(process.env['DSH_HOME'] ?? join(homedir(), '.dsh'), 'dev-console.yaml'),
+    ]
+    const registry = this.ctx.get('workspaceRegistry')
+    for (const workspace of registry?.list() ?? []) {
+      candidates.push(join(workspace.path, '.dsh', 'dev-console.yaml'))
+    }
+    return candidates.find(candidate => existsSync(candidate)) ?? resolve(process.cwd(), this.devConsoleConfigFile)
   }
 
   @Remote('devConsoleGit')
@@ -433,7 +451,7 @@ export class SessionTasksController extends TypertRemoteService {
   }
 
   private devConsoleDomain(domainId: string): DevConsoleDomainConfig {
-    const result = loadDevConsoleConfig(this.devConsoleConfigFile)
+    const result = loadDevConsoleConfig(this.resolveDevConsoleConfigFile())
     if (result.config === undefined) throw new RemoteError('gateway/bad-request', 'Dev Console config is invalid', {})
     const domain = result.config.projects.flatMap(project => project.domains).find(item => item.id === domainId)
     if (domain === undefined) throw new RemoteError('gateway/bad-request', `domain ${domainId} is not configured`, {})
@@ -462,7 +480,7 @@ export class SessionTasksController extends TypertRemoteService {
    */
   @Remote('devConsoleOpenDomain')
   async devConsoleOpenDomain(request: DevConsoleOpenDomainRequest): Promise<DevConsoleOpenDomainValue> {
-    const result = loadDevConsoleConfig(this.devConsoleConfigFile)
+    const result = loadDevConsoleConfig(this.resolveDevConsoleConfigFile())
     if (result.config === undefined) throw new RemoteError('gateway/bad-request', 'Dev Console config is invalid', {})
     const domain = result.config.projects.flatMap(project => project.domains).find(item => item.id === request.domainId)
     if (domain === undefined) throw new RemoteError('gateway/bad-request', `domain ${request.domainId} is not configured`, {})
