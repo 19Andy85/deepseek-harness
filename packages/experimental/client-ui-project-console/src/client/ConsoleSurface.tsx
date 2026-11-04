@@ -10,6 +10,8 @@ import { ProjectConsolePage, type ProjectConsoleInjected } from './ProjectConsol
 export interface RailInjected extends ProjectConsoleInjected {
   /** Float the current rail tab. */
   readonly floatTab: (tabId: string) => void
+  /** Dock the current rail tab's pane. */
+  readonly dockTab: (paneId: string) => void
 }
 
 /** Main-panel surface props. */
@@ -34,7 +36,8 @@ export function ConsoleMainPage(props: ConsoleMainPageProps) {
  */
 export function ConsoleRailPage(props: ConsoleRailPageProps) {
   const { sessionId, useTabInfo, workspaceSessions, selectWorkspace } = props
-  const tab = useTabInfo().tab
+  const info = useTabInfo()
+  const tab = info.tab
   useEffect(() => {
     if (sessionId === undefined) return
     const target = String(sessionId)
@@ -48,6 +51,7 @@ export function ConsoleRailPage(props: ConsoleRailPageProps) {
       surface="rail"
       {...sessionId === undefined ? {} : { railSessionId: String(sessionId) }}
       onFloat={() => props.floatTab(tab.id)}
+      onDock={() => props.dockTab(info.panel.id)}
       useSessionStatus={props.useSessionStatus}
     />
   )

@@ -94,6 +94,8 @@ export type ProjectConsolePageProps = PropsLocale<'projectConsole'> & InjectFace
   readonly railSessionId?: string
   /** Float the rail console into a floating panel. */
   readonly onFloat?: () => void
+  /** Return a floating rail console to the docked column. */
+  readonly onDock?: () => void
 }
 
 function relativeTime(at: number, t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string): string {
@@ -122,7 +124,7 @@ function statusText(
 export function ProjectConsolePage({
   t, store, workspaceOptions, workspaceSessions, selectedWorkspaceId, selectWorkspace, refresh, openSession, focusSession,
   closeFocus, resetShift, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus, openInSidebar,
-  compact = false, surface = 'main', railSessionId, onFloat,
+  compact = false, surface = 'main', railSessionId, onFloat, onDock,
 }: ProjectConsolePageProps) {
   const [now, setNow] = useState(() => Date.now())
   const [activeId, setActiveId] = useState<string | undefined>(undefined)
@@ -500,6 +502,7 @@ export function ProjectConsolePage({
                   {t('railWholeProject')}
                 </button>
                 {onFloat === undefined ? null : <button type="button" className={css.select} onClick={onFloat}>{t('floatPanel')}</button>}
+                {onDock === undefined ? null : <button type="button" className={css.select} onClick={onDock}>{t('dockPanel')}</button>}
               </div>
             )
             : null}

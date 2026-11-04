@@ -11,7 +11,7 @@ import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller/t
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import type { WorkspaceId } from '@deepseek-ai/dsh-api-workspace-controller/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
-import type { TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
+import type { PaneId, TabId } from '@deepseek-ai/dsh-client-ui-dockkit'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
 import type {} from '@deepseek-ai/dsh-client-ui-approval/client'
@@ -191,6 +191,13 @@ function registerUi(ctx: Context): void {
       id: 'project-console-rail',
       kind: 'project-console',
       title: () => t('title'),
+      guide: [{
+        id: 'project-console',
+        order: 30,
+        title: () => t('title'),
+        description: () => t('railGuideDescription'),
+        icon: ProjectConsolePanelIcon,
+      }],
     })
     const disposeBody = ctx.slots.register({
       name: 'sidebar.right.pane.tab',
@@ -199,6 +206,7 @@ function registerUi(ctx: Context): void {
       inject: (): RailInjected => ({
         ...pageInjected(),
         floatTab: (tabId: string) => { rail.sidebarRight.float(tabId as TabId) },
+        dockTab: (paneId: string) => { rail.sidebarRight.dock(paneId as PaneId) },
       }),
     }, ConsoleRailPage)
     const disposeMenu = ctx.slots.inject('sidebar.workspaces.session.menu.item', () => ctx.slots.register({
