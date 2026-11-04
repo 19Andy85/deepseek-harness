@@ -29,12 +29,13 @@ import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
 import { readFile, realpath, writeFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
-import { dump } from 'js-yaml'
-import { loadDevConsoleConfig } from './dev-console-config.ts'
+import { dump, load } from 'js-yaml'
+import { loadDevConsoleConfig, validateConfig } from './dev-console-config.ts'
 import { inspectDomain, openDomain } from './dev-console-domain.ts'
 import type { DevConsoleDomainConfig } from './dev-console-config.ts'
 import type {
   DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleAutoConfigRequest, DevConsoleAutoConfigValue,
+  DevConsoleConfigValue, DevConsoleSaveConfigRequest, DevConsoleSaveConfigValue,
   DevConsoleDomainStatus, DevConsoleGitRequest, DevConsoleGitValue, DevConsoleSaveAgentsRequest, DevConsoleSaveAgentsValue,
   DevConsoleOpenDomainRequest, DevConsoleOpenDomainValue, DevConsoleSessionSummary, DevConsoleSnapshot,
 } from './dev-console.ts'
@@ -417,6 +418,24 @@ export class SessionTasksController extends TypertRemoteService {
       candidates.push(join(workspace.path, '.dsh', 'dev-console.yaml'))
     }
     return candidates.find(candidate => existsSync(candidate)) ?? resolve(process.cwd(), this.devConsoleConfigFile)
+  }
+
+  @Remote('devConsoleConfig')
+  async devConsoleConfig(): Promise<DevConsoleConfigValue> {
+    const path = this.resolveDevConsoleConfigFile()
+    const yaml = await readFile(path, 'utf8').catch(() => 'version: 1\nprojects: []\n')
+    return { path, yaml }
+  }
+
+  @Remote('devConsoleSaveConfig')
+  async devConsoleSaveConfig(request: DevConsoleSaveConfigRequest): Promise<DevConsoleSaveConfigValue> {
+    const parsed = validateConfig(load(request.yaml))
+    if (parsed.config === undefined) {
+      throw new RemoteError('gateway/bad-request', parsed.problems.map(problem => `${problem.path}: ${problem.message}`).join('; '), {})
+    }
+    const path = this.resolveDevConsoleConfigFile()
+    await writeFile(path, dump(parsed.config))
+    return { path, warnings: parsed.warnings }
   }
 
   @Remote('devConsoleAutoConfig')

@@ -1,5 +1,7 @@
 /** Dev Console domain registry panel: config, git/cwd checks, and open-domain. */
 import { useEffect, useState } from 'react'
+import { ConfigEditor } from './ConfigEditor.tsx'
+import type { ProjectConsoleKey } from './locales.ts'
 
 const BINDINGS_KEY = 'dsh.dev-console.domain-sessions.v1'
 const AUDIT_KEY = 'dsh.dev-console.agents-audit.v1'
@@ -36,7 +38,6 @@ function lineDiff(original: string, next: string): string {
   }
   return out.length === 0 ? 'no changes' : out.join('\n')
 }
-import type { ProjectConsoleKey } from './locales.ts'
 import css from './DomainView.module.css'
 
 /** One configured domain as the panel renders it. */
@@ -92,6 +93,10 @@ export interface DomainViewInjected {
   readonly saveAgents: (domainId: string, text: string, baseHash: string) => Promise<{ readonly hash: string }>
   /** Generate a registry from connected workspaces. */
   readonly autoConfig: (overwrite: boolean) => Promise<{ readonly path: string; readonly projects: number }>
+  /** Read the raw config file. */
+  readonly config: () => Promise<{ readonly path: string; readonly yaml: string }>
+  /** Save raw config YAML. */
+  readonly saveConfig: (yaml: string) => Promise<{ readonly path: string; readonly warnings: readonly { readonly message: string }[] }>
   /** Open a created Session's conversation. */
   readonly openSession: (sessionId: string) => void
 }
@@ -107,7 +112,9 @@ export interface DomainViewProps extends DomainViewInjected {
  * @param props - snapshot/open actions, dictionary, and close handler.
  * @returns the domain panel.
  */
-export function DomainView({ snapshot, openDomain, git, agents, saveAgents, autoConfig, openSession, t, onClose }: DomainViewProps) {
+export function DomainView({
+  snapshot, openDomain, git, agents, saveAgents, autoConfig, config, saveConfig, openSession, t, onClose,
+}: DomainViewProps) {
   const [data, setData] = useState<DomainSnapshotView | undefined>(undefined)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | undefined>(undefined)
@@ -119,6 +126,7 @@ export function DomainView({ snapshot, openDomain, git, agents, saveAgents, auto
   const [audit, setAudit] = useState<readonly AgentsAudit[]>(() => readAudit())
   const [bindings, setBindings] = useState<Record<string, string[]>>(() => readBindings())
   const [pendingEphemeral, setPendingEphemeral] = useState<string | undefined>(undefined)
+  const [configOpen, setConfigOpen] = useState(false)
   const load = async (): Promise<void> => {
     setLoading(true)
     try { setData(await snapshot()); setError(undefined) } catch (reason) {
@@ -159,6 +167,7 @@ export function DomainView({ snapshot, openDomain, git, agents, saveAgents, auto
                 })
               }}>{data.domains.length === 0 ? t('autoConfig') : t('regenerateConfig')}</button>
             )}
+            <button type="button" className={css.button} onClick={() => { setConfigOpen(true) }}>{t('editConfig')}</button>
             <button type="button" className={css.button} onClick={() => { void load() }}>{t('refresh')}</button>
             <button type="button" className={css.button} onClick={onClose}>{t('close')}</button>
           </div>
@@ -258,6 +267,17 @@ export function DomainView({ snapshot, openDomain, git, agents, saveAgents, auto
               )}
           </div>
         )}
+        {configOpen
+          ? (
+            <ConfigEditor
+              load={config}
+              save={saveConfig}
+              t={t}
+              onClose={() => { setConfigOpen(false) }}
+              onSaved={() => { void load() }}
+            />
+          )
+          : null}
       </section>
     </div>
   )

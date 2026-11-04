@@ -58,6 +58,28 @@ export interface DevConsoleSaveAgentsValue {
   readonly hash: string
 }
 
+/** Current config file text. */
+export interface DevConsoleConfigValue {
+  /** File path. */
+  readonly path: string
+  /** YAML text. */
+  readonly yaml: string
+}
+
+/** Replace the config file with validated YAML. */
+export interface DevConsoleSaveConfigRequest {
+  /** Complete YAML text. */
+  readonly yaml: string
+}
+
+/** Result of saving config. */
+export interface DevConsoleSaveConfigValue {
+  /** Written path. */
+  readonly path: string
+  /** Non-blocking warnings. */
+  readonly warnings: readonly DevConsoleConfigProblem[]
+}
+
 /** Auto-generate a registry from the connected workspaces. */
 export interface DevConsoleAutoConfigRequest {
   /** Replace an existing registry file. */

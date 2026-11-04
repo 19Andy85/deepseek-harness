@@ -193,6 +193,16 @@ function registerUi(ctx: Context): void {
       if (!result.ok) throw new Error(result.error.message)
       return result.value
     },
+    devConsoleConfig: async () => {
+      const result = await ctx.remote.sessionTasks.devConsoleConfig()
+      if (!result.ok) throw new Error(result.error.message)
+      return result.value
+    },
+    devConsoleSaveConfig: async (yaml) => {
+      const result = await ctx.remote.sessionTasks.devConsoleSaveConfig({ yaml })
+      if (!result.ok) throw new Error(result.error.message)
+      return result.value
+    },
     openInSidebar: () => {
       if (railApi === undefined) return
       // The rail belongs to the session already on screen; opening another

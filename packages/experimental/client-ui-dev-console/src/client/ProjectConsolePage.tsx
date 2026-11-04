@@ -93,6 +93,13 @@ export interface ProjectConsoleInjected {
   readonly devConsoleSaveAgents: (domainId: string, text: string, baseHash: string) => Promise<{ readonly hash: string }>
   /** Generate a registry from connected workspaces. */
   readonly devConsoleAutoConfig: (overwrite: boolean) => Promise<{ readonly path: string; readonly projects: number }>
+  /** Read the raw Dev Console config. */
+  readonly devConsoleConfig: () => Promise<{ readonly path: string; readonly yaml: string }>
+  /** Save raw Dev Console config. */
+  readonly devConsoleSaveConfig: (yaml: string) => Promise<{
+    readonly path: string
+    readonly warnings: readonly { readonly message: string }[]
+  }>
 }
 
 /** Framework props of the workspace console page. */
@@ -138,6 +145,7 @@ export function ProjectConsolePage({
   t, store, workspaceOptions, workspaceSessions, selectedWorkspaceId, selectWorkspace, refresh, openSession, focusSession,
   closeFocus, resetShift, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus, openInSidebar,
   devConsoleSnapshot, devConsoleOpenDomain, devConsoleGit, devConsoleAgents, devConsoleSaveAgents, devConsoleAutoConfig,
+  devConsoleConfig, devConsoleSaveConfig,
   compact = false, surface = 'main', railSessionId, onFloat, onDock,
 }: ProjectConsolePageProps) {
   const [now, setNow] = useState(() => Date.now())
@@ -1317,6 +1325,8 @@ export function ProjectConsolePage({
             agents={devConsoleAgents}
             saveAgents={devConsoleSaveAgents}
             autoConfig={devConsoleAutoConfig}
+            config={devConsoleConfig}
+            saveConfig={devConsoleSaveConfig}
             openSession={openSession}
             onClose={() => { setDomainsOpen(false) }}
           />

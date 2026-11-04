@@ -1,6 +1,6 @@
 
 --- a/packages/experimental/tool-session-tasks/package.json	2026-10-29 04:02:07
-+++ b/packages/experimental/tool-session-tasks/package.json	2026-11-05 04:12:33
++++ b/packages/experimental/tool-session-tasks/package.json	2026-11-05 04:39:04
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-tool-session-tasks",
@@ -12,7 +12,7 @@
    },
 
 --- a/packages/experimental/api-session-tasks/package.json	2026-11-04 20:12:50
-+++ b/packages/experimental/api-session-tasks/package.json	2026-11-05 04:12:33
++++ b/packages/experimental/api-session-tasks/package.json	2026-11-05 04:39:04
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-api-session-tasks",
@@ -23,9 +23,9 @@
      "access": "public"
    },
 
---- a/packages/experimental/api-session-tasks/src/index.ts	2026-11-05 04:14:54
-+++ b/packages/experimental/api-session-tasks/src/index.ts	2026-11-05 04:12:33
-@@ -123,8 +123,8 @@
+--- a/packages/experimental/api-session-tasks/src/index.ts	2026-11-05 04:35:56
++++ b/packages/experimental/api-session-tasks/src/index.ts	2026-11-05 04:39:05
+@@ -124,8 +124,8 @@
      })
      if (this.ctx.get('storageDomain') !== undefined) await seenBinding
      const binding = this.ctx.inject(['sessionProjections'], async (projectionCtx) => {
@@ -36,34 +36,9 @@
      })
      if (this.ctx.get('sessionProjections') !== undefined) await binding
    }
-@@ -425,20 +425,10 @@
-     if (registry === undefined) throw new RemoteError('gateway/bad-request', 'workspace registry is unavailable', {})
-     const target = join(process.env['DSH_HOME'] ?? join(homedir(), '.dsh'), 'dev-console.yaml')
-     if (!request.overwrite && existsSync(target)) throw new RemoteError('dev-console/conflict', `config already exists: ${target}`, {})
--    const grouped = new Map<string, {
--      id: string
--      name: string
--      root: string
--      domains: Array<{
--        id: string
--        name: string
--        worktree: string
--        branch: string
--        base: string
--        agent: { adapter: 'dsh-session' }
--        hooks: { expectedBranch: string; expectedToplevel: string }
--      }>
--    }>()
-+    const grouped = new Map<string, { id: string; name: string; root: string; domains: {
-+      id: string; name: string; worktree: string; branch: string; base: string;
-+      agent: { adapter: 'dsh-session' }; hooks: { expectedBranch: string; expectedToplevel: string }
-+    }[] }>()
-     for (const workspace of registry.list()) {
-       const git = async (args: readonly string[]) => promisify(execFile)('git', [...args], { cwd: workspace.path, encoding: 'utf8' })
-         .then(result => result.stdout.trim()).catch(() => undefined)
 
 --- a/packages/experimental/api-session-tasks/src/outcome.ts	2026-10-31 02:14:10
-+++ b/packages/experimental/api-session-tasks/src/outcome.ts	2026-11-05 04:12:33
++++ b/packages/experimental/api-session-tasks/src/outcome.ts	2026-11-05 04:39:05
 @@ -8,7 +8,6 @@
  import type { SessionEvent } from '@deepseek-ai/dsh-session'
  import type {} from '@deepseek-ai/dsh-workspace-changes'
@@ -97,7 +72,7 @@
  } satisfies ProjectionDefinition<'sessionTaskOutcome', SessionTaskOutcome>
 
 --- a/packages/experimental/client-ui-dev-console/package.json	2026-11-04 17:38:05
-+++ b/packages/experimental/client-ui-dev-console/package.json	2026-11-05 04:12:33
++++ b/packages/experimental/client-ui-dev-console/package.json	2026-11-05 04:39:04
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-client-ui-dev-console",
@@ -108,8 +83,63 @@
      "access": "public"
    },
 
+--- a/packages/experimental/client-ui-dev-console/src/client/ConfigEditor.tsx	2026-11-05 04:41:15
++++ b/packages/experimental/client-ui-dev-console/src/client/ConfigEditor.tsx	2026-11-05 04:36:14
+@@ -55,7 +55,7 @@
+           className={css.editor}
+           spellCheck={false}
+           value={draft}
+-          onChange={(event) => { setDraft(event.currentTarget.value); setSaved(false) }}
++          onChange={event => { setDraft(event.currentTarget.value); setSaved(false) }}
+         />
+         {error === undefined ? null : <p className={css.error}>{error}</p>}
+         {saved ? <p className={css.ok}>{t('configSaved')}</p> : null}
+
+--- a/packages/experimental/client-ui-dev-console/src/client/DomainView.tsx	2026-11-05 04:41:23
++++ b/packages/experimental/client-ui-dev-console/src/client/DomainView.tsx	2026-11-05 04:36:36
+@@ -112,9 +112,7 @@
+  * @param props - snapshot/open actions, dictionary, and close handler.
+  * @returns the domain panel.
+  */
+-export function DomainView({
+-  snapshot, openDomain, git, agents, saveAgents, autoConfig, config, saveConfig, openSession, t, onClose,
+-}: DomainViewProps) {
++export function DomainView({ snapshot, openDomain, git, agents, saveAgents, autoConfig, config, saveConfig, openSession, t, onClose }: DomainViewProps) {
+   const [data, setData] = useState<DomainSnapshotView | undefined>(undefined)
+   const [loading, setLoading] = useState(true)
+   const [error, setError] = useState<string | undefined>(undefined)
+@@ -267,17 +265,17 @@
+               )}
+           </div>
+         )}
+-        {configOpen
+-          ? (
+-            <ConfigEditor
+-              load={config}
+-              save={saveConfig}
+-              t={t}
+-              onClose={() => { setConfigOpen(false) }}
+-              onSaved={() => { void load() }}
+-            />
+-          )
+-          : null}
++      {configOpen
++        ? (
++          <ConfigEditor
++            load={config}
++            save={saveConfig}
++            t={t}
++            onClose={() => { setConfigOpen(false) }}
++            onSaved={() => { void load() }}
++          />
++        )
++        : null}
+       </section>
+     </div>
+   )
+
 --- a/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-10-29 04:06:48
-+++ b/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-11-05 04:12:33
++++ b/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-11-05 04:39:04
 @@ -1,6 +1,5 @@
 -/** Workspace row menu entry that opens the project console on that Workspace. */
 +/** Session row menu entry that opens the project console for the row's workspace. */
@@ -155,8 +185,23 @@
      >
        {t('openConsole')}
 
---- a/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-05 04:10:36
-+++ b/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-05 04:12:33
+--- a/packages/experimental/client-ui-dev-console/src/client/ProjectConsolePage.tsx	2026-11-05 04:41:23
++++ b/packages/experimental/client-ui-dev-console/src/client/ProjectConsolePage.tsx	2026-11-05 04:36:50
+@@ -96,10 +96,7 @@
+   /** Read the raw Dev Console config. */
+   readonly devConsoleConfig: () => Promise<{ readonly path: string; readonly yaml: string }>
+   /** Save raw Dev Console config. */
+-  readonly devConsoleSaveConfig: (yaml: string) => Promise<{
+-    readonly path: string
+-    readonly warnings: readonly { readonly message: string }[]
+-  }>
++  readonly devConsoleSaveConfig: (yaml: string) => Promise<{ readonly path: string; readonly warnings: readonly { readonly message: string }[] }>
+ }
+
+ /** Framework props of the workspace console page. */
+
+--- a/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-05 04:36:50
++++ b/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-05 04:39:05
 @@ -29,7 +29,7 @@
  import { RestartAppButton } from './RestartAppButton.tsx'
  import { ProjectConsoleStore } from './ProjectConsoleStore.ts'
@@ -175,7 +220,7 @@
    const unmount = await ctx.remote.$mount(sessionTasksRemote)
    try {
      await ctx.inject(['remote.sessionTasks'], (inner) => { registerUi(inner) })
-@@ -274,18 +274,20 @@
+@@ -284,18 +284,20 @@
      id: 'project-console-restart',
      locale: NS,
    }, RestartAppButton)), 'project-console: restart app')
@@ -204,7 +249,7 @@
      id: PANEL_ID,
 
 --- a/packages/experimental/dev-console-bundle/package.json	2026-11-04 20:04:46
-+++ b/packages/experimental/dev-console-bundle/package.json	2026-11-05 04:12:33
++++ b/packages/experimental/dev-console-bundle/package.json	2026-11-05 04:39:04
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-dev-console-bundle",
