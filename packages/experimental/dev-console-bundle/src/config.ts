@@ -1,5 +1,6 @@
 /** Dev Console project/domain registry loaded from `.dsh/dev-console.yaml`. */
 import { existsSync, readFileSync, realpathSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { isAbsolute, resolve } from 'node:path'
 import { load } from 'js-yaml'
 
@@ -76,6 +77,8 @@ export interface DevConsoleConfigResult {
   readonly config?: DevConsoleConfig
   /** Problems found; empty means usable. */
   readonly problems: readonly DevConsoleConfigProblem[]
+  /** Non-blocking warnings that the UI should surface. */
+  readonly warnings: readonly DevConsoleConfigProblem[]
 }
 
 const fail = (path: string, code: string, message: string): DevConsoleConfigProblem => ({ path, code, message })
@@ -87,10 +90,10 @@ const fail = (path: string, code: string, message: string): DevConsoleConfigProb
  */
 export function loadDevConsoleConfig(file: string): DevConsoleConfigResult {
   const absolute = isAbsolute(file) ? file : resolve(process.cwd(), file)
-  if (!existsSync(absolute)) return { problems: [fail('$', 'missing-config', `config not found: ${absolute}`)] }
+  if (!existsSync(absolute)) return { problems: [fail('$', 'missing-config', `config not found: ${absolute}`)], warnings: [] }
   let raw: unknown
   try { raw = load(readFileSync(absolute, 'utf8')) } catch (error) {
-    return { problems: [fail('$', 'invalid-yaml', error instanceof Error ? error.message : String(error))] }
+    return { problems: [fail('$', 'invalid-yaml', error instanceof Error ? error.message : String(error))], warnings: [] }
   }
   return validateConfig(raw)
 }
@@ -102,14 +105,15 @@ export function loadDevConsoleConfig(file: string): DevConsoleConfigResult {
  */
 export function validateConfig(value: unknown): DevConsoleConfigResult {
   const problems: DevConsoleConfigProblem[] = []
+  const warnings: DevConsoleConfigProblem[] = []
   const object = value as Record<string, unknown> | null
   if (object === null || typeof object !== 'object' || Array.isArray(object)) {
-    return { problems: [fail('$', 'not-object', 'config must be an object')] }
+    return { problems: [fail('$', 'not-object', 'config must be an object')], warnings: [] }
   }
   if (object['version'] !== 1) problems.push(fail('version', 'unsupported-version', 'version must be 1'))
   const projectsRaw = object['projects']
   if (!Array.isArray(projectsRaw) || projectsRaw.length === 0) {
-    return { problems: [...problems, fail('projects', 'missing-projects', 'projects must be a non-empty array')] }
+    return { problems: [...problems, fail('projects', 'missing-projects', 'projects must be a non-empty array')], warnings }
   }
   const projectIds = new Set<string>()
   const domainIds = new Set<string>()
@@ -171,6 +175,9 @@ export function validateConfig(value: unknown): DevConsoleConfigResult {
           ? undefined
           : absoluteText(domain['derivedData'], `${domainPath}.derivedData`, problems)
         const canonicalWorktree = worktree === undefined ? undefined : canonical(worktree, `${domainPath}.worktree`, problems)
+        if (worktree !== undefined && isEphemeralPath(worktree)) {
+          warnings.push(fail(`${domainPath}.worktree`, 'ephemeral-path', 'worktree is under a temporary directory; state may be lost on reboot'))
+        }
         const expectedCanonicalToplevel = expectedToplevel === undefined
           ? undefined
           : canonical(expectedToplevel, `${domainPath}.hooks.expectedToplevel`, problems)
@@ -202,8 +209,19 @@ export function validateConfig(value: unknown): DevConsoleConfigResult {
     projects.push({ id, name, root, domains })
   })
   return problems.length === 0
-    ? { config: { version: 1, projects }, problems: [] }
-    : { problems }
+    ? { config: { version: 1, projects }, problems: [], warnings }
+    : { problems, warnings }
+}
+
+/**
+ * Whether a path lives under an operating-system temporary directory.
+ * @param path - absolute path to classify.
+ * @returns true for known temporary roots.
+ */
+export function isEphemeralPath(path: string): boolean {
+  const roots = ['/tmp', '/private/tmp', '/var/tmp', '/private/var/tmp', tmpdir()]
+  const normalized = path.startsWith('/private/') ? path.slice('/private'.length) : path
+  return roots.some(root => normalized === root || normalized.startsWith(`${root}/`))
 }
 
 function text(value: unknown, path: string, problems: DevConsoleConfigProblem[]): string | undefined {

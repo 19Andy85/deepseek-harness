@@ -34,6 +34,16 @@ projects:
     const result = loadDevConsoleConfig(path)
     expect(result.problems).toEqual([])
     expect(result.config?.projects[0]?.domains[0]?.canonicalWorktree).toBe(join(root, 'repo', '.worktrees', 'domain-x'))
+    expect(result.warnings.map(warning => warning.code)).toContain('ephemeral-path')
+  })
+
+  it('warns when a worktree lives under a temporary directory', () => {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'dev-console-ephemeral-')))
+    const result = validateConfig({ version: 1, projects: [{ id: 'p', name: 'P', root, domains: [
+      { id: 'd', name: 'D', worktree: root, branch: 'b', base: 'main', agent: { adapter: 'dsh-session' }, hooks: { expectedBranch: 'b', expectedToplevel: root } },
+    ] }] })
+    expect(result.config).toBeDefined()
+    expect(result.warnings.map(warning => warning.code)).toContain('ephemeral-path')
   })
 
   it('reports duplicate ids, relative paths, and missing worktrees', () => {
