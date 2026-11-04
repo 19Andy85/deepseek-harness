@@ -29,12 +29,13 @@ import { isAbsolute, join, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
 import { readFile, realpath, writeFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
+import { dump } from 'js-yaml'
 import { loadDevConsoleConfig } from './dev-console-config.ts'
 import { inspectDomain, openDomain } from './dev-console-domain.ts'
 import type { DevConsoleDomainConfig } from './dev-console-config.ts'
 import type {
-  DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleDomainStatus, DevConsoleGitRequest, DevConsoleGitValue,
-  DevConsoleSaveAgentsRequest, DevConsoleSaveAgentsValue,
+  DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleAutoConfigRequest, DevConsoleAutoConfigValue,
+  DevConsoleDomainStatus, DevConsoleGitRequest, DevConsoleGitValue, DevConsoleSaveAgentsRequest, DevConsoleSaveAgentsValue,
   DevConsoleOpenDomainRequest, DevConsoleOpenDomainValue, DevConsoleSessionSummary, DevConsoleSnapshot,
 } from './dev-console.ts'
 import { sessionTaskOutcomeProjection } from './outcome.ts'
@@ -416,6 +417,37 @@ export class SessionTasksController extends TypertRemoteService {
       candidates.push(join(workspace.path, '.dsh', 'dev-console.yaml'))
     }
     return candidates.find(candidate => existsSync(candidate)) ?? resolve(process.cwd(), this.devConsoleConfigFile)
+  }
+
+  @Remote('devConsoleAutoConfig')
+  async devConsoleAutoConfig(request: DevConsoleAutoConfigRequest): Promise<DevConsoleAutoConfigValue> {
+    const registry = this.ctx.get('workspaceRegistry')
+    if (registry === undefined) throw new RemoteError('gateway/bad-request', 'workspace registry is unavailable', {})
+    const target = join(process.env['DSH_HOME'] ?? join(homedir(), '.dsh'), 'dev-console.yaml')
+    if (!request.overwrite && existsSync(target)) throw new RemoteError('dev-console/conflict', `config already exists: ${target}`, {})
+    const projects = []
+    for (const workspace of registry.list()) {
+      const branch = await promisify(execFile)('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: workspace.path, encoding: 'utf8' }).then(result => result.stdout.trim()).catch(() => undefined)
+      if (branch === undefined) continue
+      const slug = workspace.path.split('/').filter(Boolean).pop() ?? workspace.path
+      projects.push({
+        id: slug,
+        name: workspace.title,
+        root: workspace.path,
+        domains: [{
+          id: `${slug}-main`,
+          name: `${workspace.title} · 当前工作树`,
+          worktree: workspace.path,
+          branch,
+          base: 'main',
+          agent: { adapter: 'dsh-session' as const },
+          hooks: { expectedBranch: branch, expectedToplevel: workspace.path },
+        }],
+      })
+    }
+    if (projects.length === 0) throw new RemoteError('gateway/bad-request', 'no connected workspace is a git repository', {})
+    await writeFile(target, dump({ version: 1, projects }))
+    return { path: target, projects: projects.length }
   }
 
   @Remote('devConsoleGit')

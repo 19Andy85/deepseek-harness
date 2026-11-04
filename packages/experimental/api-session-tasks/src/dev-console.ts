@@ -58,6 +58,20 @@ export interface DevConsoleSaveAgentsValue {
   readonly hash: string
 }
 
+/** Auto-generate a registry from the connected workspaces. */
+export interface DevConsoleAutoConfigRequest {
+  /** Replace an existing registry file. */
+  readonly overwrite?: boolean
+}
+
+/** Result of auto-generating a registry. */
+export interface DevConsoleAutoConfigValue {
+  /** Written config file path. */
+  readonly path: string
+  /** Number of projects written. */
+  readonly projects: number
+}
+
 /** One configured domain plus its live inspection. */
 export interface DevConsoleDomainStatus {
   /** Owning project. */

@@ -91,6 +91,8 @@ export interface ProjectConsoleInjected {
   readonly devConsoleAgents: (domainId: string) => Promise<{ readonly path: string; readonly text: string; readonly hash: string }>
   /** Save the domain AGENTS.md. */
   readonly devConsoleSaveAgents: (domainId: string, text: string, baseHash: string) => Promise<{ readonly hash: string }>
+  /** Generate a registry from connected workspaces. */
+  readonly devConsoleAutoConfig: () => Promise<{ readonly path: string; readonly projects: number }>
 }
 
 /** Framework props of the workspace console page. */
@@ -135,7 +137,7 @@ function statusText(
 export function ProjectConsolePage({
   t, store, workspaceOptions, workspaceSessions, selectedWorkspaceId, selectWorkspace, refresh, openSession, focusSession,
   closeFocus, resetShift, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus, openInSidebar,
-  devConsoleSnapshot, devConsoleOpenDomain, devConsoleGit, devConsoleAgents, devConsoleSaveAgents,
+  devConsoleSnapshot, devConsoleOpenDomain, devConsoleGit, devConsoleAgents, devConsoleSaveAgents, devConsoleAutoConfig,
   compact = false, surface = 'main', railSessionId, onFloat, onDock,
 }: ProjectConsolePageProps) {
   const [now, setNow] = useState(() => Date.now())
@@ -1314,6 +1316,7 @@ export function ProjectConsolePage({
             git={devConsoleGit}
             agents={devConsoleAgents}
             saveAgents={devConsoleSaveAgents}
+            autoConfig={devConsoleAutoConfig}
             openSession={openSession}
             onClose={() => { setDomainsOpen(false) }}
           />

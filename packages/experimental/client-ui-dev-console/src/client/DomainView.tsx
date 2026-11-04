@@ -90,6 +90,8 @@ export interface DomainViewInjected {
   readonly agents: (domainId: string) => Promise<{ readonly path: string; readonly text: string; readonly hash: string }>
   /** Save the domain AGENTS.md with hash protection. */
   readonly saveAgents: (domainId: string, text: string, baseHash: string) => Promise<{ readonly hash: string }>
+  /** Generate a registry from connected workspaces. */
+  readonly autoConfig: () => Promise<{ readonly path: string; readonly projects: number }>
   /** Open a created Session's conversation. */
   readonly openSession: (sessionId: string) => void
 }
@@ -105,7 +107,7 @@ export interface DomainViewProps extends DomainViewInjected {
  * @param props - snapshot/open actions, dictionary, and close handler.
  * @returns the domain panel.
  */
-export function DomainView({ snapshot, openDomain, git, agents, saveAgents, openSession, t, onClose }: DomainViewProps) {
+export function DomainView({ snapshot, openDomain, git, agents, saveAgents, autoConfig, openSession, t, onClose }: DomainViewProps) {
   const [data, setData] = useState<DomainSnapshotView | undefined>(undefined)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | undefined>(undefined)
@@ -146,6 +148,15 @@ export function DomainView({ snapshot, openDomain, git, agents, saveAgents, open
             <p className={css.hint}>{t('domainsHint')}</p>
           </div>
           <div className={css.actions}>
+            {data?.domains.length === 0 || data?.problems.some(problem => problem.code === 'missing-config') === true
+              ? (
+                <button type="button" className={css.button} onClick={() => {
+                  void autoConfig().then(() => { void load() }).catch((reason: unknown) => {
+                    setError(reason instanceof Error ? reason.message : String(reason))
+                  })
+                }}>{t('autoConfig')}</button>
+              )
+              : null}
             <button type="button" className={css.button} onClick={() => { void load() }}>{t('refresh')}</button>
             <button type="button" className={css.button} onClick={onClose}>{t('close')}</button>
           </div>
