@@ -77,6 +77,7 @@ export function DomainView({ snapshot, openDomain, git, agents, saveAgents, open
   const [opened, setOpened] = useState<DomainOpenView | undefined>(undefined)
   const [detail, setDetail] = useState<{ title: string; text: string; domainId?: string; hash?: string } | undefined>(undefined)
   const [draft, setDraft] = useState('')
+  const [pendingEphemeral, setPendingEphemeral] = useState<string | undefined>(undefined)
   const load = async (): Promise<void> => {
     setLoading(true)
     try { setData(await snapshot()); setError(undefined) } catch (reason) {
@@ -84,6 +85,15 @@ export function DomainView({ snapshot, openDomain, git, agents, saveAgents, open
     } finally { setLoading(false) }
   }
   useEffect(() => { void load() }, [])
+  const open = (domainId: string): void => {
+    const ephemeral = data?.warnings.some(warning => warning.code === 'ephemeral-path') === true
+    if (ephemeral && pendingEphemeral !== domainId) { setPendingEphemeral(domainId); return }
+    setPendingEphemeral(undefined)
+    setOpening(domainId)
+    void openDomain(domainId).then(setOpened).catch((reason: unknown) => {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    }).finally(() => { setOpening(undefined) })
+  }
   return (
     <div className={css.scrim} role="dialog" aria-label={t('domainsTitle')}>
       <section className={css.panel}>
@@ -138,15 +148,11 @@ export function DomainView({ snapshot, openDomain, git, agents, saveAgents, open
                   type="button"
                   className={css.button}
                   disabled={inspection.problems.length > 0 || opening !== undefined}
-                  onClick={() => {
-                    setOpening(domain.id)
-                    void openDomain(domain.id).then(setOpened).catch((reason: unknown) => {
-                      setError(reason instanceof Error ? reason.message : String(reason))
-                    }).finally(() => { setOpening(undefined) })
-                  }}
+                  onClick={() => { open(domain.id) }}
                 >
-                  {t('openDomain')}
+                  {pendingEphemeral === domain.id ? t('confirmEphemeralOpen') : t('openDomain')}
                 </button>
+                {pendingEphemeral === domain.id ? <span className={css.warning}>{t('ephemeralConfirmHint')}</span> : null}
               </div>
             </article>
           ))}
