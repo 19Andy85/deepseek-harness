@@ -9963,6 +9963,9 @@ importers:
       '@deepseek-ai/dsh-experimental-tool-session-tasks':
         specifier: workspace:*
         version: link:../tool-session-tasks
+      js-yaml:
+        specifier: ^4.3.2
+        version: 4.3.2
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
@@ -9970,9 +9973,9 @@ importers:
       '@deepseek-ai/cordis-plugin-include':
         specifier: workspace:~
         version: link:../../../vendor/include
-      js-yaml:
-        specifier: ^4.3.2
-        version: 4.3.2
+      '@types/js-yaml':
+        specifier: ^4.0.9
+        version: 4.0.9
 
   packages/experimental/forge:
     dependencies:

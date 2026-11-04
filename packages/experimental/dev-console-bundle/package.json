@@ -41,11 +41,12 @@
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:~",
     "@deepseek-ai/cordis-plugin-include": "workspace:~",
-    "js-yaml": "^4.3.2"
+    "@types/js-yaml": "^4.0.9"
   },
   "dependencies": {
     "@deepseek-ai/dsh-experimental-api-session-tasks": "workspace:*",
     "@deepseek-ai/dsh-experimental-client-ui-dev-console": "workspace:*",
-    "@deepseek-ai/dsh-experimental-tool-session-tasks": "workspace:*"
+    "@deepseek-ai/dsh-experimental-tool-session-tasks": "workspace:*",
+    "js-yaml": "^4.3.2"
   }
 }
