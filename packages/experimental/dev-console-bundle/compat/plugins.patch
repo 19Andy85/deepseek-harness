@@ -1,6 +1,6 @@
 
 --- a/packages/experimental/tool-session-tasks/package.json	2026-10-29 04:02:07
-+++ b/packages/experimental/tool-session-tasks/package.json	2026-11-04 00:03:32
++++ b/packages/experimental/tool-session-tasks/package.json	2026-11-04 20:23:46
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-tool-session-tasks",
@@ -20,20 +20,8 @@
      "@deepseek-ai/dsh-experimental-api-session-tasks": "workspace:*"
    }
 
---- a/packages/experimental/tool-session-tasks/src/index.ts	2026-10-29 03:23:10
-+++ b/packages/experimental/tool-session-tasks/src/index.ts	2026-11-04 05:36:56
-@@ -50,7 +50,7 @@
-   const scope = resolveVisibleScope(config)
-   ctx.systemPrompt.section({
-     name: 'tool:session-tasks',
--    order: ctx.systemPrompt.getSectionOrder('TOOL_SESSION_TASKS'),
-+    order: ctx.systemPrompt.getSectionOrder('TOOL_SESSION_TASKS') ?? 0,
-     text: PROMPT_TEXT,
-   })
-
-
---- a/packages/experimental/api-session-tasks/package.json	2026-11-03 23:56:22
-+++ b/packages/experimental/api-session-tasks/package.json	2026-11-04 00:03:32
+--- a/packages/experimental/api-session-tasks/package.json	2026-11-04 20:12:50
++++ b/packages/experimental/api-session-tasks/package.json	2026-11-04 20:23:46
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-api-session-tasks",
@@ -44,9 +32,9 @@
      "access": "public"
    },
 
---- a/packages/experimental/api-session-tasks/src/index.ts	2026-11-03 23:57:05
-+++ b/packages/experimental/api-session-tasks/src/index.ts	2026-11-04 00:03:32
-@@ -102,8 +102,8 @@
+--- a/packages/experimental/api-session-tasks/src/index.ts	2026-11-04 20:23:32
++++ b/packages/experimental/api-session-tasks/src/index.ts	2026-11-04 20:25:13
+@@ -110,8 +110,8 @@
      })
      if (this.ctx.get('storageDomain') !== undefined) await seenBinding
      const binding = this.ctx.inject(['sessionProjections'], async (projectionCtx) => {
@@ -59,7 +47,7 @@
    }
 
 --- a/packages/experimental/api-session-tasks/src/outcome.ts	2026-10-31 02:14:10
-+++ b/packages/experimental/api-session-tasks/src/outcome.ts	2026-11-04 00:03:32
++++ b/packages/experimental/api-session-tasks/src/outcome.ts	2026-11-04 20:25:13
 @@ -8,7 +8,6 @@
  import type { SessionEvent } from '@deepseek-ai/dsh-session'
  import type {} from '@deepseek-ai/dsh-workspace-changes'
@@ -93,7 +81,7 @@
  } satisfies ProjectionDefinition<'sessionTaskOutcome', SessionTaskOutcome>
 
 --- a/packages/experimental/client-ui-dev-console/package.json	2026-11-04 17:38:05
-+++ b/packages/experimental/client-ui-dev-console/package.json	2026-11-04 19:50:02
++++ b/packages/experimental/client-ui-dev-console/package.json	2026-11-04 20:23:46
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-client-ui-dev-console",
@@ -105,7 +93,7 @@
    },
 
 --- a/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-10-29 04:06:48
-+++ b/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-11-04 19:50:02
++++ b/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-11-04 20:23:46
 @@ -1,6 +1,5 @@
 -/** Workspace row menu entry that opens the project console on that Workspace. */
 +/** Session row menu entry that opens the project console for the row's workspace. */
@@ -151,8 +139,8 @@
      >
        {t('openConsole')}
 
---- a/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-04 15:03:40
-+++ b/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-04 19:50:02
+--- a/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-04 20:18:39
++++ b/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-04 20:23:46
 @@ -29,7 +29,7 @@
  import { RestartAppButton } from './RestartAppButton.tsx'
  import { ProjectConsoleStore } from './ProjectConsoleStore.ts'
@@ -171,7 +159,7 @@
    const unmount = await ctx.remote.$mount(sessionTasksRemote)
    try {
      await ctx.inject(['remote.sessionTasks'], (inner) => { registerUi(inner) })
-@@ -244,18 +244,20 @@
+@@ -254,18 +254,20 @@
      id: 'project-console-restart',
      locale: NS,
    }, RestartAppButton)), 'project-console: restart app')
@@ -199,46 +187,8 @@
      name: 'sidebar.panellist',
      id: PANEL_ID,
 
---- a/packages/experimental/dev-console-bundle/README.i18n.yaml	2026-11-04 17:42:04
-+++ b/packages/experimental/dev-console-bundle/README.i18n.yaml	2026-11-04 18:29:15
-@@ -6,17 +6,17 @@
-   en: 9bd9941607b54c3a
-   zh: 2ebe70dc8074cb22
- /deepseek-ai-dsh-experimental-dev-console-bundle:
--  en: e412a554a5fe1923
--  zh: 87ca9bd971fecb86
-+  en: beaacc5e81440ef4
-+  zh: a73673c26f3d0797
- /deepseek-ai-dsh-experimental-dev-console-bundle/summary:
--  en: 23c5db106ea26417
--  zh: b3cb10a99bdec777
-+  en: 41c65a45033e92bc
-+  zh: e9edc9f68612b29d
- /deepseek-ai-dsh-experimental-dev-console-bundle/table-of-contents:
-   en: 4c42347e02106f3d
-   zh: 18bb1e6333ed61cc
- /deepseek-ai-dsh-experimental-dev-console-bundle/use-this-bundle:
--  en: 0a835b857b164849
--  zh: 834e9a6ba30ba14c
-+  en: ed79d54c111d319e
-+  zh: fc851941b5ebd20e
- /deepseek-ai-dsh-experimental-dev-console-bundle/use-this-bundle/what-the-bundle-provides:
-   en: ac82e3dccd24ea1e
-   zh: c8e2681b1461420a
-@@ -42,8 +42,8 @@
-   en: 01909e6b6cbe2ee0
-   zh: ed9fd63d253faef8
- /deepseek-ai-dsh-experimental-dev-console-bundle/further-exploration:
--  en: 7168f2ab0f70dc50
--  zh: fc19f8f3abd9f88e
-+  en: 49e0a559ada4be44
-+  zh: a2102d0e9fb4107c
- /deepseek-ai-dsh-experimental-dev-console-bundle/model-experience:
-   en: 40d0dfb38321b150
-   zh: a1fc23172a44dfae
-
---- a/packages/experimental/dev-console-bundle/package.json	2026-11-04 17:38:05
-+++ b/packages/experimental/dev-console-bundle/package.json	2026-11-04 18:29:15
+--- a/packages/experimental/dev-console-bundle/package.json	2026-11-04 20:04:46
++++ b/packages/experimental/dev-console-bundle/package.json	2026-11-04 20:23:46
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-dev-console-bundle",
