@@ -27,7 +27,7 @@ import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
-import { readFile, realpath, writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
 import { dump, load } from 'js-yaml'
 import { loadDevConsoleConfig, validateConfig } from './dev-console-config.ts'
@@ -37,7 +37,7 @@ import type {
   DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleAutoConfigRequest, DevConsoleAutoConfigValue,
   DevConsoleConfigValue, DevConsoleSaveConfigRequest, DevConsoleSaveConfigValue,
   DevConsoleDomainStatus, DevConsoleGitRequest, DevConsoleGitValue, DevConsoleSaveAgentsRequest, DevConsoleSaveAgentsValue,
-  DevConsoleOpenDomainRequest, DevConsoleOpenDomainValue, DevConsoleSessionSummary, DevConsoleSnapshot,
+  DevConsoleOpenDomainRequest, DevConsoleOpenDomainValue, DevConsoleSnapshot,
 } from './dev-console.ts'
 import { sessionTaskOutcomeProjection } from './outcome.ts'
 import { buildChildRelations, type SessionRelationChild } from './relations.ts'
@@ -399,7 +399,7 @@ export class SessionTasksController extends TypertRemoteService {
     for (const project of result.config.projects) {
       for (const domain of project.domains) {
         const inspection = await inspectDomain(domain)
-        domains.push({ projectId: project.id, domain, inspection, sessions: await this.devConsoleSessions(inspection) })
+        domains.push({ projectId: project.id, domain, inspection, sessions: [] })
       }
     }
     return { config: result.config, problems: result.problems, warnings: result.warnings, domains }
@@ -532,20 +532,6 @@ export class SessionTasksController extends TypertRemoteService {
     return domain
   }
 
-  private async devConsoleSessions(inspection: import('./dev-console-domain.ts').DomainInspection): Promise<readonly DevConsoleSessionSummary[]> {
-    const query = this.ctx.get('sessionQuery')
-    if (query === undefined || inspection.canonicalWorktree === undefined) return []
-    const records = await query.listSessions()
-    const sessions: DevConsoleSessionSummary[] = []
-    for (const record of records) {
-      if (record.header.cwd === undefined) continue
-      let canonical: string
-      try { canonical = await realpath(record.header.cwd) } catch { continue }
-      if (canonical !== inspection.canonicalWorktree) continue
-      sessions.push({ sessionId: record.header.id, cwd: canonical, live: record.live })
-    }
-    return sessions
-  }
 
   /**
    * Open a configured domain in a Session whose cwd is its worktree.

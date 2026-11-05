@@ -1,7 +1,8 @@
-/** Dev Console domain registry panel: config, git/cwd checks, and open-domain. */
+/** Dev Console domain panel: registry on the left, selected domain detail on the right. */
 import { useEffect, useState } from 'react'
 import { ConfigEditor } from './ConfigEditor.tsx'
 import type { ProjectConsoleKey } from './locales.ts'
+import css from './DomainView.module.css'
 
 const BINDINGS_KEY = 'dsh.dev-console.domain-sessions.v1'
 const AUDIT_KEY = 'dsh.dev-console.agents-audit.v1'
@@ -38,7 +39,6 @@ function lineDiff(original: string, next: string): string {
   }
   return out.length === 0 ? 'no changes' : out.join('\n')
 }
-import css from './DomainView.module.css'
 
 /** One configured domain as the panel renders it. */
 export interface DomainConfigView {
@@ -63,7 +63,7 @@ export interface DomainStatusView {
   readonly projectId: string
   readonly domain: DomainConfigView
   readonly inspection: DomainInspectionView
-  readonly sessions: readonly { readonly sessionId: string; readonly cwd: string; readonly live: boolean }[]
+  readonly sessions?: readonly { readonly sessionId: string; readonly cwd: string; readonly live: boolean }[]
 }
 
 /** Snapshot of the domain registry. */
@@ -81,23 +81,14 @@ export interface DomainOpenView {
 
 /** Injected Dev Console domain actions. */
 export interface DomainViewInjected {
-  /** Read config and inspect every domain. */
   readonly snapshot: () => Promise<DomainSnapshotView>
-  /** Open one domain in a cwd session. */
   readonly openDomain: (domainId: string) => Promise<DomainOpenView>
-  /** Read git output. */
   readonly git: (domainId: string, action: 'status' | 'log' | 'diff') => Promise<{ readonly text: string }>
-  /** Read the domain AGENTS.md. */
   readonly agents: (domainId: string) => Promise<{ readonly path: string; readonly text: string; readonly hash: string }>
-  /** Save the domain AGENTS.md with hash protection. */
   readonly saveAgents: (domainId: string, text: string, baseHash: string) => Promise<{ readonly hash: string }>
-  /** Generate a registry from connected workspaces. */
   readonly autoConfig: (overwrite: boolean) => Promise<{ readonly path: string; readonly projects: number }>
-  /** Read the raw config file. */
   readonly config: () => Promise<{ readonly path: string; readonly yaml: string }>
-  /** Save raw config YAML. */
   readonly saveConfig: (yaml: string) => Promise<{ readonly path: string; readonly warnings: readonly { readonly message: string }[] }>
-  /** Open a created Session's conversation. */
   readonly openSession: (sessionId: string) => void
 }
 
@@ -107,9 +98,14 @@ export interface DomainViewProps extends DomainViewInjected {
   readonly onClose: () => void
 }
 
+type Detail =
+  | { readonly kind: 'git'; readonly title: string; readonly text: string }
+  | { readonly kind: 'agents'; readonly title: string; readonly text: string; readonly domainId: string; readonly hash: string }
+  | undefined
+
 /**
- * Render the configured projects/domains and their live checks.
- * @param props - snapshot/open actions, dictionary, and close handler.
+ * Render the domain registry and the selected domain's detail.
+ * @param props - Remote actions, dictionary, and close handler.
  * @returns the domain panel.
  */
 export function DomainView({
@@ -118,18 +114,25 @@ export function DomainView({
   const [data, setData] = useState<DomainSnapshotView | undefined>(undefined)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | undefined>(undefined)
-  const [opening, setOpening] = useState<string | undefined>(undefined)
-  const [opened, setOpened] = useState<DomainOpenView | undefined>(undefined)
-  const [detail, setDetail] = useState<{ title: string; text: string; domainId?: string; hash?: string } | undefined>(undefined)
+  const [selected, setSelected] = useState<string | undefined>(undefined)
+  const [detail, setDetail] = useState<Detail>(undefined)
   const [draft, setDraft] = useState('')
   const [agentsOriginal, setAgentsOriginal] = useState('')
   const [audit, setAudit] = useState<readonly AgentsAudit[]>(() => readAudit())
   const [bindings, setBindings] = useState<Record<string, string[]>>(() => readBindings())
+  const [opening, setOpening] = useState<string | undefined>(undefined)
   const [pendingEphemeral, setPendingEphemeral] = useState<string | undefined>(undefined)
   const [configOpen, setConfigOpen] = useState(false)
   const load = async (): Promise<void> => {
     setLoading(true)
-    try { setData(await snapshot()); setError(undefined) } catch (reason) {
+    try {
+      const next = await snapshot()
+      setData(next)
+      setError(undefined)
+      setSelected(current => current !== undefined && next.domains.some(row => row.domain.id === current)
+        ? current
+        : next.domains[0]?.domain.id)
+    } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason))
     } finally { setLoading(false) }
   }
@@ -140,13 +143,16 @@ export function DomainView({
     setPendingEphemeral(undefined)
     setOpening(domainId)
     void openDomain(domainId).then((value) => {
-      setOpened(value)
       writeBinding(domainId, value.sessionId)
       setBindings(readBindings())
     }).catch((reason: unknown) => {
       setError(reason instanceof Error ? reason.message : String(reason))
     }).finally(() => { setOpening(undefined) })
   }
+  const projects = new Map<string, DomainStatusView[]>()
+  for (const row of data?.domains ?? []) projects.set(row.projectId, [...(projects.get(row.projectId) ?? []), row])
+  const current = data?.domains.find(row => row.domain.id === selected)
+  const bound = selected === undefined ? [] : bindings[selected] ?? []
   return (
     <div className={css.scrim} role="dialog" aria-label={t('domainsTitle')}>
       <section className={css.panel}>
@@ -158,11 +164,9 @@ export function DomainView({
           <div className={css.actions}>
             {data === undefined ? null : (
               <button type="button" className={css.button} onClick={() => {
-                const overwrite = (data.domains.length > 0)
+                const overwrite = data.domains.length > 0
                 if (overwrite && !window.confirm(t('regenerateConfirm'))) return
-                void autoConfig(overwrite).then(() => {
-                  void load()
-                }).catch((reason: unknown) => {
+                void autoConfig(overwrite).then(() => { void load() }).catch((reason: unknown) => {
                   setError(reason instanceof Error ? reason.message : String(reason))
                 })
               }}>{data.domains.length === 0 ? t('autoConfig') : t('regenerateConfig')}</button>
@@ -172,113 +176,142 @@ export function DomainView({
             <button type="button" className={css.button} onClick={onClose}>{t('close')}</button>
           </div>
         </header>
-        {loading ? <p className={css.muted}>{t('loading')}</p> : null}
         {error === undefined ? null : <p className={css.error}>{error}</p>}
-        {data?.problems.map(problem => <p key={`${problem.code}:${problem.path}`} className={css.error}>{problem.path} · {problem.message}</p>)}
-        {data?.warnings.map(warning => <p key={`${warning.code}:${warning.path}`} className={css.warning}>{warning.path} · {warning.message}</p>)}
-        {opened === undefined ? null : (
-          <p className={css.opened}>
-            {t('domainOpened')} · {opened.cwd}
-            <button type="button" className={css.linkButton} onClick={() => { openSession(opened.sessionId) }}>{t('openSession')}</button>
-          </p>
-        )}
-        <div className={css.list}>
-          {data?.domains.length === 0 ? <p className={css.muted}>{t('noDomains')}</p> : null}
-          {data?.domains.map(({ projectId, domain, inspection, sessions }) => (
-            <article key={`${projectId}:${domain.id}`} className={inspection.problems.length === 0 ? css.card : `${css.card} ${css.bad}`}>
-              <div className={css.cardHead}>
-                <strong>{domain.name}</strong>
-                <span className={css.muted}>{projectId} / {domain.id}</span>
-                <span className={inspection.problems.length === 0 ? css.ok : css.fail}>{inspection.problems.length === 0 ? t('domainOk') : t('domainBlocked')}</span>
-              </div>
-              <div className={css.row}><span>{t('worktree')}</span><code>{inspection.canonicalWorktree ?? domain.worktree}</code></div>
-              <div className={css.row}><span>{t('branch')}</span><code>{inspection.branch ?? '—'} / {domain.hooks.expectedBranch}</code></div>
-              <div className={css.row}><span>{t('toplevel')}</span><code>{inspection.toplevel ?? '—'}</code></div>
-              {inspection.problems.map(problem => <p key={problem} className={css.fail}>{problem}</p>)}
-              <div className={css.row}><span>{t('sessions')}</span><code>{(bindings[domain.id]?.length ?? 0) === 0 ? (sessions.length === 0 ? '—' : sessions.map(session => session.sessionId).join(', ')) : (bindings[domain.id] ?? []).join(', ')}</code></div>
-              <div className={css.actions}>
-                <button type="button" className={css.button} onClick={() => { void git(domain.id, 'status').then((value) => { setDetail({ title: 'git status', text: value.text }) }).catch((reason: unknown) => { setError(String(reason)) }) }}>Git status</button>
-                <button type="button" className={css.button} onClick={() => { void git(domain.id, 'log').then((value) => { setDetail({ title: 'git log', text: value.text }) }).catch((reason: unknown) => { setError(String(reason)) }) }}>Git log</button>
-                <button type="button" className={css.button} onClick={() => { void git(domain.id, 'diff').then((value) => { setDetail({ title: 'git diff', text: value.text }) }).catch((reason: unknown) => { setError(String(reason)) }) }}>Git diff</button>
-                <button
-                  type="button"
-                  className={css.button}
-                  onClick={() => {
-                    void agents(domain.id).then((value) => {
-                      setDetail({ title: value.path, text: value.text, domainId: domain.id, hash: value.hash })
-                      setDraft(value.text)
-                      setAgentsOriginal(value.text)
-                    }).catch((reason: unknown) => { setError(String(reason)) })
-                  }}
-                >AGENTS</button>
-                <button
-                  type="button"
-                  className={css.button}
-                  disabled={inspection.problems.length > 0 || opening !== undefined}
-                  onClick={() => {
-                    const bound = bindings[domain.id]?.[0]
-                    if (bound === undefined) { open(domain.id); return }
-                    openSession(bound)
-                  }}
-                >
-                  {pendingEphemeral === domain.id
-                    ? t('confirmEphemeralOpen')
-                    : bindings[domain.id]?.[0] === undefined ? t('openDomain') : t('openBoundSession')}
-                </button>
-                {pendingEphemeral === domain.id ? <span className={css.warning}>{t('ephemeralConfirmHint')}</span> : null}
-              </div>
-            </article>
-          ))}
-        </div>
-        {detail === undefined ? null : (
-          <div className={css.detailBox}>
-            <div className={css.detailHead}>{detail.title}
-              {detail.domainId === undefined ? null : (
-                <button
-                  type="button"
-                  className={css.button}
-                  onClick={() => {
-                    const domainId = detail.domainId
-                    const hash = detail.hash
-                    if (domainId === undefined || hash === undefined) return
-                    void saveAgents(domainId, draft, hash).then((value) => {
-                      appendAudit({ at: Date.now(), path: detail.title, baseHash: hash, newHash: value.hash })
-                      setAudit(readAudit())
-                      setAgentsOriginal(draft)
-                      setDetail({ ...detail, text: draft, hash: value.hash })
-                    }).catch((reason: unknown) => { setError(String(reason)) })
-                  }}
-                >{t('saveAgents')}</button>
-              )}
-            </div>
-            {detail.domainId === undefined
-              ? <pre className={css.detail}>{detail.text}</pre>
+        <div className={css.body}>
+          <aside className={css.list} aria-label={t('domainsTitle')}>
+            {loading ? <p className={css.muted}>{t('loading')}</p> : null}
+            {[...projects.entries()].map(([projectId, rows]) => (
+              <section key={projectId} className={css.project}>
+                <h3 className={css.projectName}>{projectId}</h3>
+                {rows.map(row => (
+                  <button
+                    key={row.domain.id}
+                    type="button"
+                    className={selected === row.domain.id ? `${css.domainRow} ${css.domainRowActive}` : css.domainRow}
+                    onClick={() => { setSelected(row.domain.id); setDetail(undefined) }}
+                  >
+                    <span className={css.domainName}>{row.domain.name}</span>
+                    <span className={row.inspection.problems.length === 0 ? css.ok : css.fail}>
+                      {row.inspection.problems.length === 0 ? t('domainOk') : t('domainBlocked')}
+                    </span>
+                  </button>
+                ))}
+              </section>
+            ))}
+            {!loading && data?.domains.length === 0
+              ? <p className={css.muted}>{t('noDomains')}</p>
+              : null}
+          </aside>
+          <main className={css.detail}>
+            {current === undefined
+              ? <p className={css.muted}>{t('noDomains')}</p>
               : (
                 <>
-                  <textarea className={css.agentsEditor} value={draft} onChange={(event) => { setDraft(event.currentTarget.value) }} />
-                  <pre className={css.detail}>{lineDiff(agentsOriginal, draft)}</pre>
                   <div className={css.detailHead}>
-                    <span>{t('agentsAudit')}</span>
-                    {audit.length === 0
-                      ? <span className={css.muted}>{t('noAudit')}</span>
-                      : audit.slice(0, 3).map(entry => <span key={entry.at}>{new Date(entry.at).toLocaleTimeString()} · {entry.path.split('/').slice(-2).join('/')}</span>)}
+                    <div>
+                      <h3 className={css.detailTitle}>{current.domain.name}</h3>
+                      <p className={css.hint}>{current.projectId} / {current.domain.id}</p>
+                    </div>
+                    <span className={current.inspection.problems.length === 0 ? css.ok : css.fail}>
+                      {current.inspection.problems.length === 0 ? t('domainOk') : t('domainBlocked')}
+                    </span>
                   </div>
+                  <dl className={css.facts}>
+                    <div><dt>{t('worktree')}</dt><dd>{current.inspection.canonicalWorktree ?? current.domain.worktree}</dd></div>
+                    <div><dt>{t('branch')}</dt><dd>{current.inspection.branch ?? '—'} / {current.domain.hooks.expectedBranch}</dd></div>
+                    <div><dt>{t('toplevel')}</dt><dd>{current.inspection.toplevel ?? '—'}</dd></div>
+                  </dl>
+                  {current.inspection.problems.map(problem => <p key={problem} className={css.fail}>{problem}</p>)}
+                  <div className={css.actions}>
+                    <button type="button" className={css.button} onClick={() => {
+                      void git(current.domain.id, 'status').then((value) => { setDetail({ kind: 'git', title: 'git status', text: value.text }) }).catch((reason: unknown) => { setError(String(reason)) })
+                    }}>Git status</button>
+                    <button type="button" className={css.button} onClick={() => {
+                      void git(current.domain.id, 'log').then((value) => { setDetail({ kind: 'git', title: 'git log', text: value.text }) }).catch((reason: unknown) => { setError(String(reason)) })
+                    }}>Git log</button>
+                    <button type="button" className={css.button} onClick={() => {
+                      void git(current.domain.id, 'diff').then((value) => { setDetail({ kind: 'git', title: 'git diff', text: value.text }) }).catch((reason: unknown) => { setError(String(reason)) })
+                    }}>Git diff</button>
+                    <button type="button" className={css.button} onClick={() => {
+                      void agents(current.domain.id).then((value) => {
+                        setDetail({ kind: 'agents', title: value.path, text: value.text, domainId: current.domain.id, hash: value.hash })
+                        setDraft(value.text)
+                        setAgentsOriginal(value.text)
+                      }).catch((reason: unknown) => { setError(String(reason)) })
+                    }}>AGENTS</button>
+                    <button
+                      type="button"
+                      className={css.button}
+                      disabled={current.inspection.problems.length > 0 || opening !== undefined}
+                      onClick={() => {
+                        const sessionId = bound[0]
+                        if (sessionId === undefined) { open(current.domain.id); return }
+                        openSession(sessionId)
+                      }}
+                    >{pendingEphemeral === current.domain.id ? t('confirmEphemeralOpen') : bound.length === 0 ? t('openDomain') : t('openBoundSession')}</button>
+                  </div>
+                  <section className={css.sessions}>
+                    <h4 className={css.sectionTitle}>{t('sessions')}</h4>
+                    {bound.length === 0
+                      ? <p className={css.muted}>{t('noBoundSessions')}</p>
+                      : bound.map(sessionId => (
+                        <button key={sessionId} type="button" className={css.sessionChip} onClick={() => { openSession(sessionId) }}>
+                          {sessionId}
+                        </button>
+                      ))}
+                  </section>
+                  {detail === undefined ? null : (
+                    <section className={css.result}>
+                      <div className={css.detailHead}>
+                        <h4 className={css.sectionTitle}>{detail.title}</h4>
+                        {detail.kind === 'agents'
+                          ? (
+                            <button type="button" className={css.button} onClick={() => {
+                              const target = detail
+                              void saveAgents(target.domainId, draft, target.hash).then((value) => {
+                                appendAudit({ at: Date.now(), path: target.title, baseHash: target.hash, newHash: value.hash })
+                                setAudit(readAudit())
+                                setAgentsOriginal(draft)
+                                setDetail({ ...target, text: draft, hash: value.hash })
+                              }).catch((reason: unknown) => { setError(String(reason)) })
+                            }}>{t('saveAgents')}</button>
+                          )
+                          : null}
+                      </div>
+                      {detail.kind === 'git'
+                        ? <pre className={css.pre}>{detail.text}</pre>
+                        : (
+                          <>
+                            <textarea className={css.editor} value={draft} onChange={(event) => { setDraft(event.currentTarget.value) }} />
+                            <pre className={css.pre}>{lineDiff(agentsOriginal, draft)}</pre>
+                            <div className={css.audit}>
+                              <span>{t('agentsAudit')}</span>
+                              {audit.length === 0
+                                ? <span className={css.muted}>{t('noAudit')}</span>
+                                : audit.slice(0, 3).map(entry => (
+                                  <span key={entry.at}>{new Date(entry.at).toLocaleTimeString()} · {entry.path.split('/').slice(-2).join('/')}</span>
+                                ))}
+                            </div>
+                          </>
+                        )}
+                    </section>
+                  )}
                 </>
               )}
-          </div>
-        )}
-        {configOpen
-          ? (
-            <ConfigEditor
-              load={config}
-              save={saveConfig}
-              t={t}
-              onClose={() => { setConfigOpen(false) }}
-              onSaved={() => { void load() }}
-            />
-          )
-          : null}
+          </main>
+        </div>
       </section>
+      {configOpen
+        ? (
+          <ConfigEditor
+            load={config}
+            save={saveConfig}
+            t={t}
+            onClose={() => { setConfigOpen(false) }}
+            onSaved={() => { void load() }}
+          />
+        )
+        : null}
     </div>
   )
 }

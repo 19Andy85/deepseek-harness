@@ -1,6 +1,6 @@
 
 --- a/packages/experimental/tool-session-tasks/package.json	2026-10-29 04:02:07
-+++ b/packages/experimental/tool-session-tasks/package.json	2026-11-05 04:39:04
++++ b/packages/experimental/tool-session-tasks/package.json	2026-11-05 17:53:16
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-tool-session-tasks",
@@ -12,7 +12,7 @@
    },
 
 --- a/packages/experimental/api-session-tasks/package.json	2026-11-04 20:12:50
-+++ b/packages/experimental/api-session-tasks/package.json	2026-11-05 04:39:04
++++ b/packages/experimental/api-session-tasks/package.json	2026-11-05 17:53:16
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-api-session-tasks",
@@ -23,8 +23,8 @@
      "access": "public"
    },
 
---- a/packages/experimental/api-session-tasks/src/index.ts	2026-11-05 04:35:56
-+++ b/packages/experimental/api-session-tasks/src/index.ts	2026-11-05 04:39:05
+--- a/packages/experimental/api-session-tasks/src/index.ts	2026-11-05 17:50:15
++++ b/packages/experimental/api-session-tasks/src/index.ts	2026-11-05 17:53:16
 @@ -124,8 +124,8 @@
      })
      if (this.ctx.get('storageDomain') !== undefined) await seenBinding
@@ -38,7 +38,7 @@
    }
 
 --- a/packages/experimental/api-session-tasks/src/outcome.ts	2026-10-31 02:14:10
-+++ b/packages/experimental/api-session-tasks/src/outcome.ts	2026-11-05 04:39:05
++++ b/packages/experimental/api-session-tasks/src/outcome.ts	2026-11-05 17:53:16
 @@ -8,7 +8,6 @@
  import type { SessionEvent } from '@deepseek-ai/dsh-session'
  import type {} from '@deepseek-ai/dsh-workspace-changes'
@@ -72,7 +72,7 @@
  } satisfies ProjectionDefinition<'sessionTaskOutcome', SessionTaskOutcome>
 
 --- a/packages/experimental/client-ui-dev-console/package.json	2026-11-04 17:38:05
-+++ b/packages/experimental/client-ui-dev-console/package.json	2026-11-05 04:39:04
++++ b/packages/experimental/client-ui-dev-console/package.json	2026-11-05 17:55:49
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-client-ui-dev-console",
@@ -83,63 +83,50 @@
      "access": "public"
    },
 
---- a/packages/experimental/client-ui-dev-console/src/client/ConfigEditor.tsx	2026-11-05 04:41:15
-+++ b/packages/experimental/client-ui-dev-console/src/client/ConfigEditor.tsx	2026-11-05 04:36:14
-@@ -55,7 +55,7 @@
-           className={css.editor}
-           spellCheck={false}
-           value={draft}
--          onChange={(event) => { setDraft(event.currentTarget.value); setSaved(false) }}
-+          onChange={event => { setDraft(event.currentTarget.value); setSaved(false) }}
-         />
-         {error === undefined ? null : <p className={css.error}>{error}</p>}
-         {saved ? <p className={css.ok}>{t('configSaved')}</p> : null}
-
---- a/packages/experimental/client-ui-dev-console/src/client/DomainView.tsx	2026-11-05 04:41:23
-+++ b/packages/experimental/client-ui-dev-console/src/client/DomainView.tsx	2026-11-05 04:36:36
-@@ -112,9 +112,7 @@
-  * @param props - snapshot/open actions, dictionary, and close handler.
-  * @returns the domain panel.
-  */
--export function DomainView({
--  snapshot, openDomain, git, agents, saveAgents, autoConfig, config, saveConfig, openSession, t, onClose,
--}: DomainViewProps) {
-+export function DomainView({ snapshot, openDomain, git, agents, saveAgents, autoConfig, config, saveConfig, openSession, t, onClose }: DomainViewProps) {
-   const [data, setData] = useState<DomainSnapshotView | undefined>(undefined)
-   const [loading, setLoading] = useState(true)
-   const [error, setError] = useState<string | undefined>(undefined)
-@@ -267,17 +265,17 @@
-               )}
-           </div>
-         )}
--        {configOpen
--          ? (
--            <ConfigEditor
--              load={config}
--              save={saveConfig}
--              t={t}
--              onClose={() => { setConfigOpen(false) }}
--              onSaved={() => { void load() }}
--            />
--          )
--          : null}
-+      {configOpen
-+        ? (
-+          <ConfigEditor
-+            load={config}
-+            save={saveConfig}
-+            t={t}
-+            onClose={() => { setConfigOpen(false) }}
-+            onSaved={() => { void load() }}
-+          />
-+        )
-+        : null}
-       </section>
-     </div>
-   )
+--- a/packages/experimental/client-ui-dev-console/src/client/DomainView.tsx	2026-11-05 17:56:37
++++ b/packages/experimental/client-ui-dev-console/src/client/DomainView.tsx	2026-11-05 17:55:20
+@@ -199,7 +199,7 @@
+               </section>
+             ))}
+             {!loading && data?.domains.length === 0
+-              ? <p className={css.muted}>{t('noDomains')}</p>
++              ? <p className={css.muted}>{data.problems.some(problem => problem.code === 'missing-config') ? t('noDomains') : t('noDomains')}</p>
+               : null}
+           </aside>
+           <main className={css.detail}>
+@@ -224,16 +224,16 @@
+                   {current.inspection.problems.map(problem => <p key={problem} className={css.fail}>{problem}</p>)}
+                   <div className={css.actions}>
+                     <button type="button" className={css.button} onClick={() => {
+-                      void git(current.domain.id, 'status').then((value) => { setDetail({ kind: 'git', title: 'git status', text: value.text }) }).catch((reason: unknown) => { setError(String(reason)) })
++                      void git(current.domain.id, 'status').then(value => { setDetail({ kind: 'git', title: 'git status', text: value.text }) }).catch((reason: unknown) => { setError(String(reason)) })
+                     }}>Git status</button>
+                     <button type="button" className={css.button} onClick={() => {
+-                      void git(current.domain.id, 'log').then((value) => { setDetail({ kind: 'git', title: 'git log', text: value.text }) }).catch((reason: unknown) => { setError(String(reason)) })
++                      void git(current.domain.id, 'log').then(value => { setDetail({ kind: 'git', title: 'git log', text: value.text }) }).catch((reason: unknown) => { setError(String(reason)) })
+                     }}>Git log</button>
+                     <button type="button" className={css.button} onClick={() => {
+-                      void git(current.domain.id, 'diff').then((value) => { setDetail({ kind: 'git', title: 'git diff', text: value.text }) }).catch((reason: unknown) => { setError(String(reason)) })
++                      void git(current.domain.id, 'diff').then(value => { setDetail({ kind: 'git', title: 'git diff', text: value.text }) }).catch((reason: unknown) => { setError(String(reason)) })
+                     }}>Git diff</button>
+                     <button type="button" className={css.button} onClick={() => {
+-                      void agents(current.domain.id).then((value) => {
++                      void agents(current.domain.id).then(value => {
+                         setDetail({ kind: 'agents', title: value.path, text: value.text, domainId: current.domain.id, hash: value.hash })
+                         setDraft(value.text)
+                         setAgentsOriginal(value.text)
+@@ -282,7 +282,7 @@
+                         ? <pre className={css.pre}>{detail.text}</pre>
+                         : (
+                           <>
+-                            <textarea className={css.editor} value={draft} onChange={(event) => { setDraft(event.currentTarget.value) }} />
++                            <textarea className={css.editor} value={draft} onChange={event => { setDraft(event.currentTarget.value) }} />
+                             <pre className={css.pre}>{lineDiff(agentsOriginal, draft)}</pre>
+                             <div className={css.audit}>
+                               <span>{t('agentsAudit')}</span>
 
 --- a/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-10-29 04:06:48
-+++ b/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-11-05 04:39:04
++++ b/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-11-05 17:55:49
 @@ -1,6 +1,5 @@
 -/** Workspace row menu entry that opens the project console on that Workspace. */
 +/** Session row menu entry that opens the project console for the row's workspace. */
@@ -185,23 +172,8 @@
      >
        {t('openConsole')}
 
---- a/packages/experimental/client-ui-dev-console/src/client/ProjectConsolePage.tsx	2026-11-05 04:41:23
-+++ b/packages/experimental/client-ui-dev-console/src/client/ProjectConsolePage.tsx	2026-11-05 04:36:50
-@@ -96,10 +96,7 @@
-   /** Read the raw Dev Console config. */
-   readonly devConsoleConfig: () => Promise<{ readonly path: string; readonly yaml: string }>
-   /** Save raw Dev Console config. */
--  readonly devConsoleSaveConfig: (yaml: string) => Promise<{
--    readonly path: string
--    readonly warnings: readonly { readonly message: string }[]
--  }>
-+  readonly devConsoleSaveConfig: (yaml: string) => Promise<{ readonly path: string; readonly warnings: readonly { readonly message: string }[] }>
- }
-
- /** Framework props of the workspace console page. */
-
 --- a/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-05 04:36:50
-+++ b/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-05 04:39:05
++++ b/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-05 17:55:49
 @@ -29,7 +29,7 @@
  import { RestartAppButton } from './RestartAppButton.tsx'
  import { ProjectConsoleStore } from './ProjectConsoleStore.ts'
@@ -249,7 +221,7 @@
      id: PANEL_ID,
 
 --- a/packages/experimental/dev-console-bundle/package.json	2026-11-04 20:04:46
-+++ b/packages/experimental/dev-console-bundle/package.json	2026-11-05 04:39:04
++++ b/packages/experimental/dev-console-bundle/package.json	2026-11-05 17:53:16
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-dev-console-bundle",
