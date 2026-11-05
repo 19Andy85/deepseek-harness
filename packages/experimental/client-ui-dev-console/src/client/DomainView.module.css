@@ -32,3 +32,9 @@
 .pre { max-height: 260px; margin: 0; overflow: auto; padding: 10px; border-radius: 8px; background: var(--dsw-alias-bg-skeleton); color: var(--dsw-alias-label-secondary); font-size: 11px; white-space: pre-wrap; }
 .editor { min-height: 180px; max-height: 300px; padding: 10px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 8px; background: var(--dsw-alias-bg-skeleton); color: var(--dsw-alias-label-secondary); font-family: "SF Mono", Menlo, monospace; font-size: 11px; resize: vertical; }
 .audit { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; color: var(--dsw-alias-label-tertiary); }
+.toast { position: fixed; left: 50%; bottom: 28px; z-index: 80; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 9px 12px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 9px; background: var(--dsw-alias-settings-card-fill); color: var(--dsw-alias-label-secondary); font-size: 12px; box-shadow: 0 12px 32px rgba(0, 0, 0, .35); }
+.toastError { border-color: #6a3434; color: #e5534b; }
+.toastClose { border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.button:hover:not(:disabled) { background: color-mix(in srgb, var(--dsw-alias-bg-skeleton) 55%, transparent); }
+.button:active:not(:disabled) { transform: translateY(1px); }
+.button:focus-visible, .domainRow:focus-visible { outline: 2px solid #5b8def; outline-offset: 1px; }

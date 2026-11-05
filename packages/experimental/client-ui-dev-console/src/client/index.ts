@@ -163,6 +163,15 @@ function registerUi(ctx: Context): void {
     answerApproval: (sessionId, decision) => store.answerApproval(sessionId, decision),
     answerQuestion: (sessionId, answer) => store.answerQuestion(sessionId, answer),
     hooks: { sessionStatus: ctx.uiSession.sessionStatus },
+    devConsoleInspect: async (domainIds, refresh) => {
+      const request = {
+        ...domainIds === undefined ? {} : { domainIds },
+        ...refresh === undefined ? {} : { refresh },
+      }
+      const result = await ctx.remote.sessionTasks.devConsoleInspect(request)
+      if (!result.ok) throw new Error(result.error.message)
+      return result.value.domains
+    },
     devConsoleSnapshot: async () => {
       const result = await ctx.remote.sessionTasks.devConsoleSnapshot()
       if (!result.ok) throw new Error(result.error.message)

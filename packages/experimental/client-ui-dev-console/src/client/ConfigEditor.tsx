@@ -74,7 +74,7 @@ export function ConfigEditor({ load, save, t, onClose, onSaved }: ConfigEditorPr
                 setError(reason instanceof Error ? reason.message : String(reason))
               }).finally(() => { setBusy(false) })
             }}
-          >{t('saveConfig')}</button>
+          >{busy ? t('saving') : t('saveConfig')}</button>
         </div>
       </section>
     </div>

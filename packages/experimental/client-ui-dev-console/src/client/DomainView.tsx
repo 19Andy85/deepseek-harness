@@ -62,7 +62,7 @@ export interface DomainInspectionView {
 export interface DomainStatusView {
   readonly projectId: string
   readonly domain: DomainConfigView
-  readonly inspection: DomainInspectionView
+  readonly inspection?: DomainInspectionView
   readonly sessions?: readonly { readonly sessionId: string; readonly cwd: string; readonly live: boolean }[]
 }
 
@@ -82,6 +82,7 @@ export interface DomainOpenView {
 /** Injected Dev Console domain actions. */
 export interface DomainViewInjected {
   readonly snapshot: () => Promise<DomainSnapshotView>
+  readonly inspect: (domainIds?: readonly string[], refresh?: boolean) => Promise<readonly DomainStatusView[]>
   readonly openDomain: (domainId: string) => Promise<DomainOpenView>
   readonly git: (domainId: string, action: 'status' | 'log' | 'diff') => Promise<{ readonly text: string }>
   readonly agents: (domainId: string) => Promise<{ readonly path: string; readonly text: string; readonly hash: string }>
@@ -109,7 +110,7 @@ type Detail =
  * @returns the domain panel.
  */
 export function DomainView({
-  snapshot, openDomain, git, agents, saveAgents, autoConfig, config, saveConfig, openSession, t, onClose,
+  snapshot, inspect, openDomain, git, agents, saveAgents, autoConfig, config, saveConfig, openSession, t, onClose,
 }: DomainViewProps) {
   const [data, setData] = useState<DomainSnapshotView | undefined>(undefined)
   const [loading, setLoading] = useState(true)
@@ -123,6 +124,25 @@ export function DomainView({
   const [opening, setOpening] = useState<string | undefined>(undefined)
   const [pendingEphemeral, setPendingEphemeral] = useState<string | undefined>(undefined)
   const [configOpen, setConfigOpen] = useState(false)
+  const [busy, setBusy] = useState<string | undefined>(undefined)
+  const [toast, setToast] = useState<{ kind: 'ok' | 'error'; text: string } | undefined>(undefined)
+  const [inspecting, setInspecting] = useState(true)
+  const notify = (kind: 'ok' | 'error', text: string): void => {
+    setToast({ kind, text })
+    window.setTimeout(() => { setToast(current => current?.text === text ? undefined : current) }, 3000)
+  }
+  const inspectAll = async (refresh: boolean): Promise<void> => {
+    setInspecting(true)
+    try {
+      const rows = await inspect(undefined, refresh)
+      setData(current => current === undefined ? current : {
+        ...current,
+        domains: current.domains.map(row => rows.find(next => next.domain.id === row.domain.id) ?? row),
+      })
+    } catch (reason) {
+      notify('error', reason instanceof Error ? reason.message : String(reason))
+    } finally { setInspecting(false) }
+  }
   const load = async (): Promise<void> => {
     setLoading(true)
     try {
@@ -132,6 +152,7 @@ export function DomainView({
       setSelected(current => current !== undefined && next.domains.some(row => row.domain.id === current)
         ? current
         : next.domains[0]?.domain.id)
+      void inspectAll(false)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason))
     } finally { setLoading(false) }
@@ -145,9 +166,30 @@ export function DomainView({
     void openDomain(domainId).then((value) => {
       writeBinding(domainId, value.sessionId)
       setBindings(readBindings())
+      notify('ok', `${t('domainOpened')} · ${value.sessionId}`)
     }).catch((reason: unknown) => {
       setError(reason instanceof Error ? reason.message : String(reason))
     }).finally(() => { setOpening(undefined) })
+  }
+  const runGit = (domainId: string, action: 'status' | 'log' | 'diff'): void => {
+    setBusy(`git-${action}`)
+    void git(domainId, action).then((value) => {
+      setDetail({ kind: 'git', title: `git ${action}`, text: value.text })
+      notify('ok', t('loaded'))
+    }).catch((reason: unknown) => {
+      notify('error', reason instanceof Error ? reason.message : String(reason))
+    }).finally(() => { setBusy(undefined) })
+  }
+  const openAgents = (domainId: string): void => {
+    setBusy('agents')
+    void agents(domainId).then((value) => {
+      setDetail({ kind: 'agents', title: value.path, text: value.text, domainId, hash: value.hash })
+      setDraft(value.text)
+      setAgentsOriginal(value.text)
+      notify('ok', t('loaded'))
+    }).catch((reason: unknown) => {
+      notify('error', reason instanceof Error ? reason.message : String(reason))
+    }).finally(() => { setBusy(undefined) })
   }
   const projects = new Map<string, DomainStatusView[]>()
   for (const row of data?.domains ?? []) projects.set(row.projectId, [...(projects.get(row.projectId) ?? []), row])
@@ -172,7 +214,7 @@ export function DomainView({
               }}>{data.domains.length === 0 ? t('autoConfig') : t('regenerateConfig')}</button>
             )}
             <button type="button" className={css.button} onClick={() => { setConfigOpen(true) }}>{t('editConfig')}</button>
-            <button type="button" className={css.button} onClick={() => { void load() }}>{t('refresh')}</button>
+            <button type="button" className={css.button} disabled={inspecting} onClick={() => { void inspectAll(true) }}>{inspecting ? t('inspecting') : t('refresh')}</button>
             <button type="button" className={css.button} onClick={onClose}>{t('close')}</button>
           </div>
         </header>
@@ -191,9 +233,13 @@ export function DomainView({
                     onClick={() => { setSelected(row.domain.id); setDetail(undefined) }}
                   >
                     <span className={css.domainName}>{row.domain.name}</span>
-                    <span className={row.inspection.problems.length === 0 ? css.ok : css.fail}>
-                      {row.inspection.problems.length === 0 ? t('domainOk') : t('domainBlocked')}
-                    </span>
+                    {row.inspection === undefined
+                      ? <span className={css.muted}>{t('loading')}</span>
+                      : (
+                        <span className={row.inspection.problems.length === 0 ? css.ok : css.fail}>
+                          {row.inspection.problems.length === 0 ? t('domainOk') : t('domainBlocked')}
+                        </span>
+                      )}
                   </button>
                 ))}
               </section>
@@ -212,43 +258,37 @@ export function DomainView({
                       <h3 className={css.detailTitle}>{current.domain.name}</h3>
                       <p className={css.hint}>{current.projectId} / {current.domain.id}</p>
                     </div>
-                    <span className={current.inspection.problems.length === 0 ? css.ok : css.fail}>
-                      {current.inspection.problems.length === 0 ? t('domainOk') : t('domainBlocked')}
-                    </span>
+                    {current.inspection === undefined
+                      ? <span className={css.muted}>{t('loading')}</span>
+                      : (
+                        <span className={current.inspection.problems.length === 0 ? css.ok : css.fail}>
+                          {current.inspection.problems.length === 0 ? t('domainOk') : t('domainBlocked')}
+                        </span>
+                      )}
                   </div>
                   <dl className={css.facts}>
-                    <div><dt>{t('worktree')}</dt><dd>{current.inspection.canonicalWorktree ?? current.domain.worktree}</dd></div>
-                    <div><dt>{t('branch')}</dt><dd>{current.inspection.branch ?? '—'} / {current.domain.hooks.expectedBranch}</dd></div>
-                    <div><dt>{t('toplevel')}</dt><dd>{current.inspection.toplevel ?? '—'}</dd></div>
+                    <div><dt>{t('worktree')}</dt><dd>{current.inspection?.canonicalWorktree ?? current.domain.worktree}</dd></div>
+                    <div><dt>{t('branch')}</dt><dd>{current.inspection === undefined ? '…' : `${current.inspection.branch ?? '—'} / ${current.domain.hooks.expectedBranch}`}</dd></div>
+                    <div><dt>{t('toplevel')}</dt><dd>{current.inspection === undefined ? '…' : current.inspection.toplevel ?? '—'}</dd></div>
                   </dl>
-                  {current.inspection.problems.map(problem => <p key={problem} className={css.fail}>{problem}</p>)}
+                  {current.inspection === undefined
+                    ? <p className={css.muted}>{t('inspecting')}</p>
+                    : current.inspection.problems.map(problem => <p key={problem} className={css.fail}>{problem}</p>)}
                   <div className={css.actions}>
-                    <button type="button" className={css.button} onClick={() => {
-                      void git(current.domain.id, 'status').then((value) => { setDetail({ kind: 'git', title: 'git status', text: value.text }) }).catch((reason: unknown) => { setError(String(reason)) })
-                    }}>Git status</button>
-                    <button type="button" className={css.button} onClick={() => {
-                      void git(current.domain.id, 'log').then((value) => { setDetail({ kind: 'git', title: 'git log', text: value.text }) }).catch((reason: unknown) => { setError(String(reason)) })
-                    }}>Git log</button>
-                    <button type="button" className={css.button} onClick={() => {
-                      void git(current.domain.id, 'diff').then((value) => { setDetail({ kind: 'git', title: 'git diff', text: value.text }) }).catch((reason: unknown) => { setError(String(reason)) })
-                    }}>Git diff</button>
-                    <button type="button" className={css.button} onClick={() => {
-                      void agents(current.domain.id).then((value) => {
-                        setDetail({ kind: 'agents', title: value.path, text: value.text, domainId: current.domain.id, hash: value.hash })
-                        setDraft(value.text)
-                        setAgentsOriginal(value.text)
-                      }).catch((reason: unknown) => { setError(String(reason)) })
-                    }}>AGENTS</button>
+                    <button type="button" className={css.button} onClick={() => { runGit(current.domain.id, 'status') }} disabled={busy !== undefined}>{busy === 'git-status' ? '…' : 'Git status'}</button>
+                    <button type="button" className={css.button} onClick={() => { runGit(current.domain.id, 'log') }} disabled={busy !== undefined}>{busy === 'git-log' ? '…' : 'Git log'}</button>
+                    <button type="button" className={css.button} onClick={() => { runGit(current.domain.id, 'diff') }} disabled={busy !== undefined}>{busy === 'git-diff' ? '…' : 'Git diff'}</button>
+                    <button type="button" className={css.button} onClick={() => { openAgents(current.domain.id) }} disabled={busy !== undefined}>{busy === 'agents' ? '…' : 'AGENTS'}</button>
                     <button
                       type="button"
                       className={css.button}
-                      disabled={current.inspection.problems.length > 0 || opening !== undefined}
+                      disabled={current.inspection === undefined || current.inspection.problems.length > 0 || opening !== undefined}
                       onClick={() => {
                         const sessionId = bound[0]
                         if (sessionId === undefined) { open(current.domain.id); return }
                         openSession(sessionId)
                       }}
-                    >{pendingEphemeral === current.domain.id ? t('confirmEphemeralOpen') : bound.length === 0 ? t('openDomain') : t('openBoundSession')}</button>
+                    >{opening === current.domain.id ? t('opening') : pendingEphemeral === current.domain.id ? t('confirmEphemeralOpen') : bound.length === 0 ? t('openDomain') : t('openBoundSession')}</button>
                   </div>
                   <section className={css.sessions}>
                     <h4 className={css.sectionTitle}>{t('sessions')}</h4>
@@ -268,13 +308,17 @@ export function DomainView({
                           ? (
                             <button type="button" className={css.button} onClick={() => {
                               const target = detail
+                              setBusy('save-agents')
                               void saveAgents(target.domainId, draft, target.hash).then((value) => {
                                 appendAudit({ at: Date.now(), path: target.title, baseHash: target.hash, newHash: value.hash })
                                 setAudit(readAudit())
                                 setAgentsOriginal(draft)
                                 setDetail({ ...target, text: draft, hash: value.hash })
-                              }).catch((reason: unknown) => { setError(String(reason)) })
-                            }}>{t('saveAgents')}</button>
+                                notify('ok', t('configSaved'))
+                              }).catch((reason: unknown) => {
+                                notify('error', reason instanceof Error ? reason.message : String(reason))
+                              }).finally(() => { setBusy(undefined) })
+                            }} disabled={busy !== undefined}>{busy === 'save-agents' ? t('saving') : t('saveAgents')}</button>
                           )
                           : null}
                       </div>
@@ -301,6 +345,12 @@ export function DomainView({
           </main>
         </div>
       </section>
+      {toast === undefined ? null : (
+        <div className={toast.kind === 'ok' ? css.toast : `${css.toast} ${css.toastError}`} role="status">
+          {toast.text}
+          <button type="button" className={css.toastClose} onClick={() => { setToast(undefined) }}>×</button>
+        </div>
+      )}
       {configOpen
         ? (
           <ConfigEditor

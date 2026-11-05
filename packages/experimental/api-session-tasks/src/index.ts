@@ -35,7 +35,7 @@ import { inspectDomain, openDomain } from './dev-console-domain.ts'
 import type { DevConsoleDomainConfig } from './dev-console-config.ts'
 import type {
   DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleAutoConfigRequest, DevConsoleAutoConfigValue,
-  DevConsoleConfigValue, DevConsoleSaveConfigRequest, DevConsoleSaveConfigValue,
+  DevConsoleConfigValue, DevConsoleInspectRequest, DevConsoleInspectValue, DevConsoleSaveConfigRequest, DevConsoleSaveConfigValue,
   DevConsoleDomainStatus, DevConsoleGitRequest, DevConsoleGitValue, DevConsoleSaveAgentsRequest, DevConsoleSaveAgentsValue,
   DevConsoleOpenDomainRequest, DevConsoleOpenDomainValue, DevConsoleSnapshot,
 } from './dev-console.ts'
@@ -96,6 +96,7 @@ export class SessionTasksController extends TypertRemoteService {
   private readonly stallAfterMs: number
   private readonly relationsRefreshMs: number
   private readonly devConsoleConfigFile: string
+  private readonly inspectionCache = new Map<string, { at: number; inspection: import('./dev-console-domain.ts').DomainInspection }>()
   private readonly observed = new Map<string, ObservedActivity>()
   private seenDomain: Domain<typeof sessionTasksSeenDomain> | undefined
   private relationsByParent = new Map<string, SessionRelationChild[]>()
@@ -397,10 +398,7 @@ export class SessionTasksController extends TypertRemoteService {
     }
     const domains: DevConsoleDomainStatus[] = []
     for (const project of result.config.projects) {
-      for (const domain of project.domains) {
-        const inspection = await inspectDomain(domain)
-        domains.push({ projectId: project.id, domain, inspection, sessions: [] })
-      }
+      for (const domain of project.domains) domains.push({ projectId: project.id, domain, sessions: [] })
     }
     return { config: result.config, problems: result.problems, warnings: result.warnings, domains }
   }
@@ -418,6 +416,30 @@ export class SessionTasksController extends TypertRemoteService {
       candidates.push(join(workspace.path, '.dsh', 'dev-console.yaml'))
     }
     return candidates.find(candidate => existsSync(candidate)) ?? resolve(process.cwd(), this.devConsoleConfigFile)
+  }
+
+  @Remote('devConsoleInspect')
+  async devConsoleInspect(request: DevConsoleInspectRequest): Promise<DevConsoleInspectValue> {
+    const result = loadDevConsoleConfig(this.resolveDevConsoleConfigFile())
+    if (result.config === undefined) throw new RemoteError('gateway/bad-request', 'Dev Console config is invalid', {})
+    const all = result.config.projects.flatMap(project => project.domains.map(domain => ({ projectId: project.id, domain })))
+    const wanted = request.domainIds === undefined ? all : all.filter(item => request.domainIds?.includes(item.domain.id) === true)
+    const now = Date.now()
+    const domains: DevConsoleDomainStatus[] = []
+    for (let index = 0; index < wanted.length; index += 4) {
+      const chunk = wanted.slice(index, index + 4)
+      const inspected = await Promise.all(chunk.map(async ({ projectId, domain }) => {
+        const cached = this.inspectionCache.get(domain.id)
+        if (request.refresh !== true && cached !== undefined && now - cached.at < 5_000) {
+          return { projectId, domain, inspection: cached.inspection, sessions: [] }
+        }
+        const inspection = await inspectDomain(domain)
+        this.inspectionCache.set(domain.id, { at: Date.now(), inspection })
+        return { projectId, domain, inspection, sessions: [] }
+      }))
+      domains.push(...inspected)
+    }
+    return { domains }
   }
 
   @Remote('devConsoleConfig')

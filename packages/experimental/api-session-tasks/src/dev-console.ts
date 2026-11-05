@@ -80,6 +80,20 @@ export interface DevConsoleSaveConfigValue {
   readonly warnings: readonly DevConsoleConfigProblem[]
 }
 
+/** Inspect one or more domains. */
+export interface DevConsoleInspectRequest {
+  /** Domain ids to inspect; omitted inspects every configured domain. */
+  readonly domainIds?: readonly string[]
+  /** Bypass the short-lived Host cache. */
+  readonly refresh?: boolean
+}
+
+/** Inspection results. */
+export interface DevConsoleInspectValue {
+  /** Inspected domains. */
+  readonly domains: readonly DevConsoleDomainStatus[]
+}
+
 /** Auto-generate a registry from the connected workspaces. */
 export interface DevConsoleAutoConfigRequest {
   /** Replace an existing registry file. */
@@ -100,8 +114,8 @@ export interface DevConsoleDomainStatus {
   readonly projectId: string
   /** Domain configuration. */
   readonly domain: DevConsoleDomainConfig
-  /** Live git/cwd inspection. */
-  readonly inspection: DomainInspection
+  /** Live git/cwd inspection; absent until inspected. */
+  readonly inspection?: DomainInspection
   /** Sessions whose cwd belongs to this domain. */
   readonly sessions: readonly DevConsoleSessionSummary[]
 }

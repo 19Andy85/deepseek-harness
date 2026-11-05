@@ -83,6 +83,7 @@ export interface ProjectConsoleInjected {
   readonly openInSidebar: () => void
   /** Read the Dev Console domain registry. */
   readonly devConsoleSnapshot: () => Promise<DomainSnapshotView>
+  readonly devConsoleInspect: (domainIds?: readonly string[], refresh?: boolean) => Promise<readonly import('./DomainView.tsx').DomainStatusView[]>
   /** Open one configured domain in a cwd Session. */
   readonly devConsoleOpenDomain: (domainId: string) => Promise<DomainOpenView>
   /** Read git output for a domain. */
@@ -144,7 +145,7 @@ function statusText(
 export function ProjectConsolePage({
   t, store, workspaceOptions, workspaceSessions, selectedWorkspaceId, selectWorkspace, refresh, openSession, focusSession,
   closeFocus, resetShift, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus, openInSidebar,
-  devConsoleSnapshot, devConsoleOpenDomain, devConsoleGit, devConsoleAgents, devConsoleSaveAgents, devConsoleAutoConfig,
+  devConsoleSnapshot, devConsoleInspect, devConsoleOpenDomain, devConsoleGit, devConsoleAgents, devConsoleSaveAgents, devConsoleAutoConfig,
   devConsoleConfig, devConsoleSaveConfig,
   compact = false, surface = 'main', railSessionId, onFloat, onDock,
 }: ProjectConsolePageProps) {
@@ -1320,6 +1321,7 @@ export function ProjectConsolePage({
           <DomainView
             t={t}
             snapshot={devConsoleSnapshot}
+            inspect={devConsoleInspect}
             openDomain={devConsoleOpenDomain}
             git={devConsoleGit}
             agents={devConsoleAgents}
