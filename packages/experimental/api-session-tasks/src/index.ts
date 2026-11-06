@@ -35,6 +35,7 @@ import { inspectDomain, openDomain } from './dev-console-domain.ts'
 import type { DevConsoleDomainConfig } from './dev-console-config.ts'
 import type {
   DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleAutoConfigRequest, DevConsoleAutoConfigValue,
+  DevConsoleSummary, DevConsoleSummaryRequest,
   DevConsoleConfigValue, DevConsoleHistoryRequest, DevConsoleHistoryValue,
   DevConsoleInspectRequest, DevConsoleInspectValue, DevConsoleSaveConfigRequest, DevConsoleSaveConfigValue,
   DevConsoleDomainStatus, DevConsoleGitRequest, DevConsoleGitValue, DevConsoleSaveAgentsRequest, DevConsoleSaveAgentsValue,
@@ -399,7 +400,9 @@ export class SessionTasksController extends TypertRemoteService {
     }
     const domains: DevConsoleDomainStatus[] = []
     for (const project of result.config.projects) {
-      for (const domain of project.domains) domains.push({ projectId: project.id, domain, sessions: [] })
+      for (const domain of project.domains) {
+        domains.push({ projectId: project.id, projectName: project.name, projectRoot: project.root, domain, sessions: [] })
+      }
     }
     return { config: result.config, problems: result.problems, warnings: result.warnings, domains }
   }
@@ -417,6 +420,30 @@ export class SessionTasksController extends TypertRemoteService {
       candidates.push(join(workspace.path, '.dsh', 'dev-console.yaml'))
     }
     return candidates.find(candidate => existsSync(candidate)) ?? resolve(process.cwd(), this.devConsoleConfigFile)
+  }
+
+  @Remote('devConsoleSummary')
+  async devConsoleSummary(request: DevConsoleSummaryRequest): Promise<DevConsoleSummary> {
+    const domain = this.devConsoleDomain(request.domainId)
+    const cwd = domain.canonicalWorktree ?? domain.worktree
+    const git = async (args: readonly string[]) => promisify(execFile)('git', [...args], { cwd, encoding: 'utf8' })
+      .then(result => result.stdout.trim()).catch(() => undefined)
+    const commitText = await git(['log', '-1', '--format=%h%x00%s%x00%cI'])
+    const commit = commitText?.split('\x00') as [string, string, string] | undefined
+    const status = await git(['status', '--porcelain'])
+    const dirtyCount = status === undefined || status === '' ? 0 : status.split('\n').length
+    const counts = await git(['rev-list', '--left-right', '--count', `${domain.base}...HEAD`])
+    const [behind, ahead] = counts?.split(/\s+/).map(Number) ?? []
+    const agentsText = await readFile(`${cwd}/AGENTS.md`, 'utf8').catch(() => undefined)
+    return {
+      ...commit === undefined ? {} : { commit: { hash: commit[0], subject: commit[1], at: commit[2] } },
+      dirtyCount,
+      ...ahead === undefined ? {} : { ahead },
+      ...behind === undefined ? {} : { behind },
+      ...agentsText === undefined ? {} : {
+        agents: { bytes: Buffer.byteLength(agentsText), hash: createHash('sha256').update(agentsText).digest('hex') },
+      },
+    }
   }
 
   @Remote('devConsoleHistory')
@@ -443,20 +470,22 @@ export class SessionTasksController extends TypertRemoteService {
   async devConsoleInspect(request: DevConsoleInspectRequest): Promise<DevConsoleInspectValue> {
     const result = loadDevConsoleConfig(this.resolveDevConsoleConfigFile())
     if (result.config === undefined) throw new RemoteError('gateway/bad-request', 'Dev Console config is invalid', {})
-    const all = result.config.projects.flatMap(project => project.domains.map(domain => ({ projectId: project.id, domain })))
+    const all = result.config.projects.flatMap(project => project.domains.map(domain => ({
+      projectId: project.id, projectName: project.name, projectRoot: project.root, domain,
+    })))
     const wanted = request.domainIds === undefined ? all : all.filter(item => request.domainIds?.includes(item.domain.id) === true)
     const now = Date.now()
     const domains: DevConsoleDomainStatus[] = []
     for (let index = 0; index < wanted.length; index += 4) {
       const chunk = wanted.slice(index, index + 4)
-      const inspected = await Promise.all(chunk.map(async ({ projectId, domain }) => {
+      const inspected = await Promise.all(chunk.map(async ({ projectId, projectName, projectRoot, domain }) => {
         const cached = this.inspectionCache.get(domain.id)
         if (request.refresh !== true && cached !== undefined && now - cached.at < 5_000) {
-          return { projectId, domain, inspection: cached.inspection, sessions: [] }
+          return { projectId, projectName, projectRoot, domain, inspection: cached.inspection, sessions: [] }
         }
         const inspection = await inspectDomain(domain)
         this.inspectionCache.set(domain.id, { at: Date.now(), inspection })
-        return { projectId, domain, inspection, sessions: [] }
+        return { projectId, projectName, projectRoot, domain, inspection, sessions: [] }
       }))
       domains.push(...inspected)
     }

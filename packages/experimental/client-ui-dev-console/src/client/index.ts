@@ -172,6 +172,11 @@ function registerUi(ctx: Context): void {
       if (!result.ok) throw new Error(result.error.message)
       return result.value.domains
     },
+    devConsoleSummary: async (domainId) => {
+      const result = await ctx.remote.sessionTasks.devConsoleSummary({ domainId })
+      if (!result.ok) throw new Error(result.error.message)
+      return result.value
+    },
     devConsoleHistory: async (domainId) => {
       const result = await ctx.remote.sessionTasks.devConsoleHistory({ domainId })
       if (!result.ok) throw new Error(result.error.message)

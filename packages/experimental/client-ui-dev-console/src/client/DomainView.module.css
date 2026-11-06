@@ -48,3 +48,10 @@
 .inlinePanel .detail { padding: 12px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 10px; background: color-mix(in srgb, var(--dsw-alias-bg-skeleton) 28%, transparent); }
 .sessions { align-items: flex-start; }
 .sessions .button { align-self: flex-start; }
+.projectName { text-transform: none; letter-spacing: 0; font-size: 12px; }
+.domainText { display: flex; flex-direction: column; min-width: 0; }
+.domainMeta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-tertiary); font-size: 10px; }
+.overview { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.metric { display: flex; flex-direction: column; gap: 2px; padding: 8px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 8px; background: color-mix(in srgb, var(--dsw-alias-bg-skeleton) 30%, transparent); }
+.metric strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; }
+.metric span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-tertiary); font-size: 10px; }

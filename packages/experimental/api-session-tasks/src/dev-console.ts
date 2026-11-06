@@ -130,10 +130,34 @@ export interface DevConsoleAutoConfigValue {
   readonly projects: number
 }
 
+/** Recent activity summary for one domain. */
+export interface DevConsoleSummary {
+  /** Last commit, when the worktree has one. */
+  readonly commit?: { readonly hash: string; readonly subject: string; readonly at: string }
+  /** Number of changed paths. */
+  readonly dirtyCount: number
+  /** Commits ahead of the base branch, when resolvable. */
+  readonly ahead?: number
+  /** Commits behind the base branch, when resolvable. */
+  readonly behind?: number
+  /** AGENTS.md size and hash, when present. */
+  readonly agents?: { readonly bytes: number; readonly hash: string }
+}
+
+/** Request for a domain summary. */
+export interface DevConsoleSummaryRequest {
+  /** Domain id. */
+  readonly domainId: string
+}
+
 /** One configured domain plus its live inspection. */
 export interface DevConsoleDomainStatus {
   /** Owning project. */
   readonly projectId: string
+  /** Display name of the owning project. */
+  readonly projectName?: string
+  /** Root path of the owning project. */
+  readonly projectRoot?: string
   /** Domain configuration. */
   readonly domain: DevConsoleDomainConfig
   /** Live git/cwd inspection; absent until inspected. */

@@ -85,6 +85,7 @@ export interface ProjectConsoleInjected {
   readonly devConsoleSnapshot: () => Promise<DomainSnapshotView>
   readonly devConsoleInspect: (domainIds?: readonly string[], refresh?: boolean) => Promise<readonly import('./DomainView.tsx').DomainStatusView[]>
   readonly devConsoleHistory: (domainId: string) => Promise<readonly { readonly sessionId: string; readonly live: boolean }[]>
+  readonly devConsoleSummary: (domainId: string) => Promise<import('./DomainView.tsx').DomainSummaryView>
   /** Open one configured domain in a cwd Session. */
   readonly devConsoleOpenDomain: (domainId: string) => Promise<DomainOpenView>
   /** Read git output for a domain. */
@@ -146,7 +147,7 @@ function statusText(
 export function ProjectConsolePage({
   t, store, workspaceOptions, workspaceSessions, selectedWorkspaceId, selectWorkspace, refresh, openSession, focusSession,
   closeFocus, resetShift, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus, openInSidebar,
-  devConsoleSnapshot, devConsoleInspect, devConsoleHistory, devConsoleOpenDomain, devConsoleGit, devConsoleAgents,
+  devConsoleSnapshot, devConsoleInspect, devConsoleHistory, devConsoleSummary, devConsoleOpenDomain, devConsoleGit, devConsoleAgents,
   devConsoleSaveAgents, devConsoleAutoConfig,
   devConsoleConfig, devConsoleSaveConfig,
   compact = false, surface = 'main', railSessionId, onFloat, onDock,
@@ -744,6 +745,7 @@ export function ProjectConsolePage({
                 snapshot={devConsoleSnapshot}
                 inspect={devConsoleInspect}
                 history={devConsoleHistory}
+                summary={devConsoleSummary}
                 openDomain={devConsoleOpenDomain}
                 git={devConsoleGit}
                 agents={devConsoleAgents}
@@ -1354,6 +1356,7 @@ export function ProjectConsolePage({
             snapshot={devConsoleSnapshot}
             inspect={devConsoleInspect}
             history={devConsoleHistory}
+            summary={devConsoleSummary}
             openDomain={devConsoleOpenDomain}
             git={devConsoleGit}
             agents={devConsoleAgents}

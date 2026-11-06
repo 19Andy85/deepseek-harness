@@ -61,9 +61,20 @@ export interface DomainInspectionView {
 /** One domain row. */
 export interface DomainStatusView {
   readonly projectId: string
+  readonly projectName?: string
+  readonly projectRoot?: string
   readonly domain: DomainConfigView
   readonly inspection?: DomainInspectionView
   readonly sessions?: readonly { readonly sessionId: string; readonly cwd: string; readonly live: boolean }[]
+}
+
+/** Recent activity summary of one domain. */
+export interface DomainSummaryView {
+  readonly commit?: { readonly hash: string; readonly subject: string; readonly at: string }
+  readonly dirtyCount: number
+  readonly ahead?: number
+  readonly behind?: number
+  readonly agents?: { readonly bytes: number; readonly hash: string }
 }
 
 /** Snapshot of the domain registry. */
@@ -84,6 +95,7 @@ export interface DomainViewInjected {
   readonly snapshot: () => Promise<DomainSnapshotView>
   readonly inspect: (domainIds?: readonly string[], refresh?: boolean) => Promise<readonly DomainStatusView[]>
   readonly history: (domainId: string) => Promise<readonly { readonly sessionId: string; readonly live: boolean }[]>
+  readonly summary: (domainId: string) => Promise<DomainSummaryView>
   readonly openDomain: (domainId: string) => Promise<DomainOpenView>
   readonly git: (domainId: string, action: 'status' | 'log' | 'diff') => Promise<{ readonly text: string }>
   readonly agents: (domainId: string) => Promise<{ readonly path: string; readonly text: string; readonly hash: string }>
@@ -113,7 +125,7 @@ type Detail =
  * @returns the domain panel.
  */
 export function DomainView({
-  snapshot, inspect, history, openDomain, git, agents, saveAgents, autoConfig, config, saveConfig, openSession, t, onClose, inline,
+  snapshot, inspect, history, summary, openDomain, git, agents, saveAgents, autoConfig, config, saveConfig, openSession, t, onClose, inline,
 }: DomainViewProps) {
   const [data, setData] = useState<DomainSnapshotView | undefined>(undefined)
   const [loading, setLoading] = useState(true)
@@ -130,6 +142,8 @@ export function DomainView({
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'ready' | 'blocked'>('all')
   const [historyRows, setHistoryRows] = useState<readonly { readonly sessionId: string; readonly live: boolean }[] | undefined>(undefined)
+  const [overview, setOverview] = useState<DomainSummaryView | undefined>(undefined)
+  const [overviewLoading, setOverviewLoading] = useState(false)
   const [busy, setBusy] = useState<string | undefined>(undefined)
   const [toast, setToast] = useState<{ kind: 'ok' | 'error'; text: string } | undefined>(undefined)
   const [inspecting, setInspecting] = useState(true)
@@ -164,6 +178,12 @@ export function DomainView({
     } finally { setLoading(false) }
   }
   useEffect(() => { void load() }, [])
+  useEffect(() => {
+    if (selected === undefined) { setOverview(undefined); return }
+    setOverview(undefined)
+    setOverviewLoading(true)
+    void summary(selected).then(setOverview).catch(() => { setOverview(undefined) }).finally(() => { setOverviewLoading(false) })
+  }, [selected])
   const open = (domainId: string): void => {
     const ephemeral = data?.warnings.some(warning => warning.code === 'ephemeral-path') === true
     if (ephemeral && pendingEphemeral !== domainId) { setPendingEphemeral(domainId); return }
@@ -254,7 +274,7 @@ export function DomainView({
             {loading ? <p className={css.muted}>{t('loading')}</p> : null}
             {[...projects.entries()].map(([projectId, rows]) => (
               <section key={projectId} className={css.project}>
-                <h3 className={css.projectName}>{projectId}</h3>
+                <h3 className={css.projectName}>{rows[0]?.projectName ?? projectId}</h3>
                 {rows.map(row => (
                   <button
                     key={row.domain.id}
@@ -262,7 +282,10 @@ export function DomainView({
                     className={selected === row.domain.id ? `${css.domainRow} ${css.domainRowActive}` : css.domainRow}
                     onClick={() => { setSelected(row.domain.id); setDetail(undefined); setHistoryRows(undefined) }}
                   >
-                    <span className={css.domainName}>{row.domain.name}</span>
+                    <span className={css.domainText}>
+                      <span className={css.domainName}>{row.domain.name}</span>
+                      <span className={css.domainMeta}>{row.inspection?.branch ?? row.domain.branch}</span>
+                    </span>
                     {row.inspection === undefined
                       ? <span className={css.muted}>{t('loading')}</span>
                       : (
@@ -304,10 +327,24 @@ export function DomainView({
                   {current.inspection === undefined
                     ? <p className={css.muted}>{t('inspecting')}</p>
                     : current.inspection.problems.map(problem => <p key={problem} className={css.fail}>{problem}</p>)}
+                  <div className={css.overview}>
+                    {overviewLoading
+                      ? <span className={css.muted}>{t('loading')}</span>
+                      : overview === undefined
+                        ? <span className={css.muted}>{t('summaryUnavailable')}</span>
+                        : (
+                          <>
+                            <span className={css.metric}><strong>{overview.commit?.hash ?? '—'}</strong><span>{overview.commit?.subject ?? t('noCommit')}</span></span>
+                            <span className={css.metric}><strong>{overview.dirtyCount}</strong><span>{t('dirtyFiles')}</span></span>
+                            <span className={css.metric}><strong>{overview.ahead ?? '—'} / {overview.behind ?? '—'}</strong><span>{t('aheadBehind')}</span></span>
+                            <span className={css.metric}><strong>{overview.agents?.bytes ?? '—'}</strong><span>AGENTS.md</span></span>
+                          </>
+                        )}
+                  </div>
                   <div className={css.actions}>
-                    <button type="button" className={css.button} onClick={() => { runGit(current.domain.id, 'status') }} disabled={busy !== undefined}>{busy === 'git-status' ? '…' : 'Git status'}</button>
-                    <button type="button" className={css.button} onClick={() => { runGit(current.domain.id, 'log') }} disabled={busy !== undefined}>{busy === 'git-log' ? '…' : 'Git log'}</button>
-                    <button type="button" className={css.button} onClick={() => { runGit(current.domain.id, 'diff') }} disabled={busy !== undefined}>{busy === 'git-diff' ? '…' : 'Git diff'}</button>
+                    <button type="button" className={css.button} onClick={() => { runGit(current.domain.id, 'status') }} disabled={busy !== undefined}>{busy === 'git-status' ? '…' : t('gitStatus')}</button>
+                    <button type="button" className={css.button} onClick={() => { runGit(current.domain.id, 'log') }} disabled={busy !== undefined}>{busy === 'git-log' ? '…' : t('gitLog')}</button>
+                    <button type="button" className={css.button} onClick={() => { runGit(current.domain.id, 'diff') }} disabled={busy !== undefined}>{busy === 'git-diff' ? '…' : t('gitDiff')}</button>
                     <button type="button" className={css.button} onClick={() => { openAgents(current.domain.id) }} disabled={busy !== undefined}>{busy === 'agents' ? '…' : 'AGENTS'}</button>
                     <button
                       type="button"
