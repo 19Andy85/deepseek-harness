@@ -237,6 +237,52 @@ function registerUi(ctx: Context): void {
       if (!result.ok) throw new Error(result.error.message)
       return result.value
     },
+    messageCenter: {
+      messages: async (role, box) => {
+        const result = await ctx.remote.sessionTasks.devConsoleMessages({ role, box })
+        if (!result.ok) throw new Error(result.error.message)
+        return result.value.messages
+      },
+      sendMessage: async (input) => {
+        const result = await ctx.remote.sessionTasks.devConsoleSendMessage({
+          ...input,
+          ...input.payload === undefined ? {} : { payload: input.payload },
+        })
+        if (!result.ok) throw new Error(result.error.message)
+        return result.value
+      },
+      messageAction: async (messageId, action, role, response?: string) => {
+        const result = await ctx.remote.sessionTasks.devConsoleMessageAction({
+          messageId, action, role, ...response === undefined ? {} : { response },
+        })
+        if (!result.ok) throw new Error(result.error.message)
+        return result.value
+      },
+      briefs: async () => {
+        const result = await ctx.remote.sessionTasks.devConsoleBriefs({})
+        if (!result.ok) throw new Error(result.error.message)
+        return result.value.briefs
+      },
+      createBrief: async (input) => {
+        const result = await ctx.remote.sessionTasks.devConsoleCreateBrief({ ...input, authorRole: 'maintainer' })
+        if (!result.ok) throw new Error(result.error.message)
+        return result.value
+      },
+      transitionBrief: async (briefId, to, reason) => {
+        const result = await ctx.remote.sessionTasks.devConsoleTransitionBrief({
+          briefId, to, role: 'maintainer', ...reason === undefined ? {} : { reason },
+        })
+        if (!result.ok) throw new Error(result.error.message)
+        return result.value
+      },
+      handoff: async (input) => {
+        const result = await ctx.remote.sessionTasks.devConsoleHandoff({
+          ...input, fromRole: 'implementer', toRole: 'maintainer',
+        })
+        if (!result.ok) throw new Error(result.error.message)
+        return result.value
+      },
+    },
     openInSidebar: () => {
       if (railApi === undefined) return
       // The rail belongs to the session already on screen; opening another

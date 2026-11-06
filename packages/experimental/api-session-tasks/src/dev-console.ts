@@ -1,5 +1,8 @@
 /** Dev Console Remote wire values: config, workspace inspections, and cwd sessions. */
 import type { DevConsoleConfig, DevConsoleConfigProblem, DevConsoleWorkspaceConfig } from './dev-console-config.ts'
+import type {
+  DevConsoleBrief, DevConsoleBriefStatus, DevConsoleMessage, DevConsoleMessageKind, DevConsoleMessagePayload, DevConsoleRole,
+} from './dev-console-bus.ts'
 import type { WorkspaceInspection } from './dev-console-workspace.ts'
 
 /** One Session whose cwd belongs to a configured workspace. */
@@ -150,6 +153,82 @@ export interface DevConsoleSummary {
   readonly behind?: number
   /** AGENTS.md size and hash, when present. */
   readonly agents?: { readonly bytes: number; readonly hash: string }
+}
+
+/** List messages from one perspective. */
+export interface DevConsoleMessagesRequest {
+  /** Acting role. */
+  readonly role: DevConsoleRole
+  /** Inbox or outbox perspective. */
+  readonly box: 'inbox' | 'outbox'
+  /** Optional workspace filter. */
+  readonly workspaceId?: string | undefined
+}
+
+/** Send one message. */
+export interface DevConsoleSendMessageRequest {
+  readonly fromRole: DevConsoleRole
+  readonly toRole: DevConsoleRole
+  readonly workspaceId?: string | undefined
+  readonly kind: DevConsoleMessageKind
+  readonly subject: string
+  readonly body: string
+  readonly requiresResponse?: boolean | undefined
+  readonly payload?: DevConsoleMessagePayload
+}
+
+/** Acknowledge or resolve a message. */
+export interface DevConsoleMessageActionRequest {
+  readonly role: DevConsoleRole
+  readonly messageId: string
+  readonly action: 'ack' | 'resolve'
+  readonly response?: string | undefined
+}
+
+/** Message list result. */
+export interface DevConsoleMessagesValue {
+  readonly messages: readonly DevConsoleMessage[]
+}
+
+/** Brief list request. */
+export interface DevConsoleBriefsRequest {
+  readonly workspaceId?: string | undefined
+}
+
+/** Brief list result. */
+export interface DevConsoleBriefsValue {
+  readonly briefs: readonly DevConsoleBrief[]
+}
+
+/** Create one Brief. */
+export interface DevConsoleCreateBriefRequest {
+  readonly workspaceId: string
+  readonly title: string
+  readonly goal: string
+  readonly acceptance: string
+  readonly authorRole: DevConsoleRole
+}
+
+/** Transition one Brief. */
+export interface DevConsoleTransitionBriefRequest {
+  readonly briefId: string
+  readonly to: DevConsoleBriefStatus
+  readonly role: DevConsoleRole
+  readonly assigneeRole?: DevConsoleRole | undefined
+  readonly reason?: string | undefined
+}
+
+/** Submit a handoff for a Brief. */
+export interface DevConsoleHandoffRequest {
+  readonly briefId: string
+  readonly fromRole: DevConsoleRole
+  readonly toRole: DevConsoleRole
+  readonly branch: string
+  readonly commit: string
+  readonly summary: string
+  readonly tests: readonly string[]
+  readonly risks?: string | undefined
+  readonly nextSteps?: string | undefined
 }
 
 /** Dev Console state read result. */

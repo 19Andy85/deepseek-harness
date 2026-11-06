@@ -30,6 +30,7 @@ import { AttentionInbox } from './AttentionInbox.tsx'
 import { StudioView } from './StudioView.tsx'
 import { IsoStudioView } from './IsoStudioView.tsx'
 import { WorkspaceView, type WorkspaceOpenView, type WorkspaceSnapshotView } from './WorkspaceView.tsx'
+import { MessageCenter, type MessageCenterInjected } from './MessageCenter.tsx'
 import { readViewPreference, writeViewPreference, type ConsoleView } from './view-preference.ts'
 import { ActivityTrack, formatDuration, formatTokens, HealthSegments, StatusDot, Timeline, type HealthFilter } from './visual/visual.tsx'
 import type { ProjectConsoleKey } from './locales.ts'
@@ -109,6 +110,7 @@ export interface ProjectConsoleInjected {
     readonly path: string
     readonly warnings: readonly { readonly message: string }[]
   }>
+  readonly messageCenter: MessageCenterInjected
 }
 
 /** Framework props of the workspace console page. */
@@ -156,7 +158,7 @@ export function ProjectConsolePage({
   devConsoleSnapshot, devConsoleInspect, devConsoleHistory, devConsoleSummary, devConsoleState, devConsoleBind,
   devConsoleOpenWorkspace, devConsoleGit, devConsoleAgents,
   devConsoleSaveAgents, devConsoleAutoConfig,
-  devConsoleConfig, devConsoleSaveConfig,
+  devConsoleConfig, devConsoleSaveConfig, messageCenter,
   compact = false, surface = 'main', railSessionId, onFloat, onDock,
 }: ProjectConsolePageProps) {
   const [now, setNow] = useState(() => Date.now())
@@ -165,6 +167,7 @@ export function ProjectConsolePage({
   const [workspaceBack, setWorkspaceBack] = useState<string | undefined>(undefined)
   const [reloadNotice, setReloadNotice] = useState(false)
   const [workspacesOpen, setWorkspacesOpen] = useState(false)
+  const [messagesOpen, setMessagesOpen] = useState(false)
   const [actions, setActions] = useState<readonly ConsoleAction[]>([])
   const channel = useRef<BroadcastChannel | undefined>(undefined)
   const workspaceRef = useRef<string | undefined>(undefined)
@@ -641,6 +644,7 @@ export function ProjectConsolePage({
             )
             : null}
           {surface === 'main' ? null : <button type="button" className={css.select} onClick={() => { setWorkspacesOpen(true) }}>{t('workspacesTitle')}</button>}
+          <button type="button" className={css.select} onClick={() => { setMessagesOpen(true) }}>{t('messagesTitle')}</button>
           <button
             type="button"
             className={css.select}
@@ -1358,6 +1362,9 @@ export function ProjectConsolePage({
             </aside>
           )}
       </div>
+      {messagesOpen
+        ? <MessageCenter {...messageCenter} t={t} onClose={() => { setMessagesOpen(false) }} />
+        : null}
       {workspacesOpen
         ? (
           <WorkspaceView

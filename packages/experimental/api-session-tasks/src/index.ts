@@ -28,16 +28,24 @@ import { homedir } from 'node:os'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
 import { copyFile, readFile, realpath, rename, writeFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
 import { promisify } from 'node:util'
 import { dump, load } from 'js-yaml'
 import { loadDevConsoleConfig, validateConfig } from './dev-console-config.ts'
 import { devConsoleStateDomain, EMPTY_DEV_CONSOLE_STATE, type DevConsoleAuditEntry, type DevConsoleState } from './dev-console-state.ts'
+import {
+  BRIEF_TRANSITIONS, createMessage, devConsoleBusDomain, EMPTY_DEV_CONSOLE_BUS,
+  type DevConsoleBrief, type DevConsoleBusState, type DevConsoleMessage,
+} from './dev-console-bus.ts'
 import { inspectWorkspace, openWorkspace } from './dev-console-workspace.ts'
 import type { DevConsoleWorkspaceConfig } from './dev-console-config.ts'
 import type {
   DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleAutoConfigRequest, DevConsoleAutoConfigValue,
   DevConsoleSummary, DevConsoleSummaryRequest,
-  DevConsoleBindRequest, DevConsoleConfigValue, DevConsoleHistoryRequest, DevConsoleHistoryValue, DevConsoleStateValue,
+  DevConsoleBindRequest, DevConsoleBriefsRequest, DevConsoleBriefsValue, DevConsoleConfigValue, DevConsoleCreateBriefRequest,
+  DevConsoleHandoffRequest, DevConsoleHistoryRequest, DevConsoleHistoryValue, DevConsoleMessageActionRequest,
+  DevConsoleMessagesRequest, DevConsoleMessagesValue, DevConsoleSendMessageRequest, DevConsoleStateValue,
+  DevConsoleTransitionBriefRequest,
   DevConsoleInspectRequest, DevConsoleInspectValue, DevConsoleSaveConfigRequest, DevConsoleSaveConfigValue,
   DevConsoleWorkspaceStatus, DevConsoleGitRequest, DevConsoleGitValue, DevConsoleSaveAgentsRequest, DevConsoleSaveAgentsValue,
   DevConsoleOpenWorkspaceRequest, DevConsoleOpenWorkspaceValue, DevConsoleSnapshot,
@@ -103,6 +111,7 @@ export class SessionTasksController extends TypertRemoteService {
   private readonly observed = new Map<string, ObservedActivity>()
   private seenDomain: Domain<typeof sessionTasksSeenDomain> | undefined
   private stateDomain: Domain<typeof devConsoleStateDomain> | undefined
+  private busDomain: Domain<typeof devConsoleBusDomain> | undefined
   private relationsByParent = new Map<string, SessionRelationChild[]>()
   private readonly relationsByChild = new Map<string, string>()
   private lastRelationsRefresh = 0
@@ -125,13 +134,17 @@ export class SessionTasksController extends TypertRemoteService {
     const seenBinding = this.ctx.inject(['storageDomain'], async (storageCtx) => {
       const domain = await storageCtx.storageDomain.open(sessionTasksSeenDomain)
       const state = await storageCtx.storageDomain.open(devConsoleStateDomain)
+      const bus = await storageCtx.storageDomain.open(devConsoleBusDomain)
       this.seenDomain = domain
       this.stateDomain = state
+      this.busDomain = bus
       return () => {
         this.seenDomain = undefined
         this.stateDomain = undefined
+        this.busDomain = undefined
         void domain.close()
         void state.close()
+        void bus.close()
       }
     })
     if (this.ctx.get('storageDomain') !== undefined) await seenBinding
@@ -429,6 +442,162 @@ export class SessionTasksController extends TypertRemoteService {
       candidates.push(join(workspace.path, '.dsh', 'dev-console.yaml'))
     }
     return candidates.find(candidate => existsSync(candidate)) ?? resolve(process.cwd(), this.devConsoleConfigFile)
+  }
+
+  private busState(): DevConsoleBusState {
+    return this.busDomain?.global.get() ?? EMPTY_DEV_CONSOLE_BUS
+  }
+
+  private async writeBus(next: DevConsoleBusState): Promise<void> {
+    if (this.busDomain === undefined) throw new RemoteError('session-tasks/seen-unavailable', 'Dev Console bus requires a mounted storage domain', {})
+    await this.busDomain.global.set(next)
+  }
+
+  @Remote('devConsoleMessages')
+  async devConsoleMessages(request: DevConsoleMessagesRequest): Promise<DevConsoleMessagesValue> {
+    const state = this.busState()
+    const messages = state.messages.filter((message) => {
+      if (request.workspaceId !== undefined && message.workspaceId !== request.workspaceId) return false
+      return request.box === 'inbox' ? message.toRole === request.role : message.fromRole === request.role
+    }).sort((a, b) => b.createdAt - a.createdAt)
+    return { messages }
+  }
+
+  @Remote('devConsoleSendMessage')
+  async devConsoleSendMessage(request: DevConsoleSendMessageRequest): Promise<DevConsoleMessage> {
+    const subject = request.subject.trim()
+    if (subject === '') throw new RemoteError('gateway/bad-request', 'message subject is required', {})
+    if (request.kind === 'decision' && (request.payload?.selectedOption === undefined || request.payload.reason === undefined)) {
+      throw new RemoteError('gateway/bad-request', 'decision messages require selectedOption and reason', {})
+    }
+    const message = createMessage({
+      fromRole: request.fromRole,
+      toRole: request.toRole,
+      ...request.workspaceId === undefined ? {} : { workspaceId: request.workspaceId },
+      kind: request.kind,
+      subject,
+      body: request.body,
+      ...request.requiresResponse === undefined ? {} : { requiresResponse: request.requiresResponse },
+      ...request.payload === undefined ? {} : { payload: request.payload },
+    })
+    await this.writeBus({ ...this.busState(), messages: [message, ...this.busState().messages].slice(0, 200) })
+    return message
+  }
+
+  @Remote('devConsoleMessageAction')
+  async devConsoleMessageAction(request: DevConsoleMessageActionRequest): Promise<DevConsoleMessage> {
+    const state = this.busState()
+    const message = state.messages.find(item => item.id === request.messageId)
+    if (message === undefined) throw new RemoteError('gateway/bad-request', `message ${request.messageId} not found`, {})
+    if (message.toRole !== request.role) throw new RemoteError('gateway/bad-request', 'only the recipient may update this message', {})
+    if (request.action === 'resolve' && message.requiresResponse && (request.response === undefined || request.response.trim() === '')) {
+      throw new RemoteError('gateway/bad-request', 'a response is required before resolving', {})
+    }
+    const updated: DevConsoleMessage = {
+      ...message,
+      status: request.action === 'ack' ? 'acknowledged' : 'resolved',
+      updatedAt: Date.now(),
+      ...request.response === undefined ? {} : { payload: { ...message.payload, reason: request.response } },
+    }
+    await this.writeBus({ ...state, messages: state.messages.map(item => item.id === updated.id ? updated : item) })
+    return updated
+  }
+
+  @Remote('devConsoleBriefs')
+  async devConsoleBriefs(request: DevConsoleBriefsRequest): Promise<DevConsoleBriefsValue> {
+    const briefs = this.busState().briefs
+      .filter(brief => request.workspaceId === undefined || brief.workspaceId === request.workspaceId)
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+    return { briefs }
+  }
+
+  @Remote('devConsoleCreateBrief')
+  async devConsoleCreateBrief(request: DevConsoleCreateBriefRequest): Promise<DevConsoleBrief> {
+    const title = request.title.trim()
+    if (title === '' || request.goal.trim() === '' || request.acceptance.trim() === '') {
+      throw new RemoteError('gateway/bad-request', 'brief title, goal, and acceptance are required', {})
+    }
+    const now = Date.now()
+    const brief: DevConsoleBrief = {
+      id: randomUUID(),
+      workspaceId: request.workspaceId,
+      title,
+      goal: request.goal,
+      acceptance: request.acceptance,
+      status: 'draft',
+      authorRole: request.authorRole,
+      createdAt: now,
+      updatedAt: now,
+      history: [],
+    }
+    await this.writeBus({ ...this.busState(), briefs: [brief, ...this.busState().briefs].slice(0, 100) })
+    return brief
+  }
+
+  @Remote('devConsoleTransitionBrief')
+  async devConsoleTransitionBrief(request: DevConsoleTransitionBriefRequest): Promise<DevConsoleBrief> {
+    const state = this.busState()
+    const brief = state.briefs.find(item => item.id === request.briefId)
+    if (brief === undefined) throw new RemoteError('gateway/bad-request', `brief ${request.briefId} not found`, {})
+    if (!BRIEF_TRANSITIONS[brief.status].includes(request.to)) {
+      throw new RemoteError('gateway/bad-request', `brief transition ${brief.status} -> ${request.to} is not allowed`, {})
+    }
+    if (request.to === 'changes_requested' && request.reason === undefined) {
+      throw new RemoteError('gateway/bad-request', 'changes_requested requires a reason', {})
+    }
+    const updated: DevConsoleBrief = {
+      ...brief,
+      status: request.to,
+      updatedAt: Date.now(),
+      ...request.assigneeRole === undefined ? {} : { assigneeRole: request.assigneeRole },
+      history: [...brief.history, {
+        at: Date.now(), from: brief.status, to: request.to, role: request.role,
+        ...request.reason === undefined ? {} : { reason: request.reason },
+      }],
+    }
+    await this.writeBus({ ...state, briefs: state.briefs.map(item => item.id === updated.id ? updated : item) })
+    return updated
+  }
+
+  @Remote('devConsoleHandoff')
+  async devConsoleHandoff(request: DevConsoleHandoffRequest): Promise<DevConsoleMessage> {
+    const state = this.busState()
+    const brief = state.briefs.find(item => item.id === request.briefId)
+    if (brief === undefined) throw new RemoteError('gateway/bad-request', `brief ${request.briefId} not found`, {})
+    if (brief.status !== 'assigned' && brief.status !== 'in_review') {
+      throw new RemoteError('gateway/bad-request', 'handoff requires an assigned or in-review brief', {})
+    }
+    if (request.branch.trim() === '' || request.commit.trim() === '' || request.summary.trim() === '' || request.tests.length === 0) {
+      throw new RemoteError('gateway/bad-request', 'handoff requires branch, commit, summary, and at least one test', {})
+    }
+    const message = createMessage({
+      fromRole: request.fromRole,
+      toRole: request.toRole,
+      workspaceId: brief.workspaceId,
+      kind: 'handoff',
+      subject: `Handoff: ${brief.title}`,
+      body: request.summary,
+      requiresResponse: true,
+      payload: { handoff: {
+        branch: request.branch,
+        commit: request.commit,
+        summary: request.summary,
+        tests: [...request.tests],
+        ...request.risks === undefined ? {} : { risks: request.risks },
+        ...request.nextSteps === undefined ? {} : { nextSteps: request.nextSteps },
+      } },
+    })
+    const updatedBrief: DevConsoleBrief = brief.status === 'in_review' ? brief : {
+      ...brief,
+      status: 'in_review',
+      updatedAt: Date.now(),
+      history: [...brief.history, { at: Date.now(), from: brief.status, to: 'in_review', role: request.fromRole }],
+    }
+    await this.writeBus({
+      messages: [message, ...state.messages].slice(0, 200),
+      briefs: state.briefs.map(item => item.id === updatedBrief.id ? updatedBrief : item),
+    })
+    return message
   }
 
   @Remote('devConsoleState')

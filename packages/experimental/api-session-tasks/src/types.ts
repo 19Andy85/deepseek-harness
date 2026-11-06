@@ -257,3 +257,5 @@ export interface CollectSessionTasksOptions {
 }
 
 export type * from './dev-console.ts'
+
+export type * from './dev-console-bus.ts'
