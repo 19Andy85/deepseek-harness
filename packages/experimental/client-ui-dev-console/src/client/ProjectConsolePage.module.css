@@ -306,12 +306,13 @@
 }
 
 .viewButton {
-  height: 28px;
+  height: 30px;
   padding: 0 10px;
   border: none;
   background: var(--dsw-alias-settings-card-fill);
   color: var(--dsw-alias-label-secondary);
-  font-size: 12px;
+  font: inherit;
+  font-size: var(--pc-font-m);
   cursor: pointer;
 }
 

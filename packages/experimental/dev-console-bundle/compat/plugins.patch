@@ -72,7 +72,7 @@
  } satisfies ProjectionDefinition<'sessionTaskOutcome', SessionTaskOutcome>
 
 --- a/packages/experimental/client-ui-dev-console/package.json	2026-11-06 20:55:19
-+++ b/packages/experimental/client-ui-dev-console/package.json	2026-11-07 06:19:55
++++ b/packages/experimental/client-ui-dev-console/package.json	2026-11-07 07:31:35
 @@ -1,7 +1,7 @@
  {
    "name": "@deepseek-ai/dsh-experimental-client-ui-dev-console",
@@ -84,7 +84,7 @@
    },
 
 --- a/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-10-29 04:06:48
-+++ b/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-11-07 06:19:55
++++ b/packages/experimental/client-ui-dev-console/src/client/ProjectConsoleMenu.tsx	2026-11-07 07:31:35
 @@ -1,6 +1,5 @@
 -/** Workspace row menu entry that opens the project console on that Workspace. */
 +/** Session row menu entry that opens the project console for the row's workspace. */
@@ -131,7 +131,7 @@
        {t('openConsole')}
 
 --- a/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-07 05:48:55
-+++ b/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-07 06:19:55
++++ b/packages/experimental/client-ui-dev-console/src/client/index.ts	2026-11-07 07:31:35
 @@ -29,7 +29,7 @@
  import { RestartAppButton } from './RestartAppButton.tsx'
  import { ProjectConsoleStore } from './ProjectConsoleStore.ts'

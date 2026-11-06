@@ -136,7 +136,12 @@ export function MessageCenter({
   }
   useEffect(() => { void reload() }, [tab, role])
   return (
-    <div className={css.scrim} role="dialog" aria-label={t('messagesTitle')}>
+    <div
+      className={css.scrim}
+      role="dialog"
+      aria-label={t('messagesTitle')}
+      onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}
+    >
       <section className={css.panel}>
         <header className={css.head}>
           <div>

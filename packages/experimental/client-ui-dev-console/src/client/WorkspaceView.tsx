@@ -249,7 +249,12 @@ export function WorkspaceView({
   const current = data?.workspaces.find(row => row.workspace.id === selected)
   const bound = selected === undefined ? [] : bindings[selected] ?? []
   return (
-    <div className={inline === true ? css.inlineRoot : css.scrim} role="dialog" aria-label={t('workspacesTitle')}>
+    <div
+      className={inline === true ? css.inlineRoot : css.scrim}
+      role="dialog"
+      aria-label={t('workspacesTitle')}
+      onMouseDown={(event) => { if (inline !== true && event.target === event.currentTarget) onClose() }}
+    >
       <section className={inline === true ? css.inlinePanel : css.panel}>
         <header className={css.head}>
           <div>

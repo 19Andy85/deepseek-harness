@@ -118,7 +118,12 @@ export function ConfigEditor({ load, save, t, onClose, onSaved }: ConfigEditorPr
     update(next)
   }
   return (
-    <div className={css.scrim} role="dialog" aria-label={t('editConfig')}>
+    <div
+      className={css.scrim}
+      role="dialog"
+      aria-label={t('editConfig')}
+      onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}
+    >
       <section className={css.panel}>
         <header className={css.head}>
           <div>
