@@ -55,3 +55,5 @@
 .metric { display: flex; flex-direction: column; gap: 2px; padding: 8px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 8px; background: color-mix(in srgb, var(--dsw-alias-bg-skeleton) 30%, transparent); }
 .metric strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; }
 .metric span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-tertiary); font-size: 10px; }
+.historySearch { display: flex; gap: 6px; align-items: center; width: 100%; }
+.historySearch .search { flex: 1; margin-bottom: 0; }

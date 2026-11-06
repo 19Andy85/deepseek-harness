@@ -86,6 +86,10 @@ export interface DevConsoleHistoryRequest {
   readonly workspaceId: string
   /** Maximum rows (default 20, max 100). */
   readonly limit?: number
+  /** Rows to skip. */
+  readonly offset?: number
+  /** Case-insensitive match over session id and cwd. */
+  readonly query?: string
 }
 
 /** Historical session row. */
@@ -100,6 +104,10 @@ export interface DevConsoleHistorySession {
 export interface DevConsoleHistoryValue {
   /** Matching sessions, newest first. */
   readonly sessions: readonly DevConsoleHistorySession[]
+  /** Total matching sessions before pagination. */
+  readonly total: number
+  /** Whether another page is available. */
+  readonly hasMore: boolean
 }
 
 /** Inspect one or more workspaces. */
@@ -142,6 +150,28 @@ export interface DevConsoleSummary {
   readonly behind?: number
   /** AGENTS.md size and hash, when present. */
   readonly agents?: { readonly bytes: number; readonly hash: string }
+}
+
+/** Dev Console state read result. */
+export interface DevConsoleStateValue {
+  /** Bound session ids by workspace id. */
+  readonly bindings: Readonly<Record<string, readonly string[]>>
+  /** Recent AGENTS saves. */
+  readonly audit: readonly {
+    readonly at: number
+    readonly workspaceId: string
+    readonly path: string
+    readonly baseHash: string
+    readonly newHash: string
+  }[]
+}
+
+/** Bind a session to a workspace. */
+export interface DevConsoleBindRequest {
+  /** Workspace id. */
+  readonly workspaceId: string
+  /** Session id. */
+  readonly sessionId: string
 }
 
 /** Request for a workspace summary. */

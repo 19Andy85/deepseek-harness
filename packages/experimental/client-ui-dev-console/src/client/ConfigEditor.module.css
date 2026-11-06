@@ -9,3 +9,11 @@
 .editor { flex: 1; min-height: 380px; padding: 12px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 8px; background: var(--dsw-alias-bg-skeleton); color: var(--dsw-alias-label-secondary); font-family: "SF Mono", Menlo, monospace; font-size: 12px; resize: vertical; }
 .error { margin: 0; color: #e5534b; font-size: 12px; white-space: pre-wrap; }
 .ok { margin: 0; color: #43b581; font-size: 12px; }
+.form { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+.project { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 9px; }
+.workspace { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 8px; }
+.formRow { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+.formRow label { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 140px; color: var(--dsw-alias-label-tertiary); font-size: 10px; }
+.formRow input { height: 26px; padding: 0 7px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 6px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 12px; }
+.diffBox { max-height: 180px; overflow: auto; padding: 8px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 8px; background: var(--dsw-alias-bg-skeleton); }
+.diff { margin: 4px 0 0; color: var(--dsw-alias-label-secondary); font-size: 11px; white-space: pre-wrap; }

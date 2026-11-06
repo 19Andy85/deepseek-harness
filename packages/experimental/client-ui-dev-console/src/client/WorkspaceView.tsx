@@ -4,29 +4,12 @@ import { ConfigEditor } from './ConfigEditor.tsx'
 import type { ProjectConsoleKey } from './locales.ts'
 import css from './WorkspaceView.module.css'
 
-const BINDINGS_KEY = 'dsh.dev-console.workspace-sessions.v2'
-const AUDIT_KEY = 'dsh.dev-console.agents-audit.v1'
-
-function readBindings(): Record<string, string[]> {
-  const legacy = localStorage.getItem('dsh.dev-console.domain-sessions.v1')
-  try { return JSON.parse(localStorage.getItem(BINDINGS_KEY) ?? legacy ?? '{}') as Record<string, string[]> } catch { return {} }
+export interface WorkspaceStateView {
+  readonly bindings: Readonly<Record<string, readonly string[]>>
+  readonly audit: readonly AgentsAudit[]
 }
 
-function writeBinding(workspaceId: string, sessionId: string): void {
-  const all = readBindings()
-  all[workspaceId] = [...new Set([sessionId, ...(all[workspaceId] ?? [])])].slice(0, 20)
-  localStorage.setItem(BINDINGS_KEY, JSON.stringify(all))
-}
-
-interface AgentsAudit { readonly at: number; readonly path: string; readonly baseHash: string; readonly newHash: string }
-
-function readAudit(): readonly AgentsAudit[] {
-  try { return JSON.parse(localStorage.getItem(AUDIT_KEY) ?? '[]') as AgentsAudit[] } catch { return [] }
-}
-
-function appendAudit(entry: AgentsAudit): void {
-  localStorage.setItem(AUDIT_KEY, JSON.stringify([entry, ...readAudit()].slice(0, 20)))
-}
+export interface AgentsAudit { readonly at: number; readonly path: string; readonly baseHash: string; readonly newHash: string }
 
 function lineDiff(original: string, next: string): string {
   const before = original.split('\n')
@@ -95,7 +78,13 @@ export interface WorkspaceOpenView {
 export interface WorkspaceViewInjected {
   readonly snapshot: () => Promise<WorkspaceSnapshotView>
   readonly inspect: (workspaceIds?: readonly string[], refresh?: boolean) => Promise<readonly WorkspaceStatusView[]>
-  readonly history: (workspaceId: string) => Promise<readonly { readonly sessionId: string; readonly live: boolean }[]>
+  readonly history: (workspaceId: string, options?: { readonly offset?: number; readonly query?: string }) => Promise<{
+    readonly sessions: readonly { readonly sessionId: string; readonly live: boolean }[]
+    readonly total: number
+    readonly hasMore: boolean
+  }>
+  readonly state: () => Promise<WorkspaceStateView>
+  readonly bind: (workspaceId: string, sessionId: string) => Promise<WorkspaceStateView>
   readonly summary: (workspaceId: string) => Promise<WorkspaceSummaryView>
   readonly openWorkspace: (workspaceId: string) => Promise<WorkspaceOpenView>
   readonly git: (workspaceId: string, action: 'status' | 'log' | 'diff') => Promise<{ readonly text: string }>
@@ -126,7 +115,7 @@ type Detail =
  * @returns the workspace panel.
  */
 export function WorkspaceView({
-  snapshot, inspect, history, summary, openWorkspace, git, agents, saveAgents, autoConfig, config, saveConfig,
+  snapshot, inspect, history, state, bind, summary, openWorkspace, git, agents, saveAgents, autoConfig, config, saveConfig,
   openSession, t, onClose, inline,
 }: WorkspaceViewProps) {
   const [data, setData] = useState<WorkspaceSnapshotView | undefined>(undefined)
@@ -136,14 +125,17 @@ export function WorkspaceView({
   const [detail, setDetail] = useState<Detail>(undefined)
   const [draft, setDraft] = useState('')
   const [agentsOriginal, setAgentsOriginal] = useState('')
-  const [audit, setAudit] = useState<readonly AgentsAudit[]>(() => readAudit())
-  const [bindings, setBindings] = useState<Record<string, string[]>>(() => readBindings())
+  const [audit, setAudit] = useState<readonly AgentsAudit[]>([])
+  const [bindings, setBindings] = useState<Readonly<Record<string, readonly string[]>>>({})
   const [opening, setOpening] = useState<string | undefined>(undefined)
   const [pendingEphemeral, setPendingEphemeral] = useState<string | undefined>(undefined)
   const [configOpen, setConfigOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'ready' | 'blocked'>('all')
   const [historyRows, setHistoryRows] = useState<readonly { readonly sessionId: string; readonly live: boolean }[] | undefined>(undefined)
+  const [historyTotal, setHistoryTotal] = useState(0)
+  const [historyHasMore, setHistoryHasMore] = useState(false)
+  const [historyQuery, setHistoryQuery] = useState('')
   const [overview, setOverview] = useState<WorkspaceSummaryView | undefined>(undefined)
   const [overviewLoading, setOverviewLoading] = useState(false)
   const [busy, setBusy] = useState<string | undefined>(undefined)
@@ -181,6 +173,12 @@ export function WorkspaceView({
   }
   useEffect(() => { void load() }, [])
   useEffect(() => {
+    void state().then((value) => {
+      setBindings(value.bindings)
+      setAudit(value.audit)
+    }).catch(() => { /* state is optional before storage mounts */ })
+  }, [])
+  useEffect(() => {
     if (selected === undefined) { setOverview(undefined); return }
     setOverview(undefined)
     setOverviewLoading(true)
@@ -192,8 +190,12 @@ export function WorkspaceView({
     setPendingEphemeral(undefined)
     setOpening(workspaceId)
     void openWorkspace(workspaceId).then((value) => {
-      writeBinding(workspaceId, value.sessionId)
-      setBindings(readBindings())
+      void bind(workspaceId, value.sessionId).then((result) => {
+        setBindings(result.bindings)
+        setAudit(result.audit)
+      }).catch((reason: unknown) => {
+        notify('error', reason instanceof Error ? reason.message : String(reason))
+      })
       notify('ok', `${t('workspaceOpened')} · ${value.sessionId}`)
     }).catch((reason: unknown) => {
       setError(reason instanceof Error ? reason.message : String(reason))
@@ -218,6 +220,21 @@ export function WorkspaceView({
     }).catch((reason: unknown) => {
       notify('error', reason instanceof Error ? reason.message : String(reason))
     }).finally(() => { setBusy(undefined) })
+  }
+  const loadHistory = async (append: boolean): Promise<void> => {
+    if (selected === undefined) return
+    setBusy('history')
+    try {
+      const result = await history(selected, {
+        ...append ? { offset: historyRows?.length ?? 0 } : {},
+        ...historyQuery.trim() === '' ? {} : { query: historyQuery },
+      })
+      setHistoryRows(append ? [...(historyRows ?? []), ...result.sessions] : result.sessions)
+      setHistoryTotal(result.total)
+      setHistoryHasMore(result.hasMore)
+    } catch (reason) {
+      notify('error', reason instanceof Error ? reason.message : String(reason))
+    } finally { setBusy(undefined) }
   }
   const projects = new Map<string, WorkspaceStatusView[]>()
   const needle = query.trim().toLowerCase()
@@ -282,7 +299,7 @@ export function WorkspaceView({
                     key={row.workspace.id}
                     type="button"
                     className={selected === row.workspace.id ? `${css.workspaceRow} ${css.workspaceRowActive}` : css.workspaceRow}
-                    onClick={() => { setSelected(row.workspace.id); setDetail(undefined); setHistoryRows(undefined) }}
+                    onClick={() => { setSelected(row.workspace.id); setDetail(undefined); setHistoryRows(undefined); setHistoryQuery('') }}
                   >
                     <span className={css.workspaceText}>
                       <span className={css.workspaceName}>{row.workspace.name}</span>
@@ -368,27 +385,33 @@ export function WorkspaceView({
                           {sessionId}
                         </button>
                       ))}
-                    <button
-                      type="button"
-                      className={css.button}
-                      disabled={busy !== undefined}
-                      onClick={() => {
-                        setBusy('history')
-                        void history(current.workspace.id).then((rows) => {
-                          setHistoryRows(rows)
-                          notify('ok', t('loaded'))
-                        }).catch((reason: unknown) => {
-                          notify('error', reason instanceof Error ? reason.message : String(reason))
-                        }).finally(() => { setBusy(undefined) })
-                      }}
-                    >{busy === 'history' ? '…' : t('loadHistory')}</button>
+                    <div className={css.historySearch}>
+                      <input
+                        className={css.search}
+                        value={historyQuery}
+                        placeholder={t('historySearch')}
+                        onChange={(event) => { setHistoryQuery(event.currentTarget.value) }}
+                        onKeyDown={(event) => { if (event.key === 'Enter') { void loadHistory(false) } }}
+                      />
+                      <button type="button" className={css.button} disabled={busy !== undefined} onClick={() => { void loadHistory(false) }}>
+                        {busy === 'history' ? '…' : t('loadHistory')}
+                      </button>
+                    </div>
                     {historyRows === undefined ? null : historyRows.length === 0
                       ? <p className={css.muted}>{t('noHistory')}</p>
-                      : historyRows.map(row => (
-                        <button key={row.sessionId} type="button" className={css.sessionChip} onClick={() => { openSession(row.sessionId) }}>
-                          {row.live ? '● ' : ''}{row.sessionId}
-                        </button>
-                      ))}
+                      : (
+                        <>
+                          <p className={css.muted}>{historyRows.length} / {historyTotal}</p>
+                          {historyRows.map(row => (
+                            <button key={row.sessionId} type="button" className={css.sessionChip} onClick={() => { openSession(row.sessionId) }}>
+                              {row.live ? '● ' : ''}{row.sessionId}
+                            </button>
+                          ))}
+                          {!historyHasMore ? null : (
+                            <button type="button" className={css.button} onClick={() => { void loadHistory(true) }}>{t('loadMore')}</button>
+                          )}
+                        </>
+                      )}
                   </section>
                   {detail === undefined ? null : (
                     <section className={css.result}>
@@ -400,11 +423,10 @@ export function WorkspaceView({
                               const target = detail
                               setBusy('save-agents')
                               void saveAgents(target.workspaceId, draft, target.hash).then((value) => {
-                                appendAudit({ at: Date.now(), path: target.title, baseHash: target.hash, newHash: value.hash })
-                                setAudit(readAudit())
                                 setAgentsOriginal(draft)
                                 setDetail({ ...target, text: draft, hash: value.hash })
                                 notify('ok', t('configSaved'))
+                                void state().then((next) => { setAudit(next.audit) }).catch(() => { /* audit refresh is best effort */ })
                               }).catch((reason: unknown) => {
                                 notify('error', reason instanceof Error ? reason.message : String(reason))
                               }).finally(() => { setBusy(undefined) })

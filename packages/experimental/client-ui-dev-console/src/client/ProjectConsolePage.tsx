@@ -84,8 +84,14 @@ export interface ProjectConsoleInjected {
   /** Read the Dev Console workspace registry. */
   readonly devConsoleSnapshot: () => Promise<WorkspaceSnapshotView>
   readonly devConsoleInspect: (workspaceIds?: readonly string[], refresh?: boolean) => Promise<readonly import('./WorkspaceView.tsx').WorkspaceStatusView[]>
-  readonly devConsoleHistory: (workspaceId: string) => Promise<readonly { readonly sessionId: string; readonly live: boolean }[]>
+  readonly devConsoleHistory: (workspaceId: string, options?: { readonly offset?: number; readonly query?: string }) => Promise<{
+    readonly sessions: readonly { readonly sessionId: string; readonly live: boolean }[]
+    readonly total: number
+    readonly hasMore: boolean
+  }>
   readonly devConsoleSummary: (workspaceId: string) => Promise<import('./WorkspaceView.tsx').WorkspaceSummaryView>
+  readonly devConsoleState: () => Promise<import('./WorkspaceView.tsx').WorkspaceStateView>
+  readonly devConsoleBind: (workspaceId: string, sessionId: string) => Promise<import('./WorkspaceView.tsx').WorkspaceStateView>
   /** Open one configured workspace in a cwd Session. */
   readonly devConsoleOpenWorkspace: (workspaceId: string) => Promise<WorkspaceOpenView>
   /** Read git output for a workspace. */
@@ -147,7 +153,8 @@ function statusText(
 export function ProjectConsolePage({
   t, store, workspaceOptions, workspaceSessions, selectedWorkspaceId, selectWorkspace, refresh, openSession, focusSession,
   closeFocus, resetShift, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus, openInSidebar,
-  devConsoleSnapshot, devConsoleInspect, devConsoleHistory, devConsoleSummary, devConsoleOpenWorkspace, devConsoleGit, devConsoleAgents,
+  devConsoleSnapshot, devConsoleInspect, devConsoleHistory, devConsoleSummary, devConsoleState, devConsoleBind,
+  devConsoleOpenWorkspace, devConsoleGit, devConsoleAgents,
   devConsoleSaveAgents, devConsoleAutoConfig,
   devConsoleConfig, devConsoleSaveConfig,
   compact = false, surface = 'main', railSessionId, onFloat, onDock,
@@ -745,6 +752,8 @@ export function ProjectConsolePage({
                 snapshot={devConsoleSnapshot}
                 inspect={devConsoleInspect}
                 history={devConsoleHistory}
+                state={devConsoleState}
+                bind={devConsoleBind}
                 summary={devConsoleSummary}
                 openWorkspace={devConsoleOpenWorkspace}
                 git={devConsoleGit}
@@ -1356,6 +1365,8 @@ export function ProjectConsolePage({
             snapshot={devConsoleSnapshot}
             inspect={devConsoleInspect}
             history={devConsoleHistory}
+            state={devConsoleState}
+            bind={devConsoleBind}
             summary={devConsoleSummary}
             openWorkspace={devConsoleOpenWorkspace}
             git={devConsoleGit}

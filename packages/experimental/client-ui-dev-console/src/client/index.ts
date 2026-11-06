@@ -172,15 +172,30 @@ function registerUi(ctx: Context): void {
       if (!result.ok) throw new Error(result.error.message)
       return result.value.workspaces
     },
+    devConsoleState: async () => {
+      const result = await ctx.remote.sessionTasks.devConsoleState()
+      if (!result.ok) throw new Error(result.error.message)
+      return result.value
+    },
+    devConsoleBind: async (workspaceId, sessionId) => {
+      const result = await ctx.remote.sessionTasks.devConsoleBind({ workspaceId, sessionId })
+      if (!result.ok) throw new Error(result.error.message)
+      return result.value
+    },
     devConsoleSummary: async (workspaceId) => {
       const result = await ctx.remote.sessionTasks.devConsoleSummary({ workspaceId })
       if (!result.ok) throw new Error(result.error.message)
       return result.value
     },
-    devConsoleHistory: async (workspaceId) => {
-      const result = await ctx.remote.sessionTasks.devConsoleHistory({ workspaceId })
+    devConsoleHistory: async (workspaceId, options) => {
+      const request = {
+        workspaceId,
+        ...options?.offset === undefined ? {} : { offset: options.offset },
+        ...options?.query === undefined ? {} : { query: options.query },
+      }
+      const result = await ctx.remote.sessionTasks.devConsoleHistory(request)
       if (!result.ok) throw new Error(result.error.message)
-      return result.value.sessions
+      return result.value
     },
     devConsoleSnapshot: async () => {
       const result = await ctx.remote.sessionTasks.devConsoleSnapshot()

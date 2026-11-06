@@ -27,16 +27,17 @@ import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
-import { readFile, realpath, writeFile } from 'node:fs/promises'
+import { copyFile, readFile, realpath, rename, writeFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
 import { dump, load } from 'js-yaml'
 import { loadDevConsoleConfig, validateConfig } from './dev-console-config.ts'
+import { devConsoleStateDomain, EMPTY_DEV_CONSOLE_STATE, type DevConsoleAuditEntry, type DevConsoleState } from './dev-console-state.ts'
 import { inspectWorkspace, openWorkspace } from './dev-console-workspace.ts'
 import type { DevConsoleWorkspaceConfig } from './dev-console-config.ts'
 import type {
   DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleAutoConfigRequest, DevConsoleAutoConfigValue,
   DevConsoleSummary, DevConsoleSummaryRequest,
-  DevConsoleConfigValue, DevConsoleHistoryRequest, DevConsoleHistoryValue,
+  DevConsoleBindRequest, DevConsoleConfigValue, DevConsoleHistoryRequest, DevConsoleHistoryValue, DevConsoleStateValue,
   DevConsoleInspectRequest, DevConsoleInspectValue, DevConsoleSaveConfigRequest, DevConsoleSaveConfigValue,
   DevConsoleWorkspaceStatus, DevConsoleGitRequest, DevConsoleGitValue, DevConsoleSaveAgentsRequest, DevConsoleSaveAgentsValue,
   DevConsoleOpenWorkspaceRequest, DevConsoleOpenWorkspaceValue, DevConsoleSnapshot,
@@ -101,6 +102,7 @@ export class SessionTasksController extends TypertRemoteService {
   private readonly inspectionCache = new Map<string, { at: number; inspection: import('./dev-console-workspace.ts').WorkspaceInspection }>()
   private readonly observed = new Map<string, ObservedActivity>()
   private seenDomain: Domain<typeof sessionTasksSeenDomain> | undefined
+  private stateDomain: Domain<typeof devConsoleStateDomain> | undefined
   private relationsByParent = new Map<string, SessionRelationChild[]>()
   private readonly relationsByChild = new Map<string, string>()
   private lastRelationsRefresh = 0
@@ -122,8 +124,15 @@ export class SessionTasksController extends TypertRemoteService {
   protected async [Service.init](): Promise<void> {
     const seenBinding = this.ctx.inject(['storageDomain'], async (storageCtx) => {
       const domain = await storageCtx.storageDomain.open(sessionTasksSeenDomain)
+      const state = await storageCtx.storageDomain.open(devConsoleStateDomain)
       this.seenDomain = domain
-      return () => { this.seenDomain = undefined; void domain.close() }
+      this.stateDomain = state
+      return () => {
+        this.seenDomain = undefined
+        this.stateDomain = undefined
+        void domain.close()
+        void state.close()
+      }
     })
     if (this.ctx.get('storageDomain') !== undefined) await seenBinding
     const binding = this.ctx.inject(['sessionProjections'], async (projectionCtx) => {
@@ -422,6 +431,24 @@ export class SessionTasksController extends TypertRemoteService {
     return candidates.find(candidate => existsSync(candidate)) ?? resolve(process.cwd(), this.devConsoleConfigFile)
   }
 
+  @Remote('devConsoleState')
+  async devConsoleState(): Promise<DevConsoleStateValue> {
+    const state = this.stateDomain?.global.get() ?? EMPTY_DEV_CONSOLE_STATE
+    return { bindings: state.bindings, audit: state.audit }
+  }
+
+  @Remote('devConsoleBind')
+  async devConsoleBind(request: DevConsoleBindRequest): Promise<DevConsoleStateValue> {
+    if (this.stateDomain === undefined) throw new RemoteError('session-tasks/seen-unavailable', 'Dev Console state requires a mounted storage domain', {})
+    const state: DevConsoleState = this.stateDomain.global.get()
+    const sessions = [request.sessionId, ...(state.bindings[request.workspaceId] ?? [])]
+    await this.stateDomain.global.set({
+      ...state,
+      bindings: { ...state.bindings, [request.workspaceId]: [...new Set(sessions)].slice(0, 20) },
+    })
+    return this.devConsoleState()
+  }
+
   @Remote('devConsoleSummary')
   async devConsoleSummary(request: DevConsoleSummaryRequest): Promise<DevConsoleSummary> {
     const workspace = this.devConsoleWorkspace(request.workspaceId)
@@ -451,19 +478,25 @@ export class SessionTasksController extends TypertRemoteService {
     const workspace = this.devConsoleWorkspace(request.workspaceId)
     const inspection = await inspectWorkspace(workspace)
     const query = this.ctx.get('sessionQuery')
-    if (query === undefined || inspection.canonicalWorktree === undefined) return { sessions: [] }
+    if (query === undefined || inspection.canonicalWorktree === undefined) return { sessions: [], total: 0, hasMore: false }
     const limit = Math.min(Math.max(request.limit ?? 20, 1), 100)
+    const offset = Math.max(request.offset ?? 0, 0)
+    const needle = request.query?.trim().toLowerCase() ?? ''
     const records = await query.listSessions()
-    const sessions: { sessionId: string; live: boolean }[] = []
+    const matched: { sessionId: string; live: boolean }[] = []
     for (const record of records) {
       if (record.header.cwd === undefined) continue
       let canonical: string
       try { canonical = await realpath(record.header.cwd) } catch { continue }
       if (canonical !== inspection.canonicalWorktree) continue
-      sessions.push({ sessionId: record.header.id, live: record.live })
-      if (sessions.length >= limit) break
+      if (needle !== '' && !`${record.header.id} ${canonical}`.toLowerCase().includes(needle)) continue
+      matched.push({ sessionId: record.header.id, live: record.live })
     }
-    return { sessions }
+    return {
+      sessions: matched.slice(offset, offset + limit),
+      total: matched.length,
+      hasMore: offset + limit < matched.length,
+    }
   }
 
   @Remote('devConsoleInspect')
@@ -506,7 +539,10 @@ export class SessionTasksController extends TypertRemoteService {
       throw new RemoteError('gateway/bad-request', parsed.problems.map(problem => `${problem.path}: ${problem.message}`).join('; '), {})
     }
     const path = this.resolveDevConsoleConfigFile()
-    await writeFile(path, dump(parsed.config))
+    await copyFile(path, `${path}.bak`).catch(() => { /* first save has no previous file */ })
+    const temporary = `${path}.tmp`
+    await writeFile(temporary, dump(parsed.config))
+    await rename(temporary, path)
     return { path, warnings: parsed.warnings }
   }
 
@@ -593,7 +629,13 @@ export class SessionTasksController extends TypertRemoteService {
     const currentHash = createHash('sha256').update(current).digest('hex')
     if (currentHash !== request.baseHash) throw new RemoteError('dev-console/conflict', 'AGENTS.md changed externally', {})
     await writeFile(path, request.text)
-    return { hash: createHash('sha256').update(request.text).digest('hex') }
+    const newHash = createHash('sha256').update(request.text).digest('hex')
+    if (this.stateDomain !== undefined) {
+      const state = this.stateDomain.global.get()
+      const entry: DevConsoleAuditEntry = { at: Date.now(), workspaceId: request.workspaceId, path, baseHash: request.baseHash, newHash }
+      await this.stateDomain.global.set({ ...state, audit: [entry, ...state.audit].slice(0, 50) })
+    }
+    return { hash: newHash }
   }
 
   private devConsoleWorkspace(workspaceId: string): DevConsoleWorkspaceConfig {
