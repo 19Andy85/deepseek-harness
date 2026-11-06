@@ -1,10 +1,10 @@
-/** Dev Console project/domain registry loaded from `.dsh/dev-console.yaml`. */
+/** Dev Console project/workspace registry loaded from `.dsh/dev-console.yaml`. */
 import { existsSync, readFileSync, realpathSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { isAbsolute, resolve } from 'node:path'
 import { load } from 'js-yaml'
 
-/** A configured agent adapter for one domain. */
+/** A configured agent adapter for one workspace. */
 export interface DevConsoleAgentConfig {
   /** Adapter kind; `dsh-session` is the first supported adapter. */
   readonly adapter: 'dsh-session' | 'cli' | 'mcp'
@@ -14,9 +14,9 @@ export interface DevConsoleAgentConfig {
   readonly args?: readonly string[]
 }
 
-/** One domain's worktree and expectations. */
+/** One workspace's worktree and expectations. */
 export interface DevConsoleWorkspaceConfig {
-  /** Stable domain identity. */
+  /** Stable workspace identity. */
   readonly id: string
   /** Display name. */
   readonly name: string
@@ -41,7 +41,7 @@ export interface DevConsoleWorkspaceConfig {
   }
 }
 
-/** One project and its domains. */
+/** One project and its workspaces. */
 export interface DevConsoleProjectConfig {
   /** Stable project identity. */
   readonly id: string
@@ -49,7 +49,7 @@ export interface DevConsoleProjectConfig {
   readonly name: string
   /** Absolute project root. */
   readonly root: string
-  /** Domains in this project. */
+  /** Workspaces in this project. */
   readonly workspaces: readonly DevConsoleWorkspaceConfig[]
 }
 

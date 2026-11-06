@@ -10,10 +10,10 @@
 .list { overflow: auto; padding-right: 6px; border-right: 1px solid var(--dsw-alias-settings-card-stroke); }
 .project { margin-bottom: 14px; }
 .projectName { margin: 0 0 6px; color: var(--dsw-alias-label-tertiary); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-.domainRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; margin-bottom: 4px; padding: 8px 9px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
-.domainRow:hover { background: color-mix(in srgb, var(--dsw-alias-bg-skeleton) 50%, transparent); }
-.domainRowActive { border-color: var(--dsw-alias-settings-card-stroke); background: color-mix(in srgb, var(--dsw-alias-bg-skeleton) 70%, transparent); }
-.domainName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workspaceRow { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; margin-bottom: 4px; padding: 8px 9px; border: 1px solid transparent; border-radius: 8px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.workspaceRow:hover { background: color-mix(in srgb, var(--dsw-alias-bg-skeleton) 50%, transparent); }
+.workspaceRowActive { border-color: var(--dsw-alias-settings-card-stroke); background: color-mix(in srgb, var(--dsw-alias-bg-skeleton) 70%, transparent); }
+.workspaceName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .detail { overflow: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px; }
 .detailHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .detailTitle { margin: 0; font-size: 15px; }
@@ -37,7 +37,7 @@
 .toastClose { border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
 .button:hover:not(:disabled) { background: color-mix(in srgb, var(--dsw-alias-bg-skeleton) 55%, transparent); }
 .button:active:not(:disabled) { transform: translateY(1px); }
-.button:focus-visible, .domainRow:focus-visible { outline: 2px solid #5b8def; outline-offset: 1px; }
+.button:focus-visible, .workspaceRow:focus-visible { outline: 2px solid #5b8def; outline-offset: 1px; }
 .inlineRoot { flex: 1; min-width: 0; min-height: 0; display: flex; }
 .inlinePanel { width: 100%; height: 100%; display: flex; flex-direction: column; padding: 4px 2px; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 .search { width: 100%; height: 28px; margin-bottom: 8px; padding: 0 8px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 7px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: 12px; }
@@ -49,8 +49,8 @@
 .sessions { align-items: flex-start; }
 .sessions .button { align-self: flex-start; }
 .projectName { text-transform: none; letter-spacing: 0; font-size: 12px; }
-.domainText { display: flex; flex-direction: column; min-width: 0; }
-.domainMeta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-tertiary); font-size: 10px; }
+.workspaceText { display: flex; flex-direction: column; min-width: 0; }
+.workspaceMeta { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-tertiary); font-size: 10px; }
 .overview { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
 .metric { display: flex; flex-direction: column; gap: 2px; padding: 8px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 8px; background: color-mix(in srgb, var(--dsw-alias-bg-skeleton) 30%, transparent); }
 .metric strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 600; }

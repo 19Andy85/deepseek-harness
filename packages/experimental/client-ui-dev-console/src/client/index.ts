@@ -163,22 +163,22 @@ function registerUi(ctx: Context): void {
     answerApproval: (sessionId, decision) => store.answerApproval(sessionId, decision),
     answerQuestion: (sessionId, answer) => store.answerQuestion(sessionId, answer),
     hooks: { sessionStatus: ctx.uiSession.sessionStatus },
-    devConsoleInspect: async (domainIds, refresh) => {
+    devConsoleInspect: async (workspaceIds, refresh) => {
       const request = {
-        ...domainIds === undefined ? {} : { domainIds },
+        ...workspaceIds === undefined ? {} : { workspaceIds },
         ...refresh === undefined ? {} : { refresh },
       }
       const result = await ctx.remote.sessionTasks.devConsoleInspect(request)
       if (!result.ok) throw new Error(result.error.message)
-      return result.value.domains
+      return result.value.workspaces
     },
-    devConsoleSummary: async (domainId) => {
-      const result = await ctx.remote.sessionTasks.devConsoleSummary({ domainId })
+    devConsoleSummary: async (workspaceId) => {
+      const result = await ctx.remote.sessionTasks.devConsoleSummary({ workspaceId })
       if (!result.ok) throw new Error(result.error.message)
       return result.value
     },
-    devConsoleHistory: async (domainId) => {
-      const result = await ctx.remote.sessionTasks.devConsoleHistory({ domainId })
+    devConsoleHistory: async (workspaceId) => {
+      const result = await ctx.remote.sessionTasks.devConsoleHistory({ workspaceId })
       if (!result.ok) throw new Error(result.error.message)
       return result.value.sessions
     },
@@ -187,23 +187,23 @@ function registerUi(ctx: Context): void {
       if (!result.ok) throw new Error(result.error.message)
       return result.value
     },
-    devConsoleOpenDomain: async (domainId) => {
-      const result = await ctx.remote.sessionTasks.devConsoleOpenDomain({ domainId })
+    devConsoleOpenWorkspace: async (workspaceId) => {
+      const result = await ctx.remote.sessionTasks.devConsoleOpenWorkspace({ workspaceId })
       if (!result.ok) throw new Error(result.error.message)
       return result.value
     },
-    devConsoleGit: async (domainId, action) => {
-      const result = await ctx.remote.sessionTasks.devConsoleGit({ domainId, action })
+    devConsoleGit: async (workspaceId, action) => {
+      const result = await ctx.remote.sessionTasks.devConsoleGit({ workspaceId, action })
       if (!result.ok) throw new Error(result.error.message)
       return result.value
     },
-    devConsoleAgents: async (domainId) => {
-      const result = await ctx.remote.sessionTasks.devConsoleAgents({ domainId })
+    devConsoleAgents: async (workspaceId) => {
+      const result = await ctx.remote.sessionTasks.devConsoleAgents({ workspaceId })
       if (!result.ok) throw new Error(result.error.message)
       return result.value
     },
-    devConsoleSaveAgents: async (domainId, text, baseHash) => {
-      const result = await ctx.remote.sessionTasks.devConsoleSaveAgents({ domainId, text, baseHash })
+    devConsoleSaveAgents: async (workspaceId, text, baseHash) => {
+      const result = await ctx.remote.sessionTasks.devConsoleSaveAgents({ workspaceId, text, baseHash })
       if (!result.ok) throw new Error(result.error.message)
       return result.value
     },

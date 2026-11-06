@@ -13,7 +13,7 @@ export interface ConfigEditorProps {
   readonly t: (key: ProjectConsoleKey) => string
   /** Close the editor. */
   readonly onClose: () => void
-  /** Reload the domain snapshot after a save. */
+  /** Reload the workspace snapshot after a save. */
   readonly onSaved: () => void
 }
 

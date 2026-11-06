@@ -1,19 +1,20 @@
-/** Dev Console domain panel: registry on the left, selected domain detail on the right. */
+/** Dev Console workspace panel: registry on the left, selected workspace detail on the right. */
 import { useEffect, useState } from 'react'
 import { ConfigEditor } from './ConfigEditor.tsx'
 import type { ProjectConsoleKey } from './locales.ts'
-import css from './DomainView.module.css'
+import css from './WorkspaceView.module.css'
 
-const BINDINGS_KEY = 'dsh.dev-console.domain-sessions.v1'
+const BINDINGS_KEY = 'dsh.dev-console.workspace-sessions.v2'
 const AUDIT_KEY = 'dsh.dev-console.agents-audit.v1'
 
 function readBindings(): Record<string, string[]> {
-  try { return JSON.parse(localStorage.getItem(BINDINGS_KEY) ?? '{}') as Record<string, string[]> } catch { return {} }
+  const legacy = localStorage.getItem('dsh.dev-console.domain-sessions.v1')
+  try { return JSON.parse(localStorage.getItem(BINDINGS_KEY) ?? legacy ?? '{}') as Record<string, string[]> } catch { return {} }
 }
 
-function writeBinding(domainId: string, sessionId: string): void {
+function writeBinding(workspaceId: string, sessionId: string): void {
   const all = readBindings()
-  all[domainId] = [...new Set([sessionId, ...(all[domainId] ?? [])])].slice(0, 20)
+  all[workspaceId] = [...new Set([sessionId, ...(all[workspaceId] ?? [])])].slice(0, 20)
   localStorage.setItem(BINDINGS_KEY, JSON.stringify(all))
 }
 
@@ -40,8 +41,8 @@ function lineDiff(original: string, next: string): string {
   return out.length === 0 ? 'no changes' : out.join('\n')
 }
 
-/** One configured domain as the panel renders it. */
-export interface DomainConfigView {
+/** One configured workspace as the panel renders it. */
+export interface WorkspaceConfigView {
   readonly id: string
   readonly name: string
   readonly worktree: string
@@ -49,8 +50,8 @@ export interface DomainConfigView {
   readonly hooks: { readonly expectedBranch: string; readonly expectedToplevel: string }
 }
 
-/** Live inspection of one domain. */
-export interface DomainInspectionView {
+/** Live inspection of one workspace. */
+export interface WorkspaceInspectionView {
   readonly canonicalWorktree?: string
   readonly toplevel?: string
   readonly branch?: string
@@ -58,18 +59,18 @@ export interface DomainInspectionView {
   readonly problems: readonly string[]
 }
 
-/** One domain row. */
-export interface DomainStatusView {
+/** One workspace row. */
+export interface WorkspaceStatusView {
   readonly projectId: string
   readonly projectName?: string
   readonly projectRoot?: string
-  readonly domain: DomainConfigView
-  readonly inspection?: DomainInspectionView
+  readonly workspace: WorkspaceConfigView
+  readonly inspection?: WorkspaceInspectionView
   readonly sessions?: readonly { readonly sessionId: string; readonly cwd: string; readonly live: boolean }[]
 }
 
-/** Recent activity summary of one domain. */
-export interface DomainSummaryView {
+/** Recent activity summary of one workspace. */
+export interface WorkspaceSummaryView {
   readonly commit?: { readonly hash: string; readonly subject: string; readonly at: string }
   readonly dirtyCount: number
   readonly ahead?: number
@@ -77,37 +78,37 @@ export interface DomainSummaryView {
   readonly agents?: { readonly bytes: number; readonly hash: string }
 }
 
-/** Snapshot of the domain registry. */
-export interface DomainSnapshotView {
+/** Snapshot of the workspace registry. */
+export interface WorkspaceSnapshotView {
   readonly problems: readonly { readonly code: string; readonly path: string; readonly message: string }[]
   readonly warnings: readonly { readonly code: string; readonly path: string; readonly message: string }[]
-  readonly domains: readonly DomainStatusView[]
+  readonly workspaces: readonly WorkspaceStatusView[]
 }
 
-/** Result of opening a domain. */
-export interface DomainOpenView {
+/** Result of opening a workspace. */
+export interface WorkspaceOpenView {
   readonly sessionId: string
   readonly cwd: string
 }
 
-/** Injected Dev Console domain actions. */
-export interface DomainViewInjected {
-  readonly snapshot: () => Promise<DomainSnapshotView>
-  readonly inspect: (domainIds?: readonly string[], refresh?: boolean) => Promise<readonly DomainStatusView[]>
-  readonly history: (domainId: string) => Promise<readonly { readonly sessionId: string; readonly live: boolean }[]>
-  readonly summary: (domainId: string) => Promise<DomainSummaryView>
-  readonly openDomain: (domainId: string) => Promise<DomainOpenView>
-  readonly git: (domainId: string, action: 'status' | 'log' | 'diff') => Promise<{ readonly text: string }>
-  readonly agents: (domainId: string) => Promise<{ readonly path: string; readonly text: string; readonly hash: string }>
-  readonly saveAgents: (domainId: string, text: string, baseHash: string) => Promise<{ readonly hash: string }>
+/** Injected Dev Console workspace actions. */
+export interface WorkspaceViewInjected {
+  readonly snapshot: () => Promise<WorkspaceSnapshotView>
+  readonly inspect: (workspaceIds?: readonly string[], refresh?: boolean) => Promise<readonly WorkspaceStatusView[]>
+  readonly history: (workspaceId: string) => Promise<readonly { readonly sessionId: string; readonly live: boolean }[]>
+  readonly summary: (workspaceId: string) => Promise<WorkspaceSummaryView>
+  readonly openWorkspace: (workspaceId: string) => Promise<WorkspaceOpenView>
+  readonly git: (workspaceId: string, action: 'status' | 'log' | 'diff') => Promise<{ readonly text: string }>
+  readonly agents: (workspaceId: string) => Promise<{ readonly path: string; readonly text: string; readonly hash: string }>
+  readonly saveAgents: (workspaceId: string, text: string, baseHash: string) => Promise<{ readonly hash: string }>
   readonly autoConfig: (overwrite: boolean) => Promise<{ readonly path: string; readonly projects: number }>
   readonly config: () => Promise<{ readonly path: string; readonly yaml: string }>
   readonly saveConfig: (yaml: string) => Promise<{ readonly path: string; readonly warnings: readonly { readonly message: string }[] }>
   readonly openSession: (sessionId: string) => void
 }
 
-/** Props of the domain panel. */
-export interface DomainViewProps extends DomainViewInjected {
+/** Props of the workspace panel. */
+export interface WorkspaceViewProps extends WorkspaceViewInjected {
   readonly t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string
   readonly onClose: () => void
   /** Render inline inside the console body instead of as a modal. */
@@ -116,18 +117,19 @@ export interface DomainViewProps extends DomainViewInjected {
 
 type Detail =
   | { readonly kind: 'git'; readonly title: string; readonly text: string }
-  | { readonly kind: 'agents'; readonly title: string; readonly text: string; readonly domainId: string; readonly hash: string }
+  | { readonly kind: 'agents'; readonly title: string; readonly text: string; readonly workspaceId: string; readonly hash: string }
   | undefined
 
 /**
- * Render the domain registry and the selected domain's detail.
+ * Render the workspace registry and the selected workspace's detail.
  * @param props - Remote actions, dictionary, and close handler.
- * @returns the domain panel.
+ * @returns the workspace panel.
  */
-export function DomainView({
-  snapshot, inspect, history, summary, openDomain, git, agents, saveAgents, autoConfig, config, saveConfig, openSession, t, onClose, inline,
-}: DomainViewProps) {
-  const [data, setData] = useState<DomainSnapshotView | undefined>(undefined)
+export function WorkspaceView({
+  snapshot, inspect, history, summary, openWorkspace, git, agents, saveAgents, autoConfig, config, saveConfig,
+  openSession, t, onClose, inline,
+}: WorkspaceViewProps) {
+  const [data, setData] = useState<WorkspaceSnapshotView | undefined>(undefined)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | undefined>(undefined)
   const [selected, setSelected] = useState<string | undefined>(undefined)
@@ -142,7 +144,7 @@ export function DomainView({
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<'all' | 'ready' | 'blocked'>('all')
   const [historyRows, setHistoryRows] = useState<readonly { readonly sessionId: string; readonly live: boolean }[] | undefined>(undefined)
-  const [overview, setOverview] = useState<DomainSummaryView | undefined>(undefined)
+  const [overview, setOverview] = useState<WorkspaceSummaryView | undefined>(undefined)
   const [overviewLoading, setOverviewLoading] = useState(false)
   const [busy, setBusy] = useState<string | undefined>(undefined)
   const [toast, setToast] = useState<{ kind: 'ok' | 'error'; text: string } | undefined>(undefined)
@@ -157,7 +159,7 @@ export function DomainView({
       const rows = await inspect(undefined, refresh)
       setData(current => current === undefined ? current : {
         ...current,
-        domains: current.domains.map(row => rows.find(next => next.domain.id === row.domain.id) ?? row),
+        workspaces: current.workspaces.map(row => rows.find(next => next.workspace.id === row.workspace.id) ?? row),
       })
     } catch (reason) {
       notify('error', reason instanceof Error ? reason.message : String(reason))
@@ -169,9 +171,9 @@ export function DomainView({
       const next = await snapshot()
       setData(next)
       setError(undefined)
-      setSelected(current => current !== undefined && next.domains.some(row => row.domain.id === current)
+      setSelected(current => current !== undefined && next.workspaces.some(row => row.workspace.id === current)
         ? current
-        : next.domains[0]?.domain.id)
+        : next.workspaces[0]?.workspace.id)
       void inspectAll(false)
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason))
@@ -184,32 +186,32 @@ export function DomainView({
     setOverviewLoading(true)
     void summary(selected).then(setOverview).catch(() => { setOverview(undefined) }).finally(() => { setOverviewLoading(false) })
   }, [selected])
-  const open = (domainId: string): void => {
+  const open = (workspaceId: string): void => {
     const ephemeral = data?.warnings.some(warning => warning.code === 'ephemeral-path') === true
-    if (ephemeral && pendingEphemeral !== domainId) { setPendingEphemeral(domainId); return }
+    if (ephemeral && pendingEphemeral !== workspaceId) { setPendingEphemeral(workspaceId); return }
     setPendingEphemeral(undefined)
-    setOpening(domainId)
-    void openDomain(domainId).then((value) => {
-      writeBinding(domainId, value.sessionId)
+    setOpening(workspaceId)
+    void openWorkspace(workspaceId).then((value) => {
+      writeBinding(workspaceId, value.sessionId)
       setBindings(readBindings())
-      notify('ok', `${t('domainOpened')} · ${value.sessionId}`)
+      notify('ok', `${t('workspaceOpened')} · ${value.sessionId}`)
     }).catch((reason: unknown) => {
       setError(reason instanceof Error ? reason.message : String(reason))
     }).finally(() => { setOpening(undefined) })
   }
-  const runGit = (domainId: string, action: 'status' | 'log' | 'diff'): void => {
+  const runGit = (workspaceId: string, action: 'status' | 'log' | 'diff'): void => {
     setBusy(`git-${action}`)
-    void git(domainId, action).then((value) => {
+    void git(workspaceId, action).then((value) => {
       setDetail({ kind: 'git', title: `git ${action}`, text: value.text })
       notify('ok', t('loaded'))
     }).catch((reason: unknown) => {
       notify('error', reason instanceof Error ? reason.message : String(reason))
     }).finally(() => { setBusy(undefined) })
   }
-  const openAgents = (domainId: string): void => {
+  const openAgents = (workspaceId: string): void => {
     setBusy('agents')
-    void agents(domainId).then((value) => {
-      setDetail({ kind: 'agents', title: value.path, text: value.text, domainId, hash: value.hash })
+    void agents(workspaceId).then((value) => {
+      setDetail({ kind: 'agents', title: value.path, text: value.text, workspaceId, hash: value.hash })
       setDraft(value.text)
       setAgentsOriginal(value.text)
       notify('ok', t('loaded'))
@@ -217,35 +219,35 @@ export function DomainView({
       notify('error', reason instanceof Error ? reason.message : String(reason))
     }).finally(() => { setBusy(undefined) })
   }
-  const projects = new Map<string, DomainStatusView[]>()
+  const projects = new Map<string, WorkspaceStatusView[]>()
   const needle = query.trim().toLowerCase()
-  for (const row of data?.domains ?? []) {
-    const text = `${row.projectId} ${row.domain.id} ${row.domain.name} ${row.domain.worktree}`.toLowerCase()
+  for (const row of data?.workspaces ?? []) {
+    const text = `${row.projectId} ${row.workspace.id} ${row.workspace.name} ${row.workspace.worktree}`.toLowerCase()
     if (needle !== '' && !text.includes(needle)) continue
     const problems = row.inspection?.problems.length ?? 0
     if (filter === 'ready' && problems > 0) continue
     if (filter === 'blocked' && problems === 0) continue
     projects.set(row.projectId, [...(projects.get(row.projectId) ?? []), row])
   }
-  const current = data?.domains.find(row => row.domain.id === selected)
+  const current = data?.workspaces.find(row => row.workspace.id === selected)
   const bound = selected === undefined ? [] : bindings[selected] ?? []
   return (
-    <div className={inline === true ? css.inlineRoot : css.scrim} role="dialog" aria-label={t('domainsTitle')}>
+    <div className={inline === true ? css.inlineRoot : css.scrim} role="dialog" aria-label={t('workspacesTitle')}>
       <section className={inline === true ? css.inlinePanel : css.panel}>
         <header className={css.head}>
           <div>
-            <h2 className={css.title}>{t('domainsTitle')}</h2>
-            <p className={css.hint}>{t('domainsHint')}</p>
+            <h2 className={css.title}>{t('workspacesTitle')}</h2>
+            <p className={css.hint}>{t('workspacesHint')}</p>
           </div>
           <div className={css.actions}>
             {data === undefined ? null : (
               <button type="button" className={css.button} onClick={() => {
-                const overwrite = data.domains.length > 0
+                const overwrite = data.workspaces.length > 0
                 if (overwrite && !window.confirm(t('regenerateConfirm'))) return
                 void autoConfig(overwrite).then(() => { void load() }).catch((reason: unknown) => {
                   setError(reason instanceof Error ? reason.message : String(reason))
                 })
-              }}>{data.domains.length === 0 ? t('autoConfig') : t('regenerateConfig')}</button>
+              }}>{data.workspaces.length === 0 ? t('autoConfig') : t('regenerateConfig')}</button>
             )}
             <button type="button" className={css.button} onClick={() => { setConfigOpen(true) }}>{t('editConfig')}</button>
             <button type="button" className={css.button} disabled={inspecting} onClick={() => { void inspectAll(true) }}>{inspecting ? t('inspecting') : t('refresh')}</button>
@@ -254,11 +256,11 @@ export function DomainView({
         </header>
         {error === undefined ? null : <p className={css.error}>{error}</p>}
         <div className={css.body}>
-          <aside className={css.list} aria-label={t('domainsTitle')}>
+          <aside className={css.list} aria-label={t('workspacesTitle')}>
             <input
               className={css.search}
               value={query}
-              placeholder={t('searchDomains')}
+              placeholder={t('searchWorkspaces')}
               onChange={(event) => { setQuery(event.currentTarget.value) }}
             />
             <div className={css.filterRow}>
@@ -268,7 +270,7 @@ export function DomainView({
                   type="button"
                   className={filter === value ? `${css.filterButton} ${css.filterActive}` : css.filterButton}
                   onClick={() => { setFilter(value) }}
-                >{value === 'all' ? t('filterAll') : value === 'ready' ? t('domainOk') : t('domainBlocked')}</button>
+                >{value === 'all' ? t('filterAll') : value === 'ready' ? t('workspaceOk') : t('workspaceBlocked')}</button>
               ))}
             </div>
             {loading ? <p className={css.muted}>{t('loading')}</p> : null}
@@ -277,51 +279,51 @@ export function DomainView({
                 <h3 className={css.projectName}>{rows[0]?.projectName ?? projectId}</h3>
                 {rows.map(row => (
                   <button
-                    key={row.domain.id}
+                    key={row.workspace.id}
                     type="button"
-                    className={selected === row.domain.id ? `${css.domainRow} ${css.domainRowActive}` : css.domainRow}
-                    onClick={() => { setSelected(row.domain.id); setDetail(undefined); setHistoryRows(undefined) }}
+                    className={selected === row.workspace.id ? `${css.workspaceRow} ${css.workspaceRowActive}` : css.workspaceRow}
+                    onClick={() => { setSelected(row.workspace.id); setDetail(undefined); setHistoryRows(undefined) }}
                   >
-                    <span className={css.domainText}>
-                      <span className={css.domainName}>{row.domain.name}</span>
-                      <span className={css.domainMeta}>{row.inspection?.branch ?? row.domain.branch}</span>
+                    <span className={css.workspaceText}>
+                      <span className={css.workspaceName}>{row.workspace.name}</span>
+                      <span className={css.workspaceMeta}>{row.inspection?.branch ?? row.workspace.branch}</span>
                     </span>
                     {row.inspection === undefined
                       ? <span className={css.muted}>{t('loading')}</span>
                       : (
                         <span className={row.inspection.problems.length === 0 ? css.ok : css.fail}>
-                          {row.inspection.problems.length === 0 ? t('domainOk') : t('domainBlocked')}
+                          {row.inspection.problems.length === 0 ? t('workspaceOk') : t('workspaceBlocked')}
                         </span>
                       )}
                   </button>
                 ))}
               </section>
             ))}
-            {!loading && data?.domains.length === 0
-              ? <p className={css.muted}>{t('noDomains')}</p>
+            {!loading && data?.workspaces.length === 0
+              ? <p className={css.muted}>{t('noWorkspaces')}</p>
               : null}
           </aside>
           <main className={css.detail}>
             {current === undefined
-              ? <p className={css.muted}>{t('noDomains')}</p>
+              ? <p className={css.muted}>{t('noWorkspaces')}</p>
               : (
                 <>
                   <div className={css.detailHead}>
                     <div>
-                      <h3 className={css.detailTitle}>{current.domain.name}</h3>
-                      <p className={css.hint}>{current.projectId} / {current.domain.id}</p>
+                      <h3 className={css.detailTitle}>{current.workspace.name}</h3>
+                      <p className={css.hint}>{current.projectId} / {current.workspace.id}</p>
                     </div>
                     {current.inspection === undefined
                       ? <span className={css.muted}>{t('loading')}</span>
                       : (
                         <span className={current.inspection.problems.length === 0 ? css.ok : css.fail}>
-                          {current.inspection.problems.length === 0 ? t('domainOk') : t('domainBlocked')}
+                          {current.inspection.problems.length === 0 ? t('workspaceOk') : t('workspaceBlocked')}
                         </span>
                       )}
                   </div>
                   <dl className={css.facts}>
-                    <div><dt>{t('worktree')}</dt><dd>{current.inspection?.canonicalWorktree ?? current.domain.worktree}</dd></div>
-                    <div><dt>{t('branch')}</dt><dd>{current.inspection === undefined ? '…' : `${current.inspection.branch ?? '—'} / ${current.domain.hooks.expectedBranch}`}</dd></div>
+                    <div><dt>{t('worktree')}</dt><dd>{current.inspection?.canonicalWorktree ?? current.workspace.worktree}</dd></div>
+                    <div><dt>{t('branch')}</dt><dd>{current.inspection === undefined ? '…' : `${current.inspection.branch ?? '—'} / ${current.workspace.hooks.expectedBranch}`}</dd></div>
                     <div><dt>{t('toplevel')}</dt><dd>{current.inspection === undefined ? '…' : current.inspection.toplevel ?? '—'}</dd></div>
                   </dl>
                   {current.inspection === undefined
@@ -342,20 +344,20 @@ export function DomainView({
                         )}
                   </div>
                   <div className={css.actions}>
-                    <button type="button" className={css.button} onClick={() => { runGit(current.domain.id, 'status') }} disabled={busy !== undefined}>{busy === 'git-status' ? '…' : t('gitStatus')}</button>
-                    <button type="button" className={css.button} onClick={() => { runGit(current.domain.id, 'log') }} disabled={busy !== undefined}>{busy === 'git-log' ? '…' : t('gitLog')}</button>
-                    <button type="button" className={css.button} onClick={() => { runGit(current.domain.id, 'diff') }} disabled={busy !== undefined}>{busy === 'git-diff' ? '…' : t('gitDiff')}</button>
-                    <button type="button" className={css.button} onClick={() => { openAgents(current.domain.id) }} disabled={busy !== undefined}>{busy === 'agents' ? '…' : 'AGENTS'}</button>
+                    <button type="button" className={css.button} onClick={() => { runGit(current.workspace.id, 'status') }} disabled={busy !== undefined}>{busy === 'git-status' ? '…' : t('gitStatus')}</button>
+                    <button type="button" className={css.button} onClick={() => { runGit(current.workspace.id, 'log') }} disabled={busy !== undefined}>{busy === 'git-log' ? '…' : t('gitLog')}</button>
+                    <button type="button" className={css.button} onClick={() => { runGit(current.workspace.id, 'diff') }} disabled={busy !== undefined}>{busy === 'git-diff' ? '…' : t('gitDiff')}</button>
+                    <button type="button" className={css.button} onClick={() => { openAgents(current.workspace.id) }} disabled={busy !== undefined}>{busy === 'agents' ? '…' : 'AGENTS'}</button>
                     <button
                       type="button"
                       className={css.button}
                       disabled={current.inspection === undefined || current.inspection.problems.length > 0 || opening !== undefined}
                       onClick={() => {
                         const sessionId = bound[0]
-                        if (sessionId === undefined) { open(current.domain.id); return }
+                        if (sessionId === undefined) { open(current.workspace.id); return }
                         openSession(sessionId)
                       }}
-                    >{opening === current.domain.id ? t('opening') : pendingEphemeral === current.domain.id ? t('confirmEphemeralOpen') : bound.length === 0 ? t('newDomainSession') : t('openBoundSession')}</button>
+                    >{opening === current.workspace.id ? t('opening') : pendingEphemeral === current.workspace.id ? t('confirmEphemeralOpen') : bound.length === 0 ? t('newWorkspaceSession') : t('openBoundSession')}</button>
                   </div>
                   <section className={css.sessions}>
                     <h4 className={css.sectionTitle}>{t('sessions')}</h4>
@@ -372,7 +374,7 @@ export function DomainView({
                       disabled={busy !== undefined}
                       onClick={() => {
                         setBusy('history')
-                        void history(current.domain.id).then((rows) => {
+                        void history(current.workspace.id).then((rows) => {
                           setHistoryRows(rows)
                           notify('ok', t('loaded'))
                         }).catch((reason: unknown) => {
@@ -397,7 +399,7 @@ export function DomainView({
                             <button type="button" className={css.button} onClick={() => {
                               const target = detail
                               setBusy('save-agents')
-                              void saveAgents(target.domainId, draft, target.hash).then((value) => {
+                              void saveAgents(target.workspaceId, draft, target.hash).then((value) => {
                                 appendAudit({ at: Date.now(), path: target.title, baseHash: target.hash, newHash: value.hash })
                                 setAudit(readAudit())
                                 setAgentsOriginal(draft)

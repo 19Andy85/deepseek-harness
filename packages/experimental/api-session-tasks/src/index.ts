@@ -31,15 +31,15 @@ import { readFile, realpath, writeFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
 import { dump, load } from 'js-yaml'
 import { loadDevConsoleConfig, validateConfig } from './dev-console-config.ts'
-import { inspectDomain, openDomain } from './dev-console-domain.ts'
+import { inspectWorkspace, openWorkspace } from './dev-console-workspace.ts'
 import type { DevConsoleWorkspaceConfig } from './dev-console-config.ts'
 import type {
   DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleAutoConfigRequest, DevConsoleAutoConfigValue,
   DevConsoleSummary, DevConsoleSummaryRequest,
   DevConsoleConfigValue, DevConsoleHistoryRequest, DevConsoleHistoryValue,
   DevConsoleInspectRequest, DevConsoleInspectValue, DevConsoleSaveConfigRequest, DevConsoleSaveConfigValue,
-  DevConsoleDomainStatus, DevConsoleGitRequest, DevConsoleGitValue, DevConsoleSaveAgentsRequest, DevConsoleSaveAgentsValue,
-  DevConsoleOpenDomainRequest, DevConsoleOpenDomainValue, DevConsoleSnapshot,
+  DevConsoleWorkspaceStatus, DevConsoleGitRequest, DevConsoleGitValue, DevConsoleSaveAgentsRequest, DevConsoleSaveAgentsValue,
+  DevConsoleOpenWorkspaceRequest, DevConsoleOpenWorkspaceValue, DevConsoleSnapshot,
 } from './dev-console.ts'
 import { sessionTaskOutcomeProjection } from './outcome.ts'
 import { buildChildRelations, type SessionRelationChild } from './relations.ts'
@@ -98,7 +98,7 @@ export class SessionTasksController extends TypertRemoteService {
   private readonly stallAfterMs: number
   private readonly relationsRefreshMs: number
   private readonly devConsoleConfigFile: string
-  private readonly inspectionCache = new Map<string, { at: number; inspection: import('./dev-console-domain.ts').DomainInspection }>()
+  private readonly inspectionCache = new Map<string, { at: number; inspection: import('./dev-console-workspace.ts').WorkspaceInspection }>()
   private readonly observed = new Map<string, ObservedActivity>()
   private seenDomain: Domain<typeof sessionTasksSeenDomain> | undefined
   private relationsByParent = new Map<string, SessionRelationChild[]>()
@@ -389,22 +389,22 @@ export class SessionTasksController extends TypertRemoteService {
     }
   }
   /**
-   * Read the configured Dev Console registry and inspect each domain.
-   * @returns configured domains with canonical git/cwd facts.
+   * Read the configured Dev Console registry and inspect each workspace.
+   * @returns configured workspaces with canonical git/cwd facts.
    */
   @Remote('devConsoleSnapshot')
   async devConsoleSnapshot(): Promise<DevConsoleSnapshot> {
     const result = loadDevConsoleConfig(this.resolveDevConsoleConfigFile())
     if (result.config === undefined) {
-      return { problems: result.problems, warnings: result.warnings, domains: [] }
+      return { problems: result.problems, warnings: result.warnings, workspaces: [] }
     }
-    const domains: DevConsoleDomainStatus[] = []
+    const workspaces: DevConsoleWorkspaceStatus[] = []
     for (const project of result.config.projects) {
-      for (const domain of project.workspaces) {
-        domains.push({ projectId: project.id, projectName: project.name, projectRoot: project.root, domain, sessions: [] })
+      for (const workspace of project.workspaces) {
+        workspaces.push({ projectId: project.id, projectName: project.name, projectRoot: project.root, workspace, sessions: [] })
       }
     }
-    return { config: result.config, problems: result.problems, warnings: result.warnings, domains }
+    return { config: result.config, problems: result.problems, warnings: result.warnings, workspaces }
   }
 
   private resolveDevConsoleConfigFile(): string {
@@ -424,15 +424,15 @@ export class SessionTasksController extends TypertRemoteService {
 
   @Remote('devConsoleSummary')
   async devConsoleSummary(request: DevConsoleSummaryRequest): Promise<DevConsoleSummary> {
-    const domain = this.devConsoleDomain(request.domainId)
-    const cwd = domain.canonicalWorktree ?? domain.worktree
+    const workspace = this.devConsoleWorkspace(request.workspaceId)
+    const cwd = workspace.canonicalWorktree ?? workspace.worktree
     const git = async (args: readonly string[]) => promisify(execFile)('git', [...args], { cwd, encoding: 'utf8' })
       .then(result => result.stdout.trim()).catch(() => undefined)
     const commitText = await git(['log', '-1', '--format=%h%x00%s%x00%cI'])
     const commit = commitText?.split('\x00') as [string, string, string] | undefined
     const status = await git(['status', '--porcelain'])
     const dirtyCount = status === undefined || status === '' ? 0 : status.split('\n').length
-    const counts = await git(['rev-list', '--left-right', '--count', `${domain.base}...HEAD`])
+    const counts = await git(['rev-list', '--left-right', '--count', `${workspace.base}...HEAD`])
     const [behind, ahead] = counts?.split(/\s+/).map(Number) ?? []
     const agentsText = await readFile(`${cwd}/AGENTS.md`, 'utf8').catch(() => undefined)
     return {
@@ -448,8 +448,8 @@ export class SessionTasksController extends TypertRemoteService {
 
   @Remote('devConsoleHistory')
   async devConsoleHistory(request: DevConsoleHistoryRequest): Promise<DevConsoleHistoryValue> {
-    const domain = this.devConsoleDomain(request.domainId)
-    const inspection = await inspectDomain(domain)
+    const workspace = this.devConsoleWorkspace(request.workspaceId)
+    const inspection = await inspectWorkspace(workspace)
     const query = this.ctx.get('sessionQuery')
     if (query === undefined || inspection.canonicalWorktree === undefined) return { sessions: [] }
     const limit = Math.min(Math.max(request.limit ?? 20, 1), 100)
@@ -470,26 +470,26 @@ export class SessionTasksController extends TypertRemoteService {
   async devConsoleInspect(request: DevConsoleInspectRequest): Promise<DevConsoleInspectValue> {
     const result = loadDevConsoleConfig(this.resolveDevConsoleConfigFile())
     if (result.config === undefined) throw new RemoteError('gateway/bad-request', 'Dev Console config is invalid', {})
-    const all = result.config.projects.flatMap(project => project.workspaces.map(domain => ({
-      projectId: project.id, projectName: project.name, projectRoot: project.root, domain,
+    const all = result.config.projects.flatMap(project => project.workspaces.map(workspace => ({
+      projectId: project.id, projectName: project.name, projectRoot: project.root, workspace,
     })))
-    const wanted = request.domainIds === undefined ? all : all.filter(item => request.domainIds?.includes(item.domain.id) === true)
+    const wanted = request.workspaceIds === undefined ? all : all.filter(item => request.workspaceIds?.includes(item.workspace.id) === true)
     const now = Date.now()
-    const domains: DevConsoleDomainStatus[] = []
+    const workspaces: DevConsoleWorkspaceStatus[] = []
     for (let index = 0; index < wanted.length; index += 4) {
       const chunk = wanted.slice(index, index + 4)
-      const inspected = await Promise.all(chunk.map(async ({ projectId, projectName, projectRoot, domain }) => {
-        const cached = this.inspectionCache.get(domain.id)
+      const inspected = await Promise.all(chunk.map(async ({ projectId, projectName, projectRoot, workspace }) => {
+        const cached = this.inspectionCache.get(workspace.id)
         if (request.refresh !== true && cached !== undefined && now - cached.at < 5_000) {
-          return { projectId, projectName, projectRoot, domain, inspection: cached.inspection, sessions: [] }
+          return { projectId, projectName, projectRoot, workspace, inspection: cached.inspection, sessions: [] }
         }
-        const inspection = await inspectDomain(domain)
-        this.inspectionCache.set(domain.id, { at: Date.now(), inspection })
-        return { projectId, projectName, projectRoot, domain, inspection, sessions: [] }
+        const inspection = await inspectWorkspace(workspace)
+        this.inspectionCache.set(workspace.id, { at: Date.now(), inspection })
+        return { projectId, projectName, projectRoot, workspace, inspection, sessions: [] }
       }))
-      domains.push(...inspected)
+      workspaces.push(...inspected)
     }
-    return { domains }
+    return { workspaces }
   }
 
   @Remote('devConsoleConfig')
@@ -540,17 +540,17 @@ export class SessionTasksController extends TypertRemoteService {
       const commonPath = resolve(workspace.path, common)
       const projectRoot = basename(commonPath) === '.git' ? dirname(commonPath) : commonPath
       const projectId = basename(projectRoot).replace(/[^a-zA-Z0-9_-]/g, '-')
-      const domainSlug = basename(toplevel).replace(/[^a-zA-Z0-9_-]/g, '-')
+      const workspaceSlug = basename(toplevel).replace(/[^a-zA-Z0-9_-]/g, '-')
       let group = grouped.get(projectId)
       if (group === undefined) {
         group = { id: projectId, name: basename(projectRoot), root: projectRoot, workspaces: [] }
         grouped.set(projectId, group)
       }
-      const baseId = toplevel === projectRoot ? `${projectId}-root` : `${projectId}-${domainSlug}`
-      const id = group.workspaces.some(domain => domain.id === baseId) ? `${baseId}-${String(group.workspaces.length + 1)}` : baseId
+      const baseId = toplevel === projectRoot ? `${projectId}-root` : `${projectId}-${workspaceSlug}`
+      const id = group.workspaces.some(workspace => workspace.id === baseId) ? `${baseId}-${String(group.workspaces.length + 1)}` : baseId
       group.workspaces.push({
         id,
-        name: toplevel === projectRoot ? `${basename(projectRoot)} · 根工作树` : domainSlug,
+        name: toplevel === projectRoot ? `${basename(projectRoot)} · 根工作树` : workspaceSlug,
         worktree: toplevel,
         branch,
         base: 'main',
@@ -566,29 +566,29 @@ export class SessionTasksController extends TypertRemoteService {
 
   @Remote('devConsoleGit')
   async devConsoleGit(request: DevConsoleGitRequest): Promise<DevConsoleGitValue> {
-    const domain = this.devConsoleDomain(request.domainId)
+    const workspace = this.devConsoleWorkspace(request.workspaceId)
     const args = request.action === 'status'
       ? ['status', '--porcelain']
       : request.action === 'log'
         ? ['log', '--oneline', '-20']
         : ['diff']
-    const result = await promisify(execFile)('git', args, { cwd: domain.canonicalWorktree ?? domain.worktree, encoding: 'utf8' })
+    const result = await promisify(execFile)('git', args, { cwd: workspace.canonicalWorktree ?? workspace.worktree, encoding: 'utf8' })
     const text = result.stdout.trim()
     return { text: text.length > 24_000 ? `${text.slice(0, 24_000)}\n…` : text }
   }
 
   @Remote('devConsoleAgents')
   async devConsoleAgents(request: DevConsoleAgentsRequest): Promise<DevConsoleAgentsValue> {
-    const domain = this.devConsoleDomain(request.domainId)
-    const path = `${domain.canonicalWorktree ?? domain.worktree}/AGENTS.md`
+    const workspace = this.devConsoleWorkspace(request.workspaceId)
+    const path = `${workspace.canonicalWorktree ?? workspace.worktree}/AGENTS.md`
     const text = await readFile(path, 'utf8')
     return { path, text, hash: createHash('sha256').update(text).digest('hex') }
   }
 
   @Remote('devConsoleSaveAgents')
   async devConsoleSaveAgents(request: DevConsoleSaveAgentsRequest): Promise<DevConsoleSaveAgentsValue> {
-    const domain = this.devConsoleDomain(request.domainId)
-    const path = `${domain.canonicalWorktree ?? domain.worktree}/AGENTS.md`
+    const workspace = this.devConsoleWorkspace(request.workspaceId)
+    const path = `${workspace.canonicalWorktree ?? workspace.worktree}/AGENTS.md`
     const current = await readFile(path, 'utf8')
     const currentHash = createHash('sha256').update(current).digest('hex')
     if (currentHash !== request.baseHash) throw new RemoteError('dev-console/conflict', 'AGENTS.md changed externally', {})
@@ -596,32 +596,32 @@ export class SessionTasksController extends TypertRemoteService {
     return { hash: createHash('sha256').update(request.text).digest('hex') }
   }
 
-  private devConsoleDomain(domainId: string): DevConsoleWorkspaceConfig {
+  private devConsoleWorkspace(workspaceId: string): DevConsoleWorkspaceConfig {
     const result = loadDevConsoleConfig(this.resolveDevConsoleConfigFile())
     if (result.config === undefined) throw new RemoteError('gateway/bad-request', 'Dev Console config is invalid', {})
-    const domain = result.config.projects.flatMap(project => project.workspaces).find(item => item.id === domainId)
-    if (domain === undefined) throw new RemoteError('gateway/bad-request', `domain ${domainId} is not configured`, {})
-    return domain
+    const workspace = result.config.projects.flatMap(project => project.workspaces).find(item => item.id === workspaceId)
+    if (workspace === undefined) throw new RemoteError('gateway/bad-request', `workspace ${workspaceId} is not configured`, {})
+    return workspace
   }
 
 
   /**
-   * Open a configured domain in a Session whose cwd is its worktree.
-   * @param request - domain id.
+   * Open a configured workspace in a Session whose cwd is its worktree.
+   * @param request - workspace id.
    * @returns created Session and cwd.
    */
-  @Remote('devConsoleOpenDomain')
-  async devConsoleOpenDomain(request: DevConsoleOpenDomainRequest): Promise<DevConsoleOpenDomainValue> {
+  @Remote('devConsoleOpenWorkspace')
+  async devConsoleOpenWorkspace(request: DevConsoleOpenWorkspaceRequest): Promise<DevConsoleOpenWorkspaceValue> {
     const result = loadDevConsoleConfig(this.resolveDevConsoleConfigFile())
     if (result.config === undefined) throw new RemoteError('gateway/bad-request', 'Dev Console config is invalid', {})
-    const domain = result.config.projects.flatMap(project => project.workspaces).find(item => item.id === request.domainId)
-    if (domain === undefined) throw new RemoteError('gateway/bad-request', `domain ${request.domainId} is not configured`, {})
-    const created = await openDomain({
+    const workspace = result.config.projects.flatMap(project => project.workspaces).find(item => item.id === request.workspaceId)
+    if (workspace === undefined) throw new RemoteError('gateway/bad-request', `workspace ${request.workspaceId} is not configured`, {})
+    const created = await openWorkspace({
       create: async (input) => {
         const value = await this.ctx.sessionController.create({ cwd: input.cwd })
         return { sessionId: value.sessionId }
       },
-    }, domain)
+    }, workspace)
     return created
   }
 

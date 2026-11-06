@@ -29,7 +29,7 @@ import { RelationGraph } from './RelationGraph.tsx'
 import { AttentionInbox } from './AttentionInbox.tsx'
 import { StudioView } from './StudioView.tsx'
 import { IsoStudioView } from './IsoStudioView.tsx'
-import { DomainView, type DomainOpenView, type DomainSnapshotView } from './DomainView.tsx'
+import { WorkspaceView, type WorkspaceOpenView, type WorkspaceSnapshotView } from './WorkspaceView.tsx'
 import { readViewPreference, writeViewPreference, type ConsoleView } from './view-preference.ts'
 import { ActivityTrack, formatDuration, formatTokens, HealthSegments, StatusDot, Timeline, type HealthFilter } from './visual/visual.tsx'
 import type { ProjectConsoleKey } from './locales.ts'
@@ -81,19 +81,19 @@ export interface ProjectConsoleInjected {
   readonly hooks: { readonly sessionStatus: HostObservable<SessionStatusSnapshot> }
   /** Open the console for the current project in the right rail. */
   readonly openInSidebar: () => void
-  /** Read the Dev Console domain registry. */
-  readonly devConsoleSnapshot: () => Promise<DomainSnapshotView>
-  readonly devConsoleInspect: (domainIds?: readonly string[], refresh?: boolean) => Promise<readonly import('./DomainView.tsx').DomainStatusView[]>
-  readonly devConsoleHistory: (domainId: string) => Promise<readonly { readonly sessionId: string; readonly live: boolean }[]>
-  readonly devConsoleSummary: (domainId: string) => Promise<import('./DomainView.tsx').DomainSummaryView>
-  /** Open one configured domain in a cwd Session. */
-  readonly devConsoleOpenDomain: (domainId: string) => Promise<DomainOpenView>
-  /** Read git output for a domain. */
-  readonly devConsoleGit: (domainId: string, action: 'status' | 'log' | 'diff') => Promise<{ readonly text: string }>
-  /** Read the domain AGENTS.md. */
-  readonly devConsoleAgents: (domainId: string) => Promise<{ readonly path: string; readonly text: string; readonly hash: string }>
-  /** Save the domain AGENTS.md. */
-  readonly devConsoleSaveAgents: (domainId: string, text: string, baseHash: string) => Promise<{ readonly hash: string }>
+  /** Read the Dev Console workspace registry. */
+  readonly devConsoleSnapshot: () => Promise<WorkspaceSnapshotView>
+  readonly devConsoleInspect: (workspaceIds?: readonly string[], refresh?: boolean) => Promise<readonly import('./WorkspaceView.tsx').WorkspaceStatusView[]>
+  readonly devConsoleHistory: (workspaceId: string) => Promise<readonly { readonly sessionId: string; readonly live: boolean }[]>
+  readonly devConsoleSummary: (workspaceId: string) => Promise<import('./WorkspaceView.tsx').WorkspaceSummaryView>
+  /** Open one configured workspace in a cwd Session. */
+  readonly devConsoleOpenWorkspace: (workspaceId: string) => Promise<WorkspaceOpenView>
+  /** Read git output for a workspace. */
+  readonly devConsoleGit: (workspaceId: string, action: 'status' | 'log' | 'diff') => Promise<{ readonly text: string }>
+  /** Read the workspace AGENTS.md. */
+  readonly devConsoleAgents: (workspaceId: string) => Promise<{ readonly path: string; readonly text: string; readonly hash: string }>
+  /** Save the workspace AGENTS.md. */
+  readonly devConsoleSaveAgents: (workspaceId: string, text: string, baseHash: string) => Promise<{ readonly hash: string }>
   /** Generate a registry from connected workspaces. */
   readonly devConsoleAutoConfig: (overwrite: boolean) => Promise<{ readonly path: string; readonly projects: number }>
   /** Read the raw Dev Console config. */
@@ -147,7 +147,7 @@ function statusText(
 export function ProjectConsolePage({
   t, store, workspaceOptions, workspaceSessions, selectedWorkspaceId, selectWorkspace, refresh, openSession, focusSession,
   closeFocus, resetShift, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus, openInSidebar,
-  devConsoleSnapshot, devConsoleInspect, devConsoleHistory, devConsoleSummary, devConsoleOpenDomain, devConsoleGit, devConsoleAgents,
+  devConsoleSnapshot, devConsoleInspect, devConsoleHistory, devConsoleSummary, devConsoleOpenWorkspace, devConsoleGit, devConsoleAgents,
   devConsoleSaveAgents, devConsoleAutoConfig,
   devConsoleConfig, devConsoleSaveConfig,
   compact = false, surface = 'main', railSessionId, onFloat, onDock,
@@ -157,7 +157,7 @@ export function ProjectConsolePage({
   const [inboxOpen, setInboxOpen] = useState(false)
   const [workspaceBack, setWorkspaceBack] = useState<string | undefined>(undefined)
   const [reloadNotice, setReloadNotice] = useState(false)
-  const [domainsOpen, setDomainsOpen] = useState(false)
+  const [workspacesOpen, setWorkspacesOpen] = useState(false)
   const [actions, setActions] = useState<readonly ConsoleAction[]>([])
   const channel = useRef<BroadcastChannel | undefined>(undefined)
   const workspaceRef = useRef<string | undefined>(undefined)
@@ -500,7 +500,7 @@ export function ProjectConsolePage({
     >
       <header className={css.head}>
         <h1 className={css.title}>{t('title')}</h1>
-        <p className={css.subtitle}>{view === 'domains' ? t('domainsHint') : t('description')}</p>
+        <p className={css.subtitle}>{view === 'workspaces' ? t('workspacesHint') : t('description')}</p>
         {surface !== 'rail' || railSessionId === undefined
           ? null
           : railSessionId !== undefined
@@ -594,10 +594,10 @@ export function ProjectConsolePage({
             </button>
             <button
               type="button"
-              className={view === 'domains' ? `${css.viewButton} ${css.viewButtonActive}` : css.viewButton}
-              onClick={() => { setView('domains'); writeViewPreference('domains') }}
+              className={view === 'workspaces' ? `${css.viewButton} ${css.viewButtonActive}` : css.viewButton}
+              onClick={() => { setView('workspaces'); writeViewPreference('workspaces') }}
             >
-              {t('domainsTitle')}
+              {t('workspacesTitle')}
             </button>
           </div>
           {view === 'studio'
@@ -633,7 +633,7 @@ export function ProjectConsolePage({
               </button>
             )
             : null}
-          {surface === 'main' ? null : <button type="button" className={css.select} onClick={() => { setDomainsOpen(true) }}>{t('domainsTitle')}</button>}
+          {surface === 'main' ? null : <button type="button" className={css.select} onClick={() => { setWorkspacesOpen(true) }}>{t('workspacesTitle')}</button>}
           <button
             type="button"
             className={css.select}
@@ -699,7 +699,7 @@ export function ProjectConsolePage({
             </div>
           )
           : null}
-        {focus !== undefined || view === 'domains'
+        {focus !== undefined || view === 'workspaces'
           ? null
           : (
             <form className={css.compose} onSubmit={(event) => {
@@ -735,18 +735,18 @@ export function ProjectConsolePage({
           ? <div className={css.notice} role="alert"><span className={css.noticeText}>{t('actionFailed')}</span></div>
           : null}
       </header>
-      <div className={view === 'domains' && surface === 'main' ? `${css.body} ${css.bodyDomains}` : css.body}>
-        {view === 'domains' && surface === 'main'
+      <div className={view === 'workspaces' && surface === 'main' ? `${css.body} ${css.bodyWorkspaces}` : css.body}>
+        {view === 'workspaces' && surface === 'main'
           ? (
-            <div className={css.domainHost}>
-              <DomainView
+            <div className={css.workspaceHost}>
+              <WorkspaceView
                 inline
                 t={t}
                 snapshot={devConsoleSnapshot}
                 inspect={devConsoleInspect}
                 history={devConsoleHistory}
                 summary={devConsoleSummary}
-                openDomain={devConsoleOpenDomain}
+                openWorkspace={devConsoleOpenWorkspace}
                 git={devConsoleGit}
                 agents={devConsoleAgents}
                 saveAgents={devConsoleSaveAgents}
@@ -1349,15 +1349,15 @@ export function ProjectConsolePage({
             </aside>
           )}
       </div>
-      {domainsOpen
+      {workspacesOpen
         ? (
-          <DomainView
+          <WorkspaceView
             t={t}
             snapshot={devConsoleSnapshot}
             inspect={devConsoleInspect}
             history={devConsoleHistory}
             summary={devConsoleSummary}
-            openDomain={devConsoleOpenDomain}
+            openWorkspace={devConsoleOpenWorkspace}
             git={devConsoleGit}
             agents={devConsoleAgents}
             saveAgents={devConsoleSaveAgents}
@@ -1365,7 +1365,7 @@ export function ProjectConsolePage({
             config={devConsoleConfig}
             saveConfig={devConsoleSaveConfig}
             openSession={openSession}
-            onClose={() => { setDomainsOpen(false) }}
+            onClose={() => { setWorkspacesOpen(false) }}
           />
         )
         : null}

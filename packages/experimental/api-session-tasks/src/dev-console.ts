@@ -1,8 +1,8 @@
-/** Dev Console Remote wire values: config, domain inspections, and cwd sessions. */
+/** Dev Console Remote wire values: config, workspace inspections, and cwd sessions. */
 import type { DevConsoleConfig, DevConsoleConfigProblem, DevConsoleWorkspaceConfig } from './dev-console-config.ts'
-import type { DomainInspection } from './dev-console-domain.ts'
+import type { WorkspaceInspection } from './dev-console-workspace.ts'
 
-/** One Session whose cwd belongs to a configured domain. */
+/** One Session whose cwd belongs to a configured workspace. */
 export interface DevConsoleSessionSummary {
   /** Session identity. */
   readonly sessionId: string
@@ -14,8 +14,8 @@ export interface DevConsoleSessionSummary {
 
 /** Git read request. */
 export interface DevConsoleGitRequest {
-  /** Domain id. */
-  readonly domainId: string
+  /** Workspace id. */
+  readonly workspaceId: string
   /** Read-only git action. */
   readonly action: 'status' | 'log' | 'diff'
 }
@@ -28,8 +28,8 @@ export interface DevConsoleGitValue {
 
 /** AGENTS read request. */
 export interface DevConsoleAgentsRequest {
-  /** Domain id. */
-  readonly domainId: string
+  /** Workspace id. */
+  readonly workspaceId: string
 }
 
 /** AGENTS read result. */
@@ -44,8 +44,8 @@ export interface DevConsoleAgentsValue {
 
 /** Save one AGENTS.md with optimistic hash protection. */
 export interface DevConsoleSaveAgentsRequest {
-  /** Domain id. */
-  readonly domainId: string
+  /** Workspace id. */
+  readonly workspaceId: string
   /** Complete replacement text. */
   readonly text: string
   /** Hash read before editing. */
@@ -80,10 +80,10 @@ export interface DevConsoleSaveConfigValue {
   readonly warnings: readonly DevConsoleConfigProblem[]
 }
 
-/** Load historical sessions that belong to one domain. */
+/** Load historical sessions that belong to one workspace. */
 export interface DevConsoleHistoryRequest {
-  /** Domain to query. */
-  readonly domainId: string
+  /** Workspace to query. */
+  readonly workspaceId: string
   /** Maximum rows (default 20, max 100). */
   readonly limit?: number
 }
@@ -102,18 +102,18 @@ export interface DevConsoleHistoryValue {
   readonly sessions: readonly DevConsoleHistorySession[]
 }
 
-/** Inspect one or more domains. */
+/** Inspect one or more workspaces. */
 export interface DevConsoleInspectRequest {
-  /** Domain ids to inspect; omitted inspects every configured domain. */
-  readonly domainIds?: readonly string[]
+  /** Workspace ids to inspect; omitted inspects every configured workspace. */
+  readonly workspaceIds?: readonly string[]
   /** Bypass the short-lived Host cache. */
   readonly refresh?: boolean
 }
 
 /** Inspection results. */
 export interface DevConsoleInspectValue {
-  /** Inspected domains. */
-  readonly domains: readonly DevConsoleDomainStatus[]
+  /** Inspected workspaces. */
+  readonly workspaces: readonly DevConsoleWorkspaceStatus[]
 }
 
 /** Auto-generate a registry from the connected workspaces. */
@@ -130,7 +130,7 @@ export interface DevConsoleAutoConfigValue {
   readonly projects: number
 }
 
-/** Recent activity summary for one domain. */
+/** Recent activity summary for one workspace. */
 export interface DevConsoleSummary {
   /** Last commit, when the worktree has one. */
   readonly commit?: { readonly hash: string; readonly subject: string; readonly at: string }
@@ -144,29 +144,29 @@ export interface DevConsoleSummary {
   readonly agents?: { readonly bytes: number; readonly hash: string }
 }
 
-/** Request for a domain summary. */
+/** Request for a workspace summary. */
 export interface DevConsoleSummaryRequest {
-  /** Domain id. */
-  readonly domainId: string
+  /** Workspace id. */
+  readonly workspaceId: string
 }
 
-/** One configured domain plus its live inspection. */
-export interface DevConsoleDomainStatus {
+/** One configured workspace plus its live inspection. */
+export interface DevConsoleWorkspaceStatus {
   /** Owning project. */
   readonly projectId: string
   /** Display name of the owning project. */
   readonly projectName?: string
   /** Root path of the owning project. */
   readonly projectRoot?: string
-  /** Domain configuration. */
-  readonly domain: DevConsoleWorkspaceConfig
+  /** Workspace configuration. */
+  readonly workspace: DevConsoleWorkspaceConfig
   /** Live git/cwd inspection; absent until inspected. */
-  readonly inspection?: DomainInspection
-  /** Sessions whose cwd belongs to this domain. */
+  readonly inspection?: WorkspaceInspection
+  /** Sessions whose cwd belongs to this workspace. */
   readonly sessions: readonly DevConsoleSessionSummary[]
 }
 
-/** Snapshot of the configured registry and its domains. */
+/** Snapshot of the configured registry and its workspaces. */
 export interface DevConsoleSnapshot {
   /** Loaded registry, when valid. */
   readonly config?: DevConsoleConfig
@@ -174,19 +174,19 @@ export interface DevConsoleSnapshot {
   readonly problems: readonly DevConsoleConfigProblem[]
   /** Non-blocking config warnings (for example ephemeral paths). */
   readonly warnings: readonly DevConsoleConfigProblem[]
-  /** One entry per configured domain when config is valid. */
-  readonly domains: readonly DevConsoleDomainStatus[]
+  /** One entry per configured workspace when config is valid. */
+  readonly workspaces: readonly DevConsoleWorkspaceStatus[]
 }
 
-/** Request to open one domain. */
-export interface DevConsoleOpenDomainRequest {
-  /** Stable domain id. */
-  readonly domainId: string
+/** Request to open one workspace. */
+export interface DevConsoleOpenWorkspaceRequest {
+  /** Stable workspace id. */
+  readonly workspaceId: string
 }
 
-/** Result of opening a domain. */
-export interface DevConsoleOpenDomainValue {
-  /** Session created with the domain worktree cwd. */
+/** Result of opening a workspace. */
+export interface DevConsoleOpenWorkspaceValue {
+  /** Session created with the workspace worktree cwd. */
   readonly sessionId: string
   /** Canonical cwd passed to Session creation. */
   readonly cwd: string
