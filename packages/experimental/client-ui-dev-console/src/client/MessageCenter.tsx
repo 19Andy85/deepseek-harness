@@ -43,6 +43,20 @@ export interface BriefView {
   readonly updatedAt: number
 }
 
+const ROLE_KEYS: Record<Role, ProjectConsoleKey> = {
+  maintainer: 'roleMaintainer', implementer: 'roleImplementer', 'domain-reviewer': 'roleDomainReviewer', system: 'roleSystem',
+}
+const KIND_KEYS: Record<MessageKind, ProjectConsoleKey> = {
+  note: 'kindNote', request: 'kindRequest', decision: 'kindDecision', handoff: 'kindHandoff', report: 'kindReport',
+}
+const MESSAGE_STATUS_KEYS: Record<string, ProjectConsoleKey> = {
+  unread: 'messageUnread', acknowledged: 'messageAcknowledged', resolved: 'messageResolved', stale: 'messageStale',
+}
+const BRIEF_STATUS_KEYS: Record<BriefStatus, ProjectConsoleKey> = {
+  draft: 'briefDraft', ready: 'briefReady', assigned: 'briefAssigned', in_review: 'briefInReview',
+  accepted: 'briefAccepted', changes_requested: 'briefChangesRequested', closed: 'briefClosed',
+}
+
 export interface MessageCenterInjected {
   readonly messages: (role: Role, box: 'inbox' | 'outbox') => Promise<readonly MessageView[]>
   readonly sendMessage: (input: {
@@ -107,21 +121,36 @@ export function MessageCenter({
   const [commit, setCommit] = useState('')
   const [summary, setSummary] = useState('')
   const [tests, setTests] = useState('')
+  const fail = (value: unknown): void => {
+    const text = value instanceof Error ? value.message : String(value)
+    setError(text.includes('404') || text.includes('transport failure')
+      ? 'Host 尚未更新该接口，请完全退出并重开 App 后重试。'
+      : text)
+  }
   const reload = async (): Promise<void> => {
     try {
       if (tab === 'briefs') setBriefRows(await briefs())
       else setRows(await messages(role, tab === 'outbox' ? 'outbox' : 'inbox'))
       setError(undefined)
-    } catch (reasonValue) { setError(reasonValue instanceof Error ? reasonValue.message : String(reasonValue)) }
+    } catch (reasonValue) { fail(reasonValue) }
   }
   useEffect(() => { void reload() }, [tab, role])
   return (
     <div className={css.scrim} role="dialog" aria-label={t('messagesTitle')}>
       <section className={css.panel}>
         <header className={css.head}>
-          <h2 className={css.title}>{t('messagesTitle')}</h2>
+          <div>
+            <h2 className={css.title}>{t('messagesTitle')}</h2>
+            <p className={css.hint}>{t('messagesHint')}</p>
+          </div>
           <div className={css.actions}>
-            <select value={role} onChange={(event) => { setRole(event.currentTarget.value as Role) }}>{['maintainer', 'implementer', 'domain-reviewer', 'system'].map(value => <option key={value} value={value}>{value}</option>)}</select>
+            <label className={css.label}>{t('currentRole')}
+              <select value={role} onChange={(event) => { setRole(event.currentTarget.value as Role) }}>
+                {(['maintainer', 'implementer', 'domain-reviewer', 'system'] as const).map(value => (
+                  <option key={value} value={value}>{t(ROLE_KEYS[value])}</option>
+                ))}
+              </select>
+            </label>
             <button type="button" className={css.button} onClick={() => { void reload() }}>{t('refresh')}</button>
             <button type="button" className={css.button} onClick={onClose}>{t('close')}</button>
           </div>
@@ -142,18 +171,19 @@ export function MessageCenter({
                     workspaceId: briefWorkspace, title: briefTitle, goal: briefGoal, acceptance: briefAcceptance,
                   }).then(() => {
                     setBriefTitle(''); setBriefGoal(''); setBriefAcceptance(''); void reload()
-                  }).catch((value: unknown) => { setError(String(value)) })
+                  }).catch((value: unknown) => { fail(value) })
                 }}>
-                  <input placeholder="workspaceId" value={briefWorkspace} onChange={(event) => { setBriefWorkspace(event.currentTarget.value) }} />
+                  <input placeholder={t('workspaceIdLabel')} value={briefWorkspace} onChange={(event) => { setBriefWorkspace(event.currentTarget.value) }} />
                   <input placeholder={t('briefTitle')} value={briefTitle} onChange={(event) => { setBriefTitle(event.currentTarget.value) }} />
                   <input placeholder={t('briefGoal')} value={briefGoal} onChange={(event) => { setBriefGoal(event.currentTarget.value) }} />
                   <input placeholder={t('briefAcceptance')} value={briefAcceptance} onChange={(event) => { setBriefAcceptance(event.currentTarget.value) }} />
                   <button type="submit" className={css.button}>{t('createBrief')}</button>
                 </form>
+                {briefRows.length === 0 ? <p className={css.empty}>{t('noBriefsHint')}</p> : null}
                 {briefRows.map(brief => (
                   <article key={brief.id} className={css.card}>
                     <strong>{brief.title}</strong>
-                    <span className={css.meta}>{brief.status} · {brief.workspaceId}</span>
+                    <span className={css.meta}>{t(BRIEF_STATUS_KEYS[brief.status])} · {brief.workspaceId}</span>
                     <div className={css.actions}>
                       {(brief.status === 'draft' || brief.status === 'ready' || brief.status === 'assigned' || brief.status === 'in_review' || brief.status === 'changes_requested') && (
                         <button type="button" className={css.button} onClick={() => {
@@ -162,7 +192,7 @@ export function MessageCenter({
                               : brief.status === 'assigned' ? 'in_review'
                                 : brief.status === 'in_review' ? 'accepted' : 'assigned'
                           void transitionBrief(brief.id, next).then(() => { void reload() }).catch((value: unknown) => {
-                            setError(String(value))
+                            fail(value)
                           })
                         }}>{t('advanceBrief')}</button>
                       )}
@@ -177,7 +207,7 @@ export function MessageCenter({
                     event.preventDefault()
                     void handoff({ briefId: handoffBrief, branch, commit, summary, tests: tests.split(',').map(item => item.trim()).filter(Boolean) }).then(() => {
                       setHandoffBrief(''); setBranch(''); setCommit(''); setSummary(''); setTests(''); void reload()
-                    }).catch((value: unknown) => { setError(String(value)) })
+                    }).catch((value: unknown) => { fail(value) })
                   }}>
                     <input placeholder={t('branch')} value={branch} onChange={(event) => { setBranch(event.currentTarget.value) }} />
                     <input placeholder={t('commit')} value={commit} onChange={(event) => { setCommit(event.currentTarget.value) }} />
@@ -194,12 +224,27 @@ export function MessageCenter({
                   event.preventDefault()
                   void sendMessage({ fromRole: role, toRole, kind, subject, body, requiresResponse, ...kind === 'decision' ? { payload: { selectedOption, reason } } : {} }).then(() => {
                     setSubject(''); setBody(''); setSelectedOption(''); setReason(''); void reload()
-                  }).catch((value: unknown) => { setError(String(value)) })
+                  }).catch((value: unknown) => { fail(value) })
                 }}>
                   <div className={css.row}>
-                    <select value={toRole} onChange={(event) => { setToRole(event.currentTarget.value as Role) }}>{['maintainer', 'implementer', 'domain-reviewer', 'system'].map(value => <option key={value} value={value}>{value}</option>)}</select>
-                    <select value={kind} onChange={(event) => { setKind(event.currentTarget.value as MessageKind) }}>{['note', 'request', 'decision', 'handoff', 'report'].map(value => <option key={value} value={value}>{value}</option>)}</select>
-                    <label><input type="checkbox" checked={requiresResponse} onChange={(event) => { setRequiresResponse(event.currentTarget.checked) }} /> {t('requiresResponse')}</label>
+                    <label className={css.label}>{t('recipient')}
+                      <select value={toRole} onChange={(event) => { setToRole(event.currentTarget.value as Role) }}>
+                        {(['maintainer', 'implementer', 'domain-reviewer', 'system'] as const).map(value => (
+                          <option key={value} value={value}>{t(ROLE_KEYS[value])}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className={css.label}>{t('messageKind')}
+                      <select value={kind} onChange={(event) => { setKind(event.currentTarget.value as MessageKind) }}>
+                        {(['note', 'request', 'decision', 'handoff', 'report'] as const).map(value => (
+                          <option key={value} value={value}>{t(KIND_KEYS[value])}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className={css.checkbox}>
+                      <input type="checkbox" checked={requiresResponse} onChange={(event) => { setRequiresResponse(event.currentTarget.checked) }} />
+                      {t('requiresResponse')}
+                    </label>
                   </div>
                   <input placeholder={t('subject')} value={subject} onChange={(event) => { setSubject(event.currentTarget.value) }} />
                   <textarea placeholder={t('messageBody')} value={body} onChange={(event) => { setBody(event.currentTarget.value) }} />
@@ -207,19 +252,20 @@ export function MessageCenter({
                   {kind !== 'decision' ? null : <input placeholder={t('reason')} value={reason} onChange={(event) => { setReason(event.currentTarget.value) }} />}
                   <button type="submit" className={css.button}>{t('sendMessage')}</button>
                 </form>
+                {rows.length === 0 ? <p className={css.empty}>{tab === 'inbox' ? t('emptyInboxHint') : t('noMessages')}</p> : null}
                 {rows.map(message => (
                   <article key={message.id} className={css.card}>
                     <div className={css.row}>
                       <strong>{message.subject}</strong>
-                      <span className={css.meta}>{message.kind} · {message.fromRole} → {message.toRole} · {message.status}</span>
+                      <span className={css.meta}>{t(KIND_KEYS[message.kind])} · {t(ROLE_KEYS[message.fromRole])} → {t(ROLE_KEYS[message.toRole])} · {t(MESSAGE_STATUS_KEYS[message.status] ?? 'messageUnread')}</span>
                     </div>
                     <p>{message.body}</p>
                     <div className={css.actions}>
-                      {tab === 'inbox' && message.status === 'unread' ? <button type="button" className={css.button} onClick={() => { void messageAction(message.id, 'ack', role).then(() => { void reload() }).catch((value: unknown) => { setError(String(value)) }) }}>{t('acknowledge')}</button> : null}
+                      {tab === 'inbox' && message.status === 'unread' ? <button type="button" className={css.button} onClick={() => { void messageAction(message.id, 'ack', role).then(() => { void reload() }).catch((value: unknown) => { fail(value) }) }}>{t('acknowledge')}</button> : null}
                       {tab === 'inbox' && message.status !== 'resolved' ? (
                         <>
                           <input placeholder={t('reply')} value={response} onChange={(event) => { setResponse(event.currentTarget.value) }} />
-                          <button type="button" className={css.button} onClick={() => { void messageAction(message.id, 'resolve', role, response).then(() => { setResponse(''); void reload() }).catch((value: unknown) => { setError(String(value)) }) }}>{t('resolve')}</button>
+                          <button type="button" className={css.button} onClick={() => { void messageAction(message.id, 'resolve', role, response).then(() => { setResponse(''); void reload() }).catch((value: unknown) => { fail(value) }) }}>{t('resolve')}</button>
                         </>
                       ) : null}
                     </div>
