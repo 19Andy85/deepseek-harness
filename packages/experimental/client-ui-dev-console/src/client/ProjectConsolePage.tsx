@@ -499,7 +499,7 @@ export function ProjectConsolePage({
     >
       <header className={css.head}>
         <h1 className={css.title}>{t('title')}</h1>
-        <p className={css.subtitle}>{t('description')}</p>
+        <p className={css.subtitle}>{view === 'domains' ? t('domainsHint') : t('description')}</p>
         {surface !== 'rail' || railSessionId === undefined
           ? null
           : railSessionId !== undefined
@@ -632,7 +632,7 @@ export function ProjectConsolePage({
               </button>
             )
             : null}
-          <button type="button" className={css.select} onClick={() => { if (surface === 'main') { setView('domains'); writeViewPreference('domains') } else { setDomainsOpen(true) } }}>{t('domainsTitle')}</button>
+          {surface === 'main' ? null : <button type="button" className={css.select} onClick={() => { setDomainsOpen(true) }}>{t('domainsTitle')}</button>}
           <button
             type="button"
             className={css.select}
@@ -698,7 +698,7 @@ export function ProjectConsolePage({
             </div>
           )
           : null}
-        {focus !== undefined
+        {focus !== undefined || view === 'domains'
           ? null
           : (
             <form className={css.compose} onSubmit={(event) => {
@@ -734,7 +734,29 @@ export function ProjectConsolePage({
           ? <div className={css.notice} role="alert"><span className={css.noticeText}>{t('actionFailed')}</span></div>
           : null}
       </header>
-      <div className={css.body}>
+      <div className={view === 'domains' && surface === 'main' ? `${css.body} ${css.bodyDomains}` : css.body}>
+        {view === 'domains' && surface === 'main'
+          ? (
+            <div className={css.domainHost}>
+              <DomainView
+                inline
+                t={t}
+                snapshot={devConsoleSnapshot}
+                inspect={devConsoleInspect}
+                history={devConsoleHistory}
+                openDomain={devConsoleOpenDomain}
+                git={devConsoleGit}
+                agents={devConsoleAgents}
+                saveAgents={devConsoleSaveAgents}
+                autoConfig={devConsoleAutoConfig}
+                config={devConsoleConfig}
+                saveConfig={devConsoleSaveConfig}
+                openSession={openSession}
+                onClose={() => { setView('canvas'); writeViewPreference('canvas') }}
+              />
+            </div>
+          )
+          : null}
         <div
           ref={bodyRef}
           className={rows.length > 12 ? `${css.mainColumn} ${css.compact}` : css.mainColumn}
@@ -1325,26 +1347,6 @@ export function ProjectConsolePage({
             </aside>
           )}
       </div>
-      {view === 'domains' && surface === 'main'
-        ? (
-          <DomainView
-            embedded
-            t={t}
-            snapshot={devConsoleSnapshot}
-            inspect={devConsoleInspect}
-            history={devConsoleHistory}
-            openDomain={devConsoleOpenDomain}
-            git={devConsoleGit}
-            agents={devConsoleAgents}
-            saveAgents={devConsoleSaveAgents}
-            autoConfig={devConsoleAutoConfig}
-            config={devConsoleConfig}
-            saveConfig={devConsoleSaveConfig}
-            openSession={openSession}
-            onClose={() => { setView('canvas'); writeViewPreference('canvas') }}
-          />
-        )
-        : null}
       {domainsOpen
         ? (
           <DomainView

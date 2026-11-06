@@ -1066,3 +1066,6 @@
 .page[data-compact="true"] .title {
   font-size: 18px;
 }
+.bodyDomains { display: flex; flex-direction: row; gap: 0; padding: 0; overflow: hidden; }
+.bodyDomains > :not(.domainHost) { display: none; }
+.domainHost { flex: 1; min-width: 0; min-height: 0; display: flex; }

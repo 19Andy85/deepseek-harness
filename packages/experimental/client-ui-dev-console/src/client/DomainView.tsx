@@ -98,8 +98,8 @@ export interface DomainViewInjected {
 export interface DomainViewProps extends DomainViewInjected {
   readonly t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string
   readonly onClose: () => void
-  /** Render as a full page inside the main surface. */
-  readonly embedded?: boolean
+  /** Render inline inside the console body instead of as a modal. */
+  readonly inline?: boolean
 }
 
 type Detail =
@@ -113,7 +113,7 @@ type Detail =
  * @returns the domain panel.
  */
 export function DomainView({
-  snapshot, inspect, history, openDomain, git, agents, saveAgents, autoConfig, config, saveConfig, openSession, t, onClose, embedded,
+  snapshot, inspect, history, openDomain, git, agents, saveAgents, autoConfig, config, saveConfig, openSession, t, onClose, inline,
 }: DomainViewProps) {
   const [data, setData] = useState<DomainSnapshotView | undefined>(undefined)
   const [loading, setLoading] = useState(true)
@@ -210,8 +210,8 @@ export function DomainView({
   const current = data?.domains.find(row => row.domain.id === selected)
   const bound = selected === undefined ? [] : bindings[selected] ?? []
   return (
-    <div className={embedded === true ? css.pageScrim : css.scrim} role="dialog" aria-label={t('domainsTitle')}>
-      <section className={embedded === true ? css.pagePanel : css.panel}>
+    <div className={inline === true ? css.inlineRoot : css.scrim} role="dialog" aria-label={t('domainsTitle')}>
+      <section className={inline === true ? css.inlinePanel : css.panel}>
         <header className={css.head}>
           <div>
             <h2 className={css.title}>{t('domainsTitle')}</h2>
@@ -318,7 +318,7 @@ export function DomainView({
                         if (sessionId === undefined) { open(current.domain.id); return }
                         openSession(sessionId)
                       }}
-                    >{opening === current.domain.id ? t('opening') : pendingEphemeral === current.domain.id ? t('confirmEphemeralOpen') : bound.length === 0 ? t('openDomain') : t('openBoundSession')}</button>
+                    >{opening === current.domain.id ? t('opening') : pendingEphemeral === current.domain.id ? t('confirmEphemeralOpen') : bound.length === 0 ? t('newDomainSession') : t('openBoundSession')}</button>
                   </div>
                   <section className={css.sessions}>
                     <h4 className={css.sectionTitle}>{t('sessions')}</h4>
