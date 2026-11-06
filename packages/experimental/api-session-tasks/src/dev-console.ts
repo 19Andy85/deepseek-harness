@@ -1,5 +1,5 @@
 /** Dev Console Remote wire values: config, domain inspections, and cwd sessions. */
-import type { DevConsoleConfig, DevConsoleConfigProblem, DevConsoleDomainConfig } from './dev-console-config.ts'
+import type { DevConsoleConfig, DevConsoleConfigProblem, DevConsoleWorkspaceConfig } from './dev-console-config.ts'
 import type { DomainInspection } from './dev-console-domain.ts'
 
 /** One Session whose cwd belongs to a configured domain. */
@@ -159,7 +159,7 @@ export interface DevConsoleDomainStatus {
   /** Root path of the owning project. */
   readonly projectRoot?: string
   /** Domain configuration. */
-  readonly domain: DevConsoleDomainConfig
+  readonly domain: DevConsoleWorkspaceConfig
   /** Live git/cwd inspection; absent until inspected. */
   readonly inspection?: DomainInspection
   /** Sessions whose cwd belongs to this domain. */

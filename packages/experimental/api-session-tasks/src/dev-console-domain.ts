@@ -2,7 +2,7 @@
 import { execFile } from 'node:child_process'
 import { existsSync, realpathSync } from 'node:fs'
 import { promisify } from 'node:util'
-import type { DevConsoleDomainConfig } from './dev-console-config.ts'
+import type { DevConsoleWorkspaceConfig } from './dev-console-config.ts'
 
 const exec = promisify(execFile)
 
@@ -38,7 +38,7 @@ export interface CwdSessionCreator {
  * @param domain - configured domain.
  * @returns inspection facts and mismatches.
  */
-export async function inspectDomain(domain: DevConsoleDomainConfig): Promise<DomainInspection> {
+export async function inspectDomain(domain: DevConsoleWorkspaceConfig): Promise<DomainInspection> {
   const problems: string[] = []
   const worktree = domain.worktree
   if (!existsSync(worktree)) {
@@ -85,7 +85,7 @@ export async function inspectDomain(domain: DevConsoleDomainConfig): Promise<Dom
  */
 export async function openDomain(
   creator: CwdSessionCreator,
-  domain: DevConsoleDomainConfig,
+  domain: DevConsoleWorkspaceConfig,
 ): Promise<{ readonly sessionId: string; readonly cwd: string }> {
   const inspection = await inspectDomain(domain)
   if (inspection.problems.length > 0) {

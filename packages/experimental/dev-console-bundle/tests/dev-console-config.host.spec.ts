@@ -20,7 +20,7 @@ projects:
   - id: p
     name: P
     root: ${root}/repo
-    domains:
+    workspaces:
       - id: d
         name: D
         worktree: ${root}/repo/.worktrees/domain-x
@@ -33,13 +33,13 @@ projects:
 `)
     const result = loadDevConsoleConfig(path)
     expect(result.problems).toEqual([])
-    expect(result.config?.projects[0]?.domains[0]?.canonicalWorktree).toBe(join(root, 'repo', '.worktrees', 'domain-x'))
+    expect(result.config?.projects[0]?.workspaces[0]?.canonicalWorktree).toBe(join(root, 'repo', '.worktrees', 'domain-x'))
     expect(result.warnings.map(warning => warning.code)).toContain('ephemeral-path')
   })
 
   it('warns when a worktree lives under a temporary directory', () => {
     const root = realpathSync(mkdtempSync(join(tmpdir(), 'dev-console-ephemeral-')))
-    const result = validateConfig({ version: 1, projects: [{ id: 'p', name: 'P', root, domains: [
+    const result = validateConfig({ version: 1, projects: [{ id: 'p', name: 'P', root, workspaces: [
       { id: 'd', name: 'D', worktree: root, branch: 'b', base: 'main', agent: { adapter: 'dsh-session' }, hooks: { expectedBranch: 'b', expectedToplevel: root } },
     ] }] })
     expect(result.config).toBeDefined()
@@ -47,12 +47,12 @@ projects:
   })
 
   it('reports duplicate ids, relative paths, and missing worktrees', () => {
-    const result = validateConfig({ version: 1, projects: [{ id: 'p', name: 'P', root: 'relative', domains: [
+    const result = validateConfig({ version: 1, projects: [{ id: 'p', name: 'P', root: 'relative', workspaces: [
       { id: 'd', name: 'D', worktree: '/missing', branch: 'b', base: 'main', agent: { adapter: 'dsh-session' }, hooks: { expectedBranch: 'b', expectedToplevel: '/missing' } },
       { id: 'd', name: 'D2', worktree: '/missing2', branch: 'b', base: 'main', agent: { adapter: 'dsh-session' }, hooks: { expectedBranch: 'b', expectedToplevel: '/missing2' } },
     ] }] })
     expect(result.problems.map(problem => problem.code)).toEqual(expect.arrayContaining([
-      'not-absolute', 'duplicate-domain', 'missing-path',
+      'not-absolute', 'duplicate-workspace', 'missing-path',
     ]))
     expect(result.config).toBeUndefined()
   })

@@ -32,7 +32,7 @@ import { promisify } from 'node:util'
 import { dump, load } from 'js-yaml'
 import { loadDevConsoleConfig, validateConfig } from './dev-console-config.ts'
 import { inspectDomain, openDomain } from './dev-console-domain.ts'
-import type { DevConsoleDomainConfig } from './dev-console-config.ts'
+import type { DevConsoleWorkspaceConfig } from './dev-console-config.ts'
 import type {
   DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleAutoConfigRequest, DevConsoleAutoConfigValue,
   DevConsoleSummary, DevConsoleSummaryRequest,
@@ -400,7 +400,7 @@ export class SessionTasksController extends TypertRemoteService {
     }
     const domains: DevConsoleDomainStatus[] = []
     for (const project of result.config.projects) {
-      for (const domain of project.domains) {
+      for (const domain of project.workspaces) {
         domains.push({ projectId: project.id, projectName: project.name, projectRoot: project.root, domain, sessions: [] })
       }
     }
@@ -470,7 +470,7 @@ export class SessionTasksController extends TypertRemoteService {
   async devConsoleInspect(request: DevConsoleInspectRequest): Promise<DevConsoleInspectValue> {
     const result = loadDevConsoleConfig(this.resolveDevConsoleConfigFile())
     if (result.config === undefined) throw new RemoteError('gateway/bad-request', 'Dev Console config is invalid', {})
-    const all = result.config.projects.flatMap(project => project.domains.map(domain => ({
+    const all = result.config.projects.flatMap(project => project.workspaces.map(domain => ({
       projectId: project.id, projectName: project.name, projectRoot: project.root, domain,
     })))
     const wanted = request.domainIds === undefined ? all : all.filter(item => request.domainIds?.includes(item.domain.id) === true)
@@ -520,7 +520,7 @@ export class SessionTasksController extends TypertRemoteService {
       id: string
       name: string
       root: string
-      domains: Array<{
+      workspaces: Array<{
         id: string
         name: string
         worktree: string
@@ -543,12 +543,12 @@ export class SessionTasksController extends TypertRemoteService {
       const domainSlug = basename(toplevel).replace(/[^a-zA-Z0-9_-]/g, '-')
       let group = grouped.get(projectId)
       if (group === undefined) {
-        group = { id: projectId, name: basename(projectRoot), root: projectRoot, domains: [] }
+        group = { id: projectId, name: basename(projectRoot), root: projectRoot, workspaces: [] }
         grouped.set(projectId, group)
       }
       const baseId = toplevel === projectRoot ? `${projectId}-root` : `${projectId}-${domainSlug}`
-      const id = group.domains.some(domain => domain.id === baseId) ? `${baseId}-${String(group.domains.length + 1)}` : baseId
-      group.domains.push({
+      const id = group.workspaces.some(domain => domain.id === baseId) ? `${baseId}-${String(group.workspaces.length + 1)}` : baseId
+      group.workspaces.push({
         id,
         name: toplevel === projectRoot ? `${basename(projectRoot)} · 根工作树` : domainSlug,
         worktree: toplevel,
@@ -596,10 +596,10 @@ export class SessionTasksController extends TypertRemoteService {
     return { hash: createHash('sha256').update(request.text).digest('hex') }
   }
 
-  private devConsoleDomain(domainId: string): DevConsoleDomainConfig {
+  private devConsoleDomain(domainId: string): DevConsoleWorkspaceConfig {
     const result = loadDevConsoleConfig(this.resolveDevConsoleConfigFile())
     if (result.config === undefined) throw new RemoteError('gateway/bad-request', 'Dev Console config is invalid', {})
-    const domain = result.config.projects.flatMap(project => project.domains).find(item => item.id === domainId)
+    const domain = result.config.projects.flatMap(project => project.workspaces).find(item => item.id === domainId)
     if (domain === undefined) throw new RemoteError('gateway/bad-request', `domain ${domainId} is not configured`, {})
     return domain
   }
@@ -614,7 +614,7 @@ export class SessionTasksController extends TypertRemoteService {
   async devConsoleOpenDomain(request: DevConsoleOpenDomainRequest): Promise<DevConsoleOpenDomainValue> {
     const result = loadDevConsoleConfig(this.resolveDevConsoleConfigFile())
     if (result.config === undefined) throw new RemoteError('gateway/bad-request', 'Dev Console config is invalid', {})
-    const domain = result.config.projects.flatMap(project => project.domains).find(item => item.id === request.domainId)
+    const domain = result.config.projects.flatMap(project => project.workspaces).find(item => item.id === request.domainId)
     if (domain === undefined) throw new RemoteError('gateway/bad-request', `domain ${request.domainId} is not configured`, {})
     const created = await openDomain({
       create: async (input) => {

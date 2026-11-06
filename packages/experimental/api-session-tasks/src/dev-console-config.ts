@@ -15,7 +15,7 @@ export interface DevConsoleAgentConfig {
 }
 
 /** One domain's worktree and expectations. */
-export interface DevConsoleDomainConfig {
+export interface DevConsoleWorkspaceConfig {
   /** Stable domain identity. */
   readonly id: string
   /** Display name. */
@@ -50,7 +50,7 @@ export interface DevConsoleProjectConfig {
   /** Absolute project root. */
   readonly root: string
   /** Domains in this project. */
-  readonly domains: readonly DevConsoleDomainConfig[]
+  readonly workspaces: readonly DevConsoleWorkspaceConfig[]
 }
 
 /** Whole registry. */
@@ -65,7 +65,7 @@ export interface DevConsoleConfig {
 export interface DevConsoleConfigProblem {
   /** Machine-readable problem code. */
   readonly code: string
-  /** Human-readable location such as `projects[0].domains[1].worktree`. */
+  /** Human-readable location such as `projects[0].workspaces[1].worktree`. */
   readonly path: string
   /** Explanation. */
   readonly message: string
@@ -116,7 +116,7 @@ export function validateConfig(value: unknown): DevConsoleConfigResult {
     return { problems: [...problems, fail('projects', 'missing-projects', 'projects must be a non-empty array')], warnings }
   }
   const projectIds = new Set<string>()
-  const domainIds = new Set<string>()
+  const workspaceIds = new Set<string>()
   const projects: DevConsoleProjectConfig[] = []
   projectsRaw.forEach((projectValue, projectIndex) => {
     const projectPath = `projects[${String(projectIndex)}]`
@@ -132,60 +132,60 @@ export function validateConfig(value: unknown): DevConsoleConfigResult {
       if (projectIds.has(id)) problems.push(fail(`${projectPath}.id`, 'duplicate-project', `duplicate project id: ${id}`))
       projectIds.add(id)
     }
-    const domainsRaw = project['domains']
-    const domains: DevConsoleDomainConfig[] = []
-    if (!Array.isArray(domainsRaw) || domainsRaw.length === 0) {
-      problems.push(fail(`${projectPath}.domains`, 'missing-domains', 'domains must be a non-empty array'))
+    const workspacesRaw = project['workspaces']
+    const workspaces: DevConsoleWorkspaceConfig[] = []
+    if (!Array.isArray(workspacesRaw) || workspacesRaw.length === 0) {
+      problems.push(fail(`${projectPath}.workspaces`, 'missing-workspaces', 'workspaces must be a non-empty array'))
     } else {
-      domainsRaw.forEach((domainValue, domainIndex) => {
-        const domainPath = `${projectPath}.domains[${String(domainIndex)}]`
-        if (domainValue === null || typeof domainValue !== 'object' || Array.isArray(domainValue)) {
-          problems.push(fail(domainPath, 'not-object', 'domain must be an object'))
+      workspacesRaw.forEach((workspaceValue, workspaceIndex) => {
+        const workspacePath = `${projectPath}.workspaces[${String(workspaceIndex)}]`
+        if (workspaceValue === null || typeof workspaceValue !== 'object' || Array.isArray(workspaceValue)) {
+          problems.push(fail(workspacePath, 'not-object', 'workspace must be an object'))
           return
         }
-        const domain = domainValue as Record<string, unknown>
-        const domainId = text(domain['id'], `${domainPath}.id`, problems)
-        const domainName = text(domain['name'], `${domainPath}.name`, problems)
-        const worktree = absoluteText(domain['worktree'], `${domainPath}.worktree`, problems)
-        const branch = text(domain['branch'], `${domainPath}.branch`, problems)
-        const base = text(domain['base'], `${domainPath}.base`, problems)
-        if (domainId !== undefined) {
-          if (domainIds.has(domainId)) problems.push(fail(`${domainPath}.id`, 'duplicate-domain', `duplicate domain id: ${domainId}`))
-          domainIds.add(domainId)
+        const workspace = workspaceValue as Record<string, unknown>
+        const workspaceId = text(workspace['id'], `${workspacePath}.id`, problems)
+        const workspaceName = text(workspace['name'], `${workspacePath}.name`, problems)
+        const worktree = absoluteText(workspace['worktree'], `${workspacePath}.worktree`, problems)
+        const branch = text(workspace['branch'], `${workspacePath}.branch`, problems)
+        const base = text(workspace['base'], `${workspacePath}.base`, problems)
+        if (workspaceId !== undefined) {
+          if (workspaceIds.has(workspaceId)) problems.push(fail(`${workspacePath}.id`, 'duplicate-workspace', `duplicate workspace id: ${workspaceId}`))
+          workspaceIds.add(workspaceId)
         }
-        const hooksValue = domain['hooks']
+        const hooksValue = workspace['hooks']
         if (hooksValue === null || typeof hooksValue !== 'object' || Array.isArray(hooksValue)) {
-          problems.push(fail(`${domainPath}.hooks`, 'missing-hooks', 'hooks must be an object'))
+          problems.push(fail(`${workspacePath}.hooks`, 'missing-hooks', 'hooks must be an object'))
           return
         }
         const hooks = hooksValue as Record<string, unknown>
-        const expectedBranch = text(hooks['expectedBranch'], `${domainPath}.hooks.expectedBranch`, problems)
-        const expectedToplevel = absoluteText(hooks['expectedToplevel'], `${domainPath}.hooks.expectedToplevel`, problems)
-        const agentValue = domain['agent']
+        const expectedBranch = text(hooks['expectedBranch'], `${workspacePath}.hooks.expectedBranch`, problems)
+        const expectedToplevel = absoluteText(hooks['expectedToplevel'], `${workspacePath}.hooks.expectedToplevel`, problems)
+        const agentValue = workspace['agent']
         if (agentValue === null || typeof agentValue !== 'object' || Array.isArray(agentValue)) {
-          problems.push(fail(`${domainPath}.agent`, 'missing-agent', 'agent must be an object'))
+          problems.push(fail(`${workspacePath}.agent`, 'missing-agent', 'agent must be an object'))
           return
         }
         const agent = agentValue as Record<string, unknown>
         const adapterValue = agent['adapter']
         let adapter: DevConsoleAgentConfig['adapter'] = 'dsh-session'
         if (adapterValue === 'dsh-session' || adapterValue === 'cli' || adapterValue === 'mcp') adapter = adapterValue
-        else problems.push(fail(`${domainPath}.agent.adapter`, 'invalid-adapter', 'adapter must be dsh-session, cli, or mcp'))
-        const derivedData = domain['derivedData'] === undefined
+        else problems.push(fail(`${workspacePath}.agent.adapter`, 'invalid-adapter', 'adapter must be dsh-session, cli, or mcp'))
+        const derivedData = workspace['derivedData'] === undefined
           ? undefined
-          : absoluteText(domain['derivedData'], `${domainPath}.derivedData`, problems)
-        const canonicalWorktree = worktree === undefined ? undefined : canonical(worktree, `${domainPath}.worktree`, problems)
+          : absoluteText(workspace['derivedData'], `${workspacePath}.derivedData`, problems)
+        const canonicalWorktree = worktree === undefined ? undefined : canonical(worktree, `${workspacePath}.worktree`, problems)
         if (worktree !== undefined && isEphemeralPath(worktree)) {
-          warnings.push(fail(`${domainPath}.worktree`, 'ephemeral-path', 'worktree is under a temporary directory; state may be lost on reboot'))
+          warnings.push(fail(`${workspacePath}.worktree`, 'ephemeral-path', 'worktree is under a temporary directory; state may be lost on reboot'))
         }
         const expectedCanonicalToplevel = expectedToplevel === undefined
           ? undefined
-          : canonical(expectedToplevel, `${domainPath}.hooks.expectedToplevel`, problems)
-        if (domainId === undefined || domainName === undefined || worktree === undefined || branch === undefined || base === undefined
+          : canonical(expectedToplevel, `${workspacePath}.hooks.expectedToplevel`, problems)
+        if (workspaceId === undefined || workspaceName === undefined || worktree === undefined || branch === undefined || base === undefined
           || expectedBranch === undefined || expectedToplevel === undefined) return
-        domains.push({
-          id: domainId,
-          name: domainName,
+        workspaces.push({
+          id: workspaceId,
+          name: workspaceName,
           worktree,
           ...canonicalWorktree === undefined ? {} : { canonicalWorktree },
           branch,
@@ -206,7 +206,7 @@ export function validateConfig(value: unknown): DevConsoleConfigResult {
       })
     }
     if (id === undefined || name === undefined || root === undefined) return
-    projects.push({ id, name, root, domains })
+    projects.push({ id, name, root, workspaces })
   })
   return problems.length === 0
     ? { config: { version: 1, projects }, problems: [], warnings }
