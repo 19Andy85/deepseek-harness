@@ -83,6 +83,7 @@ export interface DomainOpenView {
 export interface DomainViewInjected {
   readonly snapshot: () => Promise<DomainSnapshotView>
   readonly inspect: (domainIds?: readonly string[], refresh?: boolean) => Promise<readonly DomainStatusView[]>
+  readonly history: (domainId: string) => Promise<readonly { readonly sessionId: string; readonly live: boolean }[]>
   readonly openDomain: (domainId: string) => Promise<DomainOpenView>
   readonly git: (domainId: string, action: 'status' | 'log' | 'diff') => Promise<{ readonly text: string }>
   readonly agents: (domainId: string) => Promise<{ readonly path: string; readonly text: string; readonly hash: string }>
@@ -97,6 +98,8 @@ export interface DomainViewInjected {
 export interface DomainViewProps extends DomainViewInjected {
   readonly t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string
   readonly onClose: () => void
+  /** Render as a full page inside the main surface. */
+  readonly embedded?: boolean
 }
 
 type Detail =
@@ -110,7 +113,7 @@ type Detail =
  * @returns the domain panel.
  */
 export function DomainView({
-  snapshot, inspect, openDomain, git, agents, saveAgents, autoConfig, config, saveConfig, openSession, t, onClose,
+  snapshot, inspect, history, openDomain, git, agents, saveAgents, autoConfig, config, saveConfig, openSession, t, onClose, embedded,
 }: DomainViewProps) {
   const [data, setData] = useState<DomainSnapshotView | undefined>(undefined)
   const [loading, setLoading] = useState(true)
@@ -124,6 +127,9 @@ export function DomainView({
   const [opening, setOpening] = useState<string | undefined>(undefined)
   const [pendingEphemeral, setPendingEphemeral] = useState<string | undefined>(undefined)
   const [configOpen, setConfigOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<'all' | 'ready' | 'blocked'>('all')
+  const [historyRows, setHistoryRows] = useState<readonly { readonly sessionId: string; readonly live: boolean }[] | undefined>(undefined)
   const [busy, setBusy] = useState<string | undefined>(undefined)
   const [toast, setToast] = useState<{ kind: 'ok' | 'error'; text: string } | undefined>(undefined)
   const [inspecting, setInspecting] = useState(true)
@@ -192,12 +198,20 @@ export function DomainView({
     }).finally(() => { setBusy(undefined) })
   }
   const projects = new Map<string, DomainStatusView[]>()
-  for (const row of data?.domains ?? []) projects.set(row.projectId, [...(projects.get(row.projectId) ?? []), row])
+  const needle = query.trim().toLowerCase()
+  for (const row of data?.domains ?? []) {
+    const text = `${row.projectId} ${row.domain.id} ${row.domain.name} ${row.domain.worktree}`.toLowerCase()
+    if (needle !== '' && !text.includes(needle)) continue
+    const problems = row.inspection?.problems.length ?? 0
+    if (filter === 'ready' && problems > 0) continue
+    if (filter === 'blocked' && problems === 0) continue
+    projects.set(row.projectId, [...(projects.get(row.projectId) ?? []), row])
+  }
   const current = data?.domains.find(row => row.domain.id === selected)
   const bound = selected === undefined ? [] : bindings[selected] ?? []
   return (
-    <div className={css.scrim} role="dialog" aria-label={t('domainsTitle')}>
-      <section className={css.panel}>
+    <div className={embedded === true ? css.pageScrim : css.scrim} role="dialog" aria-label={t('domainsTitle')}>
+      <section className={embedded === true ? css.pagePanel : css.panel}>
         <header className={css.head}>
           <div>
             <h2 className={css.title}>{t('domainsTitle')}</h2>
@@ -221,6 +235,22 @@ export function DomainView({
         {error === undefined ? null : <p className={css.error}>{error}</p>}
         <div className={css.body}>
           <aside className={css.list} aria-label={t('domainsTitle')}>
+            <input
+              className={css.search}
+              value={query}
+              placeholder={t('searchDomains')}
+              onChange={(event) => { setQuery(event.currentTarget.value) }}
+            />
+            <div className={css.filterRow}>
+              {(['all', 'ready', 'blocked'] as const).map(value => (
+                <button
+                  key={value}
+                  type="button"
+                  className={filter === value ? `${css.filterButton} ${css.filterActive}` : css.filterButton}
+                  onClick={() => { setFilter(value) }}
+                >{value === 'all' ? t('filterAll') : value === 'ready' ? t('domainOk') : t('domainBlocked')}</button>
+              ))}
+            </div>
             {loading ? <p className={css.muted}>{t('loading')}</p> : null}
             {[...projects.entries()].map(([projectId, rows]) => (
               <section key={projectId} className={css.project}>
@@ -230,7 +260,7 @@ export function DomainView({
                     key={row.domain.id}
                     type="button"
                     className={selected === row.domain.id ? `${css.domainRow} ${css.domainRowActive}` : css.domainRow}
-                    onClick={() => { setSelected(row.domain.id); setDetail(undefined) }}
+                    onClick={() => { setSelected(row.domain.id); setDetail(undefined); setHistoryRows(undefined) }}
                   >
                     <span className={css.domainName}>{row.domain.name}</span>
                     {row.inspection === undefined
@@ -297,6 +327,27 @@ export function DomainView({
                       : bound.map(sessionId => (
                         <button key={sessionId} type="button" className={css.sessionChip} onClick={() => { openSession(sessionId) }}>
                           {sessionId}
+                        </button>
+                      ))}
+                    <button
+                      type="button"
+                      className={css.button}
+                      disabled={busy !== undefined}
+                      onClick={() => {
+                        setBusy('history')
+                        void history(current.domain.id).then((rows) => {
+                          setHistoryRows(rows)
+                          notify('ok', t('loaded'))
+                        }).catch((reason: unknown) => {
+                          notify('error', reason instanceof Error ? reason.message : String(reason))
+                        }).finally(() => { setBusy(undefined) })
+                      }}
+                    >{busy === 'history' ? '…' : t('loadHistory')}</button>
+                    {historyRows === undefined ? null : historyRows.length === 0
+                      ? <p className={css.muted}>{t('noHistory')}</p>
+                      : historyRows.map(row => (
+                        <button key={row.sessionId} type="button" className={css.sessionChip} onClick={() => { openSession(row.sessionId) }}>
+                          {row.live ? '● ' : ''}{row.sessionId}
                         </button>
                       ))}
                   </section>

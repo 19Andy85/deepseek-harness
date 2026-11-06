@@ -84,6 +84,7 @@ export interface ProjectConsoleInjected {
   /** Read the Dev Console domain registry. */
   readonly devConsoleSnapshot: () => Promise<DomainSnapshotView>
   readonly devConsoleInspect: (domainIds?: readonly string[], refresh?: boolean) => Promise<readonly import('./DomainView.tsx').DomainStatusView[]>
+  readonly devConsoleHistory: (domainId: string) => Promise<readonly { readonly sessionId: string; readonly live: boolean }[]>
   /** Open one configured domain in a cwd Session. */
   readonly devConsoleOpenDomain: (domainId: string) => Promise<DomainOpenView>
   /** Read git output for a domain. */
@@ -145,7 +146,8 @@ function statusText(
 export function ProjectConsolePage({
   t, store, workspaceOptions, workspaceSessions, selectedWorkspaceId, selectWorkspace, refresh, openSession, focusSession,
   closeFocus, resetShift, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus, openInSidebar,
-  devConsoleSnapshot, devConsoleInspect, devConsoleOpenDomain, devConsoleGit, devConsoleAgents, devConsoleSaveAgents, devConsoleAutoConfig,
+  devConsoleSnapshot, devConsoleInspect, devConsoleHistory, devConsoleOpenDomain, devConsoleGit, devConsoleAgents,
+  devConsoleSaveAgents, devConsoleAutoConfig,
   devConsoleConfig, devConsoleSaveConfig,
   compact = false, surface = 'main', railSessionId, onFloat, onDock,
 }: ProjectConsolePageProps) {
@@ -589,6 +591,13 @@ export function ProjectConsolePage({
             >
               {t('viewStudio')}
             </button>
+            <button
+              type="button"
+              className={view === 'domains' ? `${css.viewButton} ${css.viewButtonActive}` : css.viewButton}
+              onClick={() => { setView('domains'); writeViewPreference('domains') }}
+            >
+              {t('domainsTitle')}
+            </button>
           </div>
           {view === 'studio'
             ? (
@@ -623,7 +632,7 @@ export function ProjectConsolePage({
               </button>
             )
             : null}
-          <button type="button" className={css.select} onClick={() => { setDomainsOpen(true) }}>{t('domainsTitle')}</button>
+          <button type="button" className={css.select} onClick={() => { if (surface === 'main') { setView('domains'); writeViewPreference('domains') } else { setDomainsOpen(true) } }}>{t('domainsTitle')}</button>
           <button
             type="button"
             className={css.select}
@@ -1316,12 +1325,33 @@ export function ProjectConsolePage({
             </aside>
           )}
       </div>
+      {view === 'domains' && surface === 'main'
+        ? (
+          <DomainView
+            embedded
+            t={t}
+            snapshot={devConsoleSnapshot}
+            inspect={devConsoleInspect}
+            history={devConsoleHistory}
+            openDomain={devConsoleOpenDomain}
+            git={devConsoleGit}
+            agents={devConsoleAgents}
+            saveAgents={devConsoleSaveAgents}
+            autoConfig={devConsoleAutoConfig}
+            config={devConsoleConfig}
+            saveConfig={devConsoleSaveConfig}
+            openSession={openSession}
+            onClose={() => { setView('canvas'); writeViewPreference('canvas') }}
+          />
+        )
+        : null}
       {domainsOpen
         ? (
           <DomainView
             t={t}
             snapshot={devConsoleSnapshot}
             inspect={devConsoleInspect}
+            history={devConsoleHistory}
             openDomain={devConsoleOpenDomain}
             git={devConsoleGit}
             agents={devConsoleAgents}

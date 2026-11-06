@@ -80,6 +80,28 @@ export interface DevConsoleSaveConfigValue {
   readonly warnings: readonly DevConsoleConfigProblem[]
 }
 
+/** Load historical sessions that belong to one domain. */
+export interface DevConsoleHistoryRequest {
+  /** Domain to query. */
+  readonly domainId: string
+  /** Maximum rows (default 20, max 100). */
+  readonly limit?: number
+}
+
+/** Historical session row. */
+export interface DevConsoleHistorySession {
+  /** Session identity. */
+  readonly sessionId: string
+  /** Whether the session is live. */
+  readonly live: boolean
+}
+
+/** Historical session result. */
+export interface DevConsoleHistoryValue {
+  /** Matching sessions, newest first. */
+  readonly sessions: readonly DevConsoleHistorySession[]
+}
+
 /** Inspect one or more domains. */
 export interface DevConsoleInspectRequest {
   /** Domain ids to inspect; omitted inspects every configured domain. */

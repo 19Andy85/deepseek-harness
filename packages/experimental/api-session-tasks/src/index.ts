@@ -27,7 +27,7 @@ import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile, realpath, writeFile } from 'node:fs/promises'
 import { promisify } from 'node:util'
 import { dump, load } from 'js-yaml'
 import { loadDevConsoleConfig, validateConfig } from './dev-console-config.ts'
@@ -35,7 +35,8 @@ import { inspectDomain, openDomain } from './dev-console-domain.ts'
 import type { DevConsoleDomainConfig } from './dev-console-config.ts'
 import type {
   DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleAutoConfigRequest, DevConsoleAutoConfigValue,
-  DevConsoleConfigValue, DevConsoleInspectRequest, DevConsoleInspectValue, DevConsoleSaveConfigRequest, DevConsoleSaveConfigValue,
+  DevConsoleConfigValue, DevConsoleHistoryRequest, DevConsoleHistoryValue,
+  DevConsoleInspectRequest, DevConsoleInspectValue, DevConsoleSaveConfigRequest, DevConsoleSaveConfigValue,
   DevConsoleDomainStatus, DevConsoleGitRequest, DevConsoleGitValue, DevConsoleSaveAgentsRequest, DevConsoleSaveAgentsValue,
   DevConsoleOpenDomainRequest, DevConsoleOpenDomainValue, DevConsoleSnapshot,
 } from './dev-console.ts'
@@ -416,6 +417,26 @@ export class SessionTasksController extends TypertRemoteService {
       candidates.push(join(workspace.path, '.dsh', 'dev-console.yaml'))
     }
     return candidates.find(candidate => existsSync(candidate)) ?? resolve(process.cwd(), this.devConsoleConfigFile)
+  }
+
+  @Remote('devConsoleHistory')
+  async devConsoleHistory(request: DevConsoleHistoryRequest): Promise<DevConsoleHistoryValue> {
+    const domain = this.devConsoleDomain(request.domainId)
+    const inspection = await inspectDomain(domain)
+    const query = this.ctx.get('sessionQuery')
+    if (query === undefined || inspection.canonicalWorktree === undefined) return { sessions: [] }
+    const limit = Math.min(Math.max(request.limit ?? 20, 1), 100)
+    const records = await query.listSessions()
+    const sessions: { sessionId: string; live: boolean }[] = []
+    for (const record of records) {
+      if (record.header.cwd === undefined) continue
+      let canonical: string
+      try { canonical = await realpath(record.header.cwd) } catch { continue }
+      if (canonical !== inspection.canonicalWorktree) continue
+      sessions.push({ sessionId: record.header.id, live: record.live })
+      if (sessions.length >= limit) break
+    }
+    return { sessions }
   }
 
   @Remote('devConsoleInspect')
