@@ -57,3 +57,4 @@
 .metric span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-tertiary); font-size: calc(10px * var(--pc-type-scale, 1)); }
 .historySearch { display: flex; gap: 6px; align-items: center; width: 100%; }
 .historySearch .search { flex: 1; margin-bottom: 0; }
+.contextBanner { padding: 7px 9px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 7px; background: color-mix(in srgb, var(--dsw-alias-bg-skeleton) 40%, transparent); color: var(--dsw-alias-label-secondary); font-size: calc(11px * var(--pc-type-scale, 1)); }

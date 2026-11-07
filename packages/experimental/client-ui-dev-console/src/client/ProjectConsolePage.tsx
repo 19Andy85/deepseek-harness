@@ -91,6 +91,15 @@ export interface ProjectConsoleInjected {
     readonly hasMore: boolean
   }>
   readonly devConsoleSummary: (workspaceId: string) => Promise<import('./WorkspaceView.tsx').WorkspaceSummaryView>
+  readonly devConsoleSessionContext: (sessionId: string) => Promise<{
+    readonly sessionId: string
+    readonly workspaceId?: string | undefined
+    readonly projectId?: string | undefined
+    readonly briefId?: string | undefined
+    readonly briefTitle?: string | undefined
+    readonly planId?: string | undefined
+    readonly planVersion?: number | undefined
+  }>
   readonly devConsoleState: () => Promise<import('./WorkspaceView.tsx').WorkspaceStateView>
   readonly devConsoleBind: (workspaceId: string, sessionId: string) => Promise<import('./WorkspaceView.tsx').WorkspaceStateView>
   /** Open one configured workspace in a cwd Session. */
@@ -155,7 +164,7 @@ function statusText(
 export function ProjectConsolePage({
   t, store, workspaceOptions, workspaceSessions, selectedWorkspaceId, selectWorkspace, refresh, openSession, focusSession,
   closeFocus, resetShift, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus, openInSidebar,
-  devConsoleSnapshot, devConsoleInspect, devConsoleHistory, devConsoleSummary, devConsoleState, devConsoleBind,
+  devConsoleSnapshot, devConsoleInspect, devConsoleHistory, devConsoleSummary, devConsoleSessionContext, devConsoleState, devConsoleBind,
   devConsoleOpenWorkspace, devConsoleGit, devConsoleAgents,
   devConsoleSaveAgents, devConsoleAutoConfig,
   devConsoleConfig, devConsoleSaveConfig, messageCenter,
@@ -752,6 +761,8 @@ export function ProjectConsolePage({
             <div className={css.workspaceHost}>
               <WorkspaceView
                 inline
+                sessionId={railSessionId}
+                sessionContext={devConsoleSessionContext}
                 t={t}
                 snapshot={devConsoleSnapshot}
                 inspect={devConsoleInspect}
@@ -1363,12 +1374,14 @@ export function ProjectConsolePage({
           )}
       </div>
       {messagesOpen
-        ? <MessageCenter {...messageCenter} t={t} onClose={() => { setMessagesOpen(false) }} />
+        ? <MessageCenter {...messageCenter} sessionId={railSessionId} t={t} onClose={() => { setMessagesOpen(false) }} />
         : null}
       {workspacesOpen
         ? (
           <WorkspaceView
             t={t}
+            sessionId={railSessionId}
+            sessionContext={devConsoleSessionContext}
             snapshot={devConsoleSnapshot}
             inspect={devConsoleInspect}
             history={devConsoleHistory}

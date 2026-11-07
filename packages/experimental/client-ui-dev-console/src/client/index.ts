@@ -187,6 +187,11 @@ function registerUi(ctx: Context): void {
       if (!result.ok) throw new Error(result.error.message)
       return result.value
     },
+    devConsoleSessionContext: async (sessionId) => {
+      const result = await ctx.remote.sessionTasks.devConsoleSessionContext({ sessionId })
+      if (!result.ok) throw new Error(result.error.message)
+      return result.value
+    },
     devConsoleHistory: async (workspaceId, options) => {
       const request = {
         workspaceId,
@@ -250,6 +255,11 @@ function registerUi(ctx: Context): void {
       },
       createPlan: async (input) => {
         const result = await ctx.remote.sessionTasks.devConsoleCreatePlan({ ...input, role: 'maintainer' })
+        if (!result.ok) throw new Error(result.error.message)
+        return result.value
+      },
+      deliverDirective: async (input) => {
+        const result = await ctx.remote.sessionTasks.devConsoleDeliverDirective(input)
         if (!result.ok) throw new Error(result.error.message)
         return result.value
       },

@@ -77,6 +77,15 @@ export interface WorkspaceOpenView {
 /** Injected Dev Console workspace actions. */
 export interface WorkspaceViewInjected {
   readonly snapshot: () => Promise<WorkspaceSnapshotView>
+  readonly sessionContext: (sessionId: string) => Promise<{
+    readonly sessionId: string
+    readonly workspaceId?: string | undefined
+    readonly projectId?: string | undefined
+    readonly briefId?: string | undefined
+    readonly briefTitle?: string | undefined
+    readonly planId?: string | undefined
+    readonly planVersion?: number | undefined
+  }>
   readonly inspect: (workspaceIds?: readonly string[], refresh?: boolean) => Promise<readonly WorkspaceStatusView[]>
   readonly history: (workspaceId: string, options?: { readonly offset?: number; readonly query?: string }) => Promise<{
     readonly sessions: readonly { readonly sessionId: string; readonly live: boolean }[]
@@ -102,6 +111,7 @@ export interface WorkspaceViewProps extends WorkspaceViewInjected {
   readonly onClose: () => void
   /** Render inline inside the console body instead of as a modal. */
   readonly inline?: boolean
+  readonly sessionId?: string | undefined
 }
 
 type Detail =
@@ -115,8 +125,8 @@ type Detail =
  * @returns the workspace panel.
  */
 export function WorkspaceView({
-  snapshot, inspect, history, state, bind, summary, openWorkspace, git, agents, saveAgents, autoConfig, config, saveConfig,
-  openSession, t, onClose, inline,
+  snapshot, inspect, history, state, bind, summary, sessionContext, sessionId, openWorkspace, git, agents,
+  saveAgents, autoConfig, config, saveConfig, openSession, t, onClose, inline,
 }: WorkspaceViewProps) {
   const [data, setData] = useState<WorkspaceSnapshotView | undefined>(undefined)
   const [loading, setLoading] = useState(true)
@@ -138,6 +148,12 @@ export function WorkspaceView({
   const [historyQuery, setHistoryQuery] = useState('')
   const [overview, setOverview] = useState<WorkspaceSummaryView | undefined>(undefined)
   const [overviewLoading, setOverviewLoading] = useState(false)
+  type SessionInfo = {
+    readonly briefTitle?: string | undefined
+    readonly planVersion?: number | undefined
+    readonly workspaceId?: string | undefined
+  }
+  const [sessionInfo, setSessionInfo] = useState<SessionInfo | undefined>(undefined)
   const [busy, setBusy] = useState<string | undefined>(undefined)
   const [toast, setToast] = useState<{ kind: 'ok' | 'error'; text: string } | undefined>(undefined)
   const [inspecting, setInspecting] = useState(true)
@@ -178,6 +194,13 @@ export function WorkspaceView({
       setAudit(value.audit)
     }).catch(() => { /* state is optional before storage mounts */ })
   }, [])
+  useEffect(() => {
+    if (sessionId === undefined) { setSessionInfo(undefined); return }
+    void sessionContext(sessionId).then((value) => {
+      setSessionInfo(value)
+      if (value.workspaceId !== undefined) setSelected(value.workspaceId)
+    }).catch(() => { setSessionInfo(undefined) })
+  }, [sessionId])
   useEffect(() => {
     if (selected === undefined) { setOverview(undefined); return }
     setOverview(undefined)
@@ -343,6 +366,12 @@ export function WorkspaceView({
                         </span>
                       )}
                   </div>
+                  {sessionInfo === undefined ? null : (
+                    <div className={css.contextBanner}>
+                      当前会话：{sessionInfo.briefTitle ?? '未关联任务单'}
+                      {sessionInfo.planVersion === undefined ? '' : ` · 计划 v${String(sessionInfo.planVersion)}`}
+                    </div>
+                  )}
                   <dl className={css.facts}>
                     <div><dt>{t('worktree')}</dt><dd>{current.inspection?.canonicalWorktree ?? current.workspace.worktree}</dd></div>
                     <div><dt>{t('branch')}</dt><dd>{current.inspection === undefined ? '…' : `${current.inspection.branch ?? '—'} / ${current.workspace.hooks.expectedBranch}`}</dd></div>

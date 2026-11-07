@@ -98,6 +98,13 @@ export interface MessageCenterInjected {
     readonly steps: readonly { readonly title: string; readonly outcome: string }[]
   }) => Promise<PlanView>
   readonly approvePlan: (planId: string) => Promise<PlanView>
+  readonly deliverDirective: (input: {
+    readonly sessionId: string
+    readonly type: string
+    readonly briefId?: string | undefined
+    readonly planId?: string | undefined
+    readonly summary: string
+  }) => Promise<unknown>
   readonly messages: (role: Role, box: 'inbox' | 'outbox') => Promise<readonly MessageView[]>
   readonly sendMessage: (input: {
     readonly fromRole: Role
@@ -129,6 +136,7 @@ export interface MessageCenterInjected {
 export interface MessageCenterProps extends MessageCenterInjected {
   readonly t: (key: ProjectConsoleKey) => string
   readonly onClose: () => void
+  readonly sessionId?: string | undefined
 }
 
 /**
@@ -137,7 +145,8 @@ export interface MessageCenterProps extends MessageCenterInjected {
  * @returns the message center.
  */
 export function MessageCenter({
-  messages, sendMessage, messageAction, briefs, createBrief, transitionBrief, handoff, inbox, plans, createPlan, approvePlan, t, onClose,
+  messages, sendMessage, messageAction, briefs, createBrief, transitionBrief, handoff, inbox, plans, createPlan, approvePlan,
+  deliverDirective, t, onClose, sessionId,
 }: MessageCenterProps) {
   const [role, setRole] = useState<Role>('maintainer')
   const [tab, setTab] = useState<'todo' | 'inbox' | 'outbox' | 'briefs'>('todo')
@@ -184,6 +193,15 @@ export function MessageCenter({
     } catch (reasonValue) { fail(reasonValue) }
   }
   useEffect(() => { void reload() }, [tab, role])
+  const approve = (planId: string, planLabel: string): void => {
+    void approvePlan(planId).then((plan) => {
+      if (sessionId === undefined) return
+      return deliverDirective({
+        sessionId, type: 'plan.approved', briefId: plan.briefId, planId: plan.id,
+        summary: `主理人批准了计划 v${String(plan.version)}：${planLabel}`,
+      })
+    }).then(() => { void reload() }).catch((value: unknown) => { fail(value) })
+  }
   return (
     <div
       className={css.scrim}
@@ -231,7 +249,7 @@ export function MessageCenter({
                     <div className={css.actions}>
                       {item.action === 'approve-plan' && item.planId !== undefined ? (
                         <button type="button" className={css.button} onClick={() => {
-                          void approvePlan(item.planId as string).then(() => { void reload() }).catch((value: unknown) => { fail(value) })
+                          approve(item.planId as string, item.title)
                         }}>{t('approvePlan')}</button>
                       ) : null}
                       {item.action === 'handle-message' ? <button type="button" className={css.button} onClick={() => { setTab('inbox') }}>{t('openMessage')}</button> : null}
@@ -285,7 +303,7 @@ export function MessageCenter({
                           <div className={css.row}>
                             <strong>{plan.title}</strong>
                             <span className={css.meta}>v{plan.version} · {plan.status}</span>
-                            {plan.status === 'draft' ? <button type="button" className={css.button} onClick={() => { void approvePlan(plan.id).then(() => { void reload() }).catch((value: unknown) => { fail(value) }) }}>{t('approvePlan')}</button> : null}
+                            {plan.status === 'draft' ? <button type="button" className={css.button} onClick={() => { approve(plan.id, plan.title) }}>{t('approvePlan')}</button> : null}
                           </div>
                           {plan.steps.map(step => (
                             <div key={step.id} className={css.stepRow}>
