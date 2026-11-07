@@ -116,3 +116,34 @@ export function globalHealthCounts(
   }
   return { needsYou, running, completedUnread, idle }
 }
+
+/** Running-session count for one Workspace. */
+export interface WorkspaceRunningCount {
+  /** Workspace identity. */
+  readonly workspaceId: string
+  /** Workspace display title. */
+  readonly title: string
+  /** Sessions currently running. */
+  readonly count: number
+}
+
+/**
+ * Count running Sessions per Workspace.
+ * @param statuses - Session UI status keyed by Session id.
+ * @param workspaces - Workspaces with their member Session ids.
+ * @returns one entry per Workspace with at least one running Session.
+ */
+export function globalRunningByWorkspace(
+  statuses: ReadonlyMap<string, GlobalSessionStatus>,
+  workspaces: readonly WorkspaceSessions[],
+): WorkspaceRunningCount[] {
+  const result: WorkspaceRunningCount[] = []
+  for (const workspace of workspaces) {
+    let count = 0
+    for (const sessionId of workspace.sessionIds) {
+      if (statuses.get(sessionId)?.running === true) count += 1
+    }
+    if (count > 0) result.push({ workspaceId: workspace.id, title: workspace.title, count })
+  }
+  return result
+}

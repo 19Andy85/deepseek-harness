@@ -1,8 +1,7 @@
 /** Global console overview: attention, sessions, plans, and workspace portfolio. */
-import type { SessionTaskView } from '@deepseek-ai/dsh-experimental-api-session-tasks/types'
 import type { HealthCounts } from './attention.ts'
 import type { ActionItem } from './action-items.ts'
-import type { GlobalHealthCounts } from './global-inbox.ts'
+import type { GlobalHealthCounts, WorkspaceRunningCount } from './global-inbox.ts'
 import type { ConsoleWorkspace } from './ProjectConsoleStore.ts'
 import type { ReactNode } from 'react'
 import type { ProjectConsoleKey } from './locales.ts'
@@ -14,7 +13,7 @@ export interface OverviewViewProps {
   readonly globalHealth: GlobalHealthCounts
   readonly usage: number
   readonly actionItems: readonly ActionItem[]
-  readonly rows: readonly SessionTaskView[]
+  readonly runningByWorkspace: readonly WorkspaceRunningCount[]
   readonly workspaces: readonly ConsoleWorkspace[]
   readonly selectedWorkspaceId?: string | undefined
   readonly globalPending: number
@@ -22,7 +21,6 @@ export interface OverviewViewProps {
   readonly t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string
   readonly onSelectWorkspace: (workspaceId: string) => void
   readonly onRefresh: () => void
-  readonly onOpenSession: (sessionId: string) => void
   readonly onOpenAction: (item: ActionItem) => void
 }
 
@@ -43,8 +41,8 @@ const tokenFormat = new Intl.NumberFormat('zh-CN', { notation: 'compact', maximu
  */
 export function OverviewView(props: OverviewViewProps) {
   const {
-    health, globalHealth, usage, actionItems, rows, workspaces, selectedWorkspaceId, globalPending, projects, t,
-    onSelectWorkspace, onRefresh, onOpenSession, onOpenAction,
+    health, globalHealth, usage, actionItems, runningByWorkspace, workspaces, selectedWorkspaceId, globalPending, projects, t,
+    onSelectWorkspace, onRefresh, onOpenAction,
   } = props
   const statusCount = (label: ProjectConsoleKey, value: number, tone: string | undefined): ReactNode => (
     <span className={css.metric} title={label}><b className={tone}>{value}</b><span>{t(label)}</span></span>
@@ -80,13 +78,13 @@ export function OverviewView(props: OverviewViewProps) {
         <section className={css.card}>
           <div className={css.cardHead}><h2>{t('activeSessions')}</h2><span className={css.badge}>{globalHealth.running}</span></div>
           <div className={css.list}>
-            {rows.slice(0, 5).map(row => (
-              <button key={row.sessionId} type="button" className={css.rowItem} onClick={() => { onOpenSession(row.sessionId) }}>
-                <span className={css.rowTitle}>{row.title ?? row.sessionId}</span>
-                <span className={row.status === 'running' ? css.rowMetaRun : css.rowMeta}>{row.status}</span>
+            {runningByWorkspace.length === 0 ? <p className={css.empty}>{t('noActivity')}</p> : null}
+            {runningByWorkspace.slice(0, 6).map(workspace => (
+              <button key={workspace.workspaceId} type="button" className={css.rowItem} onClick={() => { onSelectWorkspace(workspace.workspaceId) }}>
+                <span className={css.rowTitle}>{workspace.title}</span>
+                <span className={css.rowMetaRun}>{workspace.count}</span>
               </button>
             ))}
-            {rows.length === 0 ? <p className={css.empty}>{t('noActivity')}</p> : null}
           </div>
         </section>
 

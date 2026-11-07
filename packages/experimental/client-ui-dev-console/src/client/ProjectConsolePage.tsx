@@ -32,7 +32,7 @@ import { IsoStudioView } from './IsoStudioView.tsx'
 import { WorkspaceView, type WorkspaceOpenView, type WorkspaceSnapshotView } from './WorkspaceView.tsx'
 import { OverviewView } from './OverviewView.tsx'
 import { buildSessionActionItems, buildWorkActionItems, type ActionItem } from './action-items.ts'
-import { globalHealthCounts } from './global-inbox.ts'
+import { globalHealthCounts, globalRunningByWorkspace } from './global-inbox.ts'
 import { MessageCenter, type MessageCenterInjected } from './MessageCenter.tsx'
 import { readViewPreference, writeViewPreference, type ConsoleView } from './view-preference.ts'
 import { ActivityTrack, formatDuration, formatTokens, HealthSegments, StatusDot, Timeline, type HealthFilter } from './visual/visual.tsx'
@@ -220,6 +220,7 @@ export function ProjectConsolePage({
   const inboxGroups = globalInboxGroups(statusFacts, workspaceSessions())
   const inboxTotal = globalInboxCount(inboxGroups)
   const globalHealth = globalHealthCounts(statusFacts, workspaceSessions())
+  const runningByWorkspace = globalRunningByWorkspace(statusFacts, workspaceSessions())
   const elsewhere = otherWorkspaceAttention(statusFacts, workspaceSessions(), selected)
   const aliasesMap = new Map(Object.entries(aliases))
   const rows = visibleSessions(state.sessions)
@@ -799,7 +800,7 @@ export function ProjectConsolePage({
                 globalHealth={globalHealth}
                 usage={usageTotals}
                 actionItems={actionItems}
-                rows={rows}
+                runningByWorkspace={runningByWorkspace}
                 workspaces={workspaces}
                 projects={projects}
                 globalPending={inboxTotal}
@@ -807,7 +808,6 @@ export function ProjectConsolePage({
                 t={t}
                 onSelectWorkspace={selectWorkspace}
                 onRefresh={refresh}
-                onOpenSession={openSession}
                 onOpenAction={(item: ActionItem) => {
                   if (item.source === 'message' || item.source === 'plan') {
                     setMessagesOpen(true)
