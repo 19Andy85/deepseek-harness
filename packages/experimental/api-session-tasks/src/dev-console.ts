@@ -230,6 +230,24 @@ export interface DevConsoleDirectiveValue {
   readonly directive: DevConsoleDirective
 }
 
+/** One configured project and its workspaces. */
+export interface DevConsoleProjectSummary {
+  readonly id: string
+  readonly name: string
+  readonly root: string
+  readonly workspaces: readonly {
+    readonly id: string
+    readonly name: string
+    readonly worktree: string
+    readonly branch: string
+  }[]
+}
+
+/** Configured project portfolio. */
+export interface DevConsoleProjectsValue {
+  readonly projects: readonly DevConsoleProjectSummary[]
+}
+
 /** Inbox row derived from Briefs, plans, and messages that need action. */
 export interface DevConsoleInboxItem {
   readonly id: string

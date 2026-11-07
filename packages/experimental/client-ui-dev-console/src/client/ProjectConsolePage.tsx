@@ -92,6 +92,7 @@ export interface ProjectConsoleInjected {
     readonly hasMore: boolean
   }>
   readonly devConsoleSummary: (workspaceId: string) => Promise<import('./WorkspaceView.tsx').WorkspaceSummaryView>
+  readonly devConsoleProjects: () => Promise<readonly import('./OverviewView.tsx').ProjectSummaryView[]>
   readonly devConsoleSessionContext: (sessionId: string) => Promise<{
     readonly sessionId: string
     readonly workspaceId?: string | undefined
@@ -165,7 +166,8 @@ function statusText(
 export function ProjectConsolePage({
   t, store, workspaceOptions, workspaceSessions, selectedWorkspaceId, selectWorkspace, refresh, openSession, focusSession,
   closeFocus, resetShift, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus, openInSidebar,
-  devConsoleSnapshot, devConsoleInspect, devConsoleHistory, devConsoleSummary, devConsoleSessionContext, devConsoleState, devConsoleBind,
+  devConsoleSnapshot, devConsoleInspect, devConsoleHistory, devConsoleSummary, devConsoleProjects,
+  devConsoleSessionContext, devConsoleState, devConsoleBind,
   devConsoleOpenWorkspace, devConsoleGit, devConsoleAgents,
   devConsoleSaveAgents, devConsoleAutoConfig,
   devConsoleConfig, devConsoleSaveConfig, messageCenter,
@@ -176,6 +178,7 @@ export function ProjectConsolePage({
   const [inboxOpen, setInboxOpen] = useState(false)
   const [workspaceBack, setWorkspaceBack] = useState<string | undefined>(undefined)
   const [reloadNotice, setReloadNotice] = useState(false)
+  const [projects, setProjects] = useState<readonly import('./OverviewView.tsx').ProjectSummaryView[]>([])
   const [workspacesOpen, setWorkspacesOpen] = useState(false)
   const [messagesOpen, setMessagesOpen] = useState(false)
   const [actions, setActions] = useState<readonly ConsoleAction[]>([])
@@ -467,6 +470,9 @@ export function ProjectConsolePage({
     setReplyText(readReplyDraft(replyingTo))
   }, [replyingTo])
   useEffect(() => {
+    void devConsoleProjects().then(setProjects).catch(() => { setProjects([]) })
+  }, [])
+  useEffect(() => {
     if (focus?.sessionId !== undefined) setActiveId(focus.sessionId)
   }, [focus?.sessionId])
   useEffect(() => () => {
@@ -573,8 +579,8 @@ export function ProjectConsolePage({
           >
             {workspaces.map(workspace => <option key={workspace.id} value={workspace.id}>{workspace.title}</option>)}
           </select>
+          <span className={css.toolDivider} aria-hidden="true" />
           <button type="button" className={css.select} onClick={() => { refresh() }}>{t('refresh')}</button>
-          <button type="button" className={css.select} onClick={() => { setReloadNotice(true) }}>{t('refreshPage')}</button>
           <select
             className={css.select}
             aria-label={t('readingSize')}
@@ -598,6 +604,7 @@ export function ProjectConsolePage({
                 {t('updatedAt', { time: new Date(state.updatedAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false }) })}
               </span>
             )}
+          <span className={css.toolDivider} aria-hidden="true" />
           <div className={css.viewToggle} role="group" aria-label={t('viewCanvas')}>
             {surface === 'main' ? (
               <button
@@ -652,6 +659,7 @@ export function ProjectConsolePage({
               </div>
             )
             : null}
+          <span className={css.toolDivider} aria-hidden="true" />
           {surface === 'main'
             ? (
               <button
@@ -666,7 +674,7 @@ export function ProjectConsolePage({
             )
             : null}
           {surface === 'main' ? null : <button type="button" className={css.select} onClick={() => { setWorkspacesOpen(true) }} title={t('workspaceContext')}>{t('workspaceContext')}</button>}
-          <button type="button" className={css.select} onClick={() => { setMessagesOpen(true) }}>{t('messagesTitle')}</button>
+          <button type="button" className={css.select} title={t('messagesHint')} onClick={() => { setMessagesOpen(true) }}>{t('messagesTitle')}</button>
           <button
             type="button"
             className={css.select}
@@ -690,9 +698,16 @@ export function ProjectConsolePage({
                 return !open
               })
             }}
+            title={t('globalInboxHint')}
           >
             {t('globalInbox')}{inboxTotal === 0 ? '' : ` ${String(inboxTotal)}`}
           </button>
+          <details className={css.moreTools}>
+            <summary className={css.select}>{t('moreTools')}</summary>
+            <div className={css.moreMenu}>
+              <button type="button" className={css.select} onClick={() => { setReloadNotice(true) }}>{t('refreshPage')}</button>
+            </div>
+          </details>
           {workspaceBack === undefined
             ? null
             : (
@@ -778,6 +793,8 @@ export function ProjectConsolePage({
                 attention={attention}
                 rows={rows}
                 workspaces={workspaces}
+                projects={projects}
+                globalPending={inboxTotal}
                 selectedWorkspaceId={selected}
                 t={t}
                 onSelectWorkspace={selectWorkspace}

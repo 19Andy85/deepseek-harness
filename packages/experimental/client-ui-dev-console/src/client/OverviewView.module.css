@@ -1,7 +1,7 @@
 .overview { display: flex; flex-direction: column; gap: var(--pc-gap-4); }
 .attention { display: flex; align-items: center; gap: var(--pc-gap-4); flex-wrap: wrap; padding: var(--pc-card-padding); border: 1px solid var(--pc-color-line); border-radius: var(--pc-radius-lg); background: var(--pc-color-surface); }
 .metric { display: flex; align-items: baseline; gap: 6px; color: var(--pc-color-text-3); font-size: var(--pc-text-meta); }
-.metric b { font-size: var(--pc-text-page); font-variant-numeric: tabular-nums; }
+.metric b { font-size: calc(22px * var(--pc-type-scale, 1)); line-height: 1; font-weight: 500; font-variant-numeric: tabular-nums; }
 .warn { color: var(--pc-color-warning); }
 .bad { color: var(--pc-color-danger); }
 .info { color: var(--pc-color-accent); }
@@ -12,7 +12,7 @@
 .grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: var(--pc-gap-4); }
 .card { padding: var(--pc-card-padding); border: 1px solid var(--pc-color-line); border-radius: var(--pc-radius-lg); background: var(--pc-color-surface); }
 .cardHead { display: flex; align-items: center; justify-content: space-between; gap: var(--pc-gap-2); margin-bottom: var(--pc-gap-3); }
-.cardHead h2 { margin: 0; color: var(--pc-color-text); font-size: var(--pc-text-title); font-weight: 600; }
+.cardHead h2 { margin: 0; color: var(--pc-color-text); font-size: var(--pc-text-title); font-weight: 500; }
 .badge { display: inline-flex; min-width: 20px; justify-content: center; padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--pc-color-accent) 18%, transparent); color: var(--pc-color-accent); font-size: var(--pc-text-meta); font-variant-numeric: tabular-nums; }
 .list { display: flex; flex-direction: column; gap: 6px; }
 .rowItem { display: flex; align-items: baseline; justify-content: space-between; gap: var(--pc-gap-2); width: 100%; padding: 8px 9px; border: 1px solid transparent; border-radius: var(--pc-radius); background: transparent; color: var(--pc-color-text-2); font: inherit; text-align: left; cursor: pointer; }
@@ -24,3 +24,5 @@
 .empty { margin: 0; padding: var(--pc-gap-3); color: var(--pc-color-text-3); font-size: var(--pc-text-meta); }
 .button { height: var(--pc-row-height); padding: 0 10px; border: 1px solid var(--pc-color-line); border-radius: var(--pc-radius); background: transparent; color: var(--pc-color-text-2); font: inherit; font-size: var(--pc-text-meta); cursor: pointer; }
 @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+.projectGroup { display: flex; flex-direction: column; gap: 3px; padding-bottom: 6px; }
+.projectName { padding: 3px 9px 2px; color: var(--pc-color-text-3); font-size: var(--pc-text-caption); letter-spacing: .04em; }

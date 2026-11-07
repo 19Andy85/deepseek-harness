@@ -45,6 +45,7 @@ import type {
   DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleAutoConfigRequest, DevConsoleAutoConfigValue,
   DevConsoleSummary, DevConsoleSummaryRequest,
   DevConsoleApprovePlanRequest, DevConsoleBindRequest, DevConsoleBriefsRequest, DevConsoleBriefsValue, DevConsoleConfigValue,
+  DevConsoleProjectsValue,
   DevConsoleDirectiveRequest, DevConsoleDirectiveValue, DevConsoleSessionContextRequest, DevConsoleSessionContextValue,
   DevConsoleCreateBriefRequest, DevConsoleCreatePlanRequest,
   DevConsoleHandoffRequest, DevConsoleHistoryRequest, DevConsoleHistoryValue, DevConsoleInboxRequest, DevConsoleInboxValue,
@@ -467,6 +468,20 @@ export class SessionTasksController extends TypertRemoteService {
   private async writeBus(next: DevConsoleBusState): Promise<void> {
     if (this.busDomain === undefined) throw new RemoteError('session-tasks/seen-unavailable', 'Dev Console bus requires a mounted storage domain', {})
     await this.busDomain.global.set(next)
+  }
+
+  @Remote('devConsoleProjects')
+  async devConsoleProjects(): Promise<DevConsoleProjectsValue> {
+    const result = loadDevConsoleConfig(this.resolveDevConsoleConfigFile())
+    if (result.config === undefined) throw new RemoteError('gateway/bad-request', 'Dev Console config is invalid', {})
+    return { projects: result.config.projects.map(project => ({
+      id: project.id,
+      name: project.name,
+      root: project.root,
+      workspaces: project.workspaces.map(workspace => ({
+        id: workspace.id, name: workspace.name, worktree: workspace.worktree, branch: workspace.branch,
+      })),
+    })) }
   }
 
   @Remote('devConsoleSessionContext')

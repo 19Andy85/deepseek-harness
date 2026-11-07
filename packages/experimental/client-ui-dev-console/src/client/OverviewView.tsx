@@ -14,11 +14,21 @@ export interface OverviewViewProps {
   readonly rows: readonly SessionTaskView[]
   readonly workspaces: readonly ConsoleWorkspace[]
   readonly selectedWorkspaceId?: string | undefined
+  readonly globalPending: number
+  readonly projects?: readonly ProjectSummaryView[] | undefined
   readonly t: (key: ProjectConsoleKey, params?: Record<string, unknown>) => string
   readonly onSelectWorkspace: (workspaceId: string) => void
   readonly onRefresh: () => void
   readonly onOpenSession: (sessionId: string) => void
   readonly onFocusSession: (sessionId: string) => void
+}
+
+/** One project and its workspaces for the portfolio card. */
+export interface ProjectSummaryView {
+  readonly id: string
+  readonly name: string
+  readonly root: string
+  readonly workspaces: readonly { readonly id: string; readonly name: string; readonly worktree: string; readonly branch: string }[]
 }
 
 const tokenFormat = new Intl.NumberFormat('zh-CN', { notation: 'compact', maximumFractionDigits: 1 })
@@ -30,7 +40,7 @@ const tokenFormat = new Intl.NumberFormat('zh-CN', { notation: 'compact', maximu
  */
 export function OverviewView(props: OverviewViewProps) {
   const {
-    health, usage, attention, rows, workspaces, selectedWorkspaceId, t,
+    health, usage, attention, rows, workspaces, selectedWorkspaceId, globalPending, projects, t,
     onSelectWorkspace, onRefresh, onOpenSession, onFocusSession,
   } = props
   const statusCount = (label: ProjectConsoleKey, value: number, tone: string | undefined): ReactNode => (
@@ -45,13 +55,14 @@ export function OverviewView(props: OverviewViewProps) {
         {statusCount('completedUnread', health.completedUnread, css.ok)}
         {statusCount('idle', health.idle, css.muted)}
         <span className={css.spacer} />
+        <span className={css.metric}><b className={css.warn}>{globalPending}</b><span>{t('globalInbox')}</span></span>
         <span className={css.tokenMetric}>{t('workspaceTokens')} · {tokenFormat.format(usage)}</span>
         <button type="button" className={css.button} onClick={onRefresh}>{t('refresh')}</button>
       </div>
 
       <div className={css.grid}>
         <section className={css.card}>
-          <div className={css.cardHead}><h2>{t('globalInbox')}</h2><span className={css.badge}>{attention.length}</span></div>
+          <div className={css.cardHead}><h2>{t('globalInbox')}</h2><span className={css.badge}>{globalPending}</span></div>
           {attention.length === 0 ? <p className={css.empty}>{t('noPending')}</p> : (
             <div className={css.list}>
               {attention.slice(0, 5).map(item => (
@@ -83,19 +94,36 @@ export function OverviewView(props: OverviewViewProps) {
         </section>
 
         <section className={css.card}>
-          <div className={css.cardHead}><h2>{t('projectsWorkspaces')}</h2><span className={css.badge}>{workspaces.length}</span></div>
+          <div className={css.cardHead}><h2>{t('projectsWorkspaces')}</h2><span className={css.badge}>{projects !== undefined && projects.length > 0 ? projects.length : workspaces.length}</span></div>
           <div className={css.list}>
-            {workspaces.slice(0, 6).map(workspace => (
-              <button
-                key={workspace.id}
-                type="button"
-                className={workspace.id === selectedWorkspaceId ? `${css.rowItem} ${css.rowSelected}` : css.rowItem}
-                onClick={() => { onSelectWorkspace(workspace.id) }}
-              >
-                <span className={css.rowTitle}>{workspace.title}</span>
-                <span className={css.rowMeta}>{workspace.id === selectedWorkspaceId ? t('workspace') : ''}</span>
-              </button>
-            ))}
+            {projects !== undefined && projects.length > 0
+              ? projects.map(project => (
+                <div key={project.id} className={css.projectGroup}>
+                  <div className={css.projectName}>{project.name}</div>
+                  {project.workspaces.map(workspace => (
+                    <button
+                      key={workspace.id}
+                      type="button"
+                      className={workspace.id === selectedWorkspaceId ? `${css.rowItem} ${css.rowSelected}` : css.rowItem}
+                      onClick={() => { onSelectWorkspace(workspace.id) }}
+                    >
+                      <span className={css.rowTitle}>{workspace.name}</span>
+                      <span className={css.rowMeta}>{workspace.branch}</span>
+                    </button>
+                  ))}
+                </div>
+              ))
+              : workspaces.slice(0, 6).map(workspace => (
+                <button
+                  key={workspace.id}
+                  type="button"
+                  className={workspace.id === selectedWorkspaceId ? `${css.rowItem} ${css.rowSelected}` : css.rowItem}
+                  onClick={() => { onSelectWorkspace(workspace.id) }}
+                >
+                  <span className={css.rowTitle}>{workspace.title}</span>
+                  <span className={css.rowMeta}>{workspace.id === selectedWorkspaceId ? t('workspace') : ''}</span>
+                </button>
+              ))}
           </div>
         </section>
       </div>
