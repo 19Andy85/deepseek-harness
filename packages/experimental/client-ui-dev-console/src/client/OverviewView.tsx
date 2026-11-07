@@ -78,7 +78,7 @@ export function OverviewView(props: OverviewViewProps) {
         </section>
 
         <section className={css.card}>
-          <div className={css.cardHead}><h2>{t('activeSessions')}</h2><span className={css.badge}>{rows.length}</span></div>
+          <div className={css.cardHead}><h2>{t('activeSessions')}</h2><span className={css.badge}>{globalHealth.running}</span></div>
           <div className={css.list}>
             {rows.slice(0, 5).map(row => (
               <button key={row.sessionId} type="button" className={css.rowItem} onClick={() => { onOpenSession(row.sessionId) }}>

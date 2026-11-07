@@ -31,7 +31,7 @@ import { StudioView } from './StudioView.tsx'
 import { IsoStudioView } from './IsoStudioView.tsx'
 import { WorkspaceView, type WorkspaceOpenView, type WorkspaceSnapshotView } from './WorkspaceView.tsx'
 import { OverviewView } from './OverviewView.tsx'
-import { buildSessionActionItems, type ActionItem } from './action-items.ts'
+import { buildSessionActionItems, buildWorkActionItems, type ActionItem } from './action-items.ts'
 import { globalHealthCounts } from './global-inbox.ts'
 import { MessageCenter, type MessageCenterInjected } from './MessageCenter.tsx'
 import { readViewPreference, writeViewPreference, type ConsoleView } from './view-preference.ts'
@@ -181,6 +181,7 @@ export function ProjectConsolePage({
   const [workspaceBack, setWorkspaceBack] = useState<string | undefined>(undefined)
   const [reloadNotice, setReloadNotice] = useState(false)
   const [projects, setProjects] = useState<readonly import('./OverviewView.tsx').ProjectSummaryView[]>([])
+  const [workActionItems, setWorkActionItems] = useState<readonly ActionItem[]>([])
   const [workspacesOpen, setWorkspacesOpen] = useState(false)
   const [messagesOpen, setMessagesOpen] = useState(false)
   const [actions, setActions] = useState<readonly ConsoleAction[]>([])
@@ -312,7 +313,7 @@ export function ProjectConsolePage({
   }
   const attention = attentionItems(rows, statusFacts, descriptorOf, failureOf)
   const health = healthCounts(rows, statusFacts, descriptorOf, failureOf)
-  const actionItems = buildSessionActionItems(attention, inboxGroups)
+  const actionItems = [...buildSessionActionItems(attention, inboxGroups), ...workActionItems]
   const usageTotals = rows.reduce((sum, row) => sum + (row.usage?.totalTokens ?? 0), 0)
   const relations = relationHints(rows)
   const graphGroups = relationGroups(rows)
@@ -476,6 +477,9 @@ export function ProjectConsolePage({
   useEffect(() => {
     void devConsoleProjects().then(setProjects).catch(() => { setProjects([]) })
   }, [])
+  useEffect(() => {
+    void messageCenter.inbox('maintainer').then((items) => { setWorkActionItems(buildWorkActionItems(items)) }).catch(() => { setWorkActionItems([]) })
+  }, [messageCenter])
   useEffect(() => {
     if (focus?.sessionId !== undefined) setActiveId(focus.sessionId)
   }, [focus?.sessionId])
@@ -805,6 +809,10 @@ export function ProjectConsolePage({
                 onRefresh={refresh}
                 onOpenSession={openSession}
                 onOpenAction={(item: ActionItem) => {
+                  if (item.source === 'message' || item.source === 'plan') {
+                    setMessagesOpen(true)
+                    return
+                  }
                   if (item.workspaceId !== undefined && item.workspaceId !== selected) selectWorkspace(item.workspaceId)
                   if (item.sessionId !== undefined) focusSession(item.sessionId)
                 }}

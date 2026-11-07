@@ -1,6 +1,7 @@
 /** Unified action items across Session attention and durable work queues. */
 import type { AttentionItem } from './attention.ts'
 import type { GlobalInboxGroup } from './global-inbox.ts'
+import type { InboxItemView } from './MessageCenter.tsx'
 
 /** Source that produced one action item. */
 export type ActionSource = 'session' | 'message' | 'plan'
@@ -19,6 +20,10 @@ export interface ActionItem {
   readonly title: string
   /** Short reason or scope. */
   readonly detail: string
+  /** Message identity, when the item came from the durable inbox. */
+  readonly messageId?: string | undefined
+  /** Plan identity, when the item is a plan decision. */
+  readonly planId?: string | undefined
 }
 
 /**
@@ -58,4 +63,20 @@ export function buildSessionActionItems(
     }
   }
   return items
+}
+
+/**
+ * Build message, task, and plan action items from the durable inbox.
+ * @param inbox - items returned by the message-center inbox query.
+ * @returns action items that preserve each durable source identity.
+ */
+export function buildWorkActionItems(inbox: readonly InboxItemView[]): ActionItem[] {
+  return inbox.map(item => ({
+    id: `${item.kind}:${item.id}`,
+    source: item.kind === 'plan' ? 'plan' : 'message',
+    title: item.title,
+    detail: item.detail,
+    messageId: item.kind === 'message' ? item.id : undefined,
+    planId: item.kind === 'plan' ? item.planId : undefined,
+  }))
 }
