@@ -1,19 +1,19 @@
 .scrim { position: fixed; inset: 0; z-index: 70; display: flex; align-items: center; justify-content: center; padding: 28px; background: color-mix(in srgb, #000 60%, transparent); }
 .panel { width: min(900px, 94vw); max-height: 88vh; display: flex; flex-direction: column; gap: 10px; padding: 18px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 14px; background: var(--dsw-alias-settings-card-fill); box-shadow: 0 24px 70px rgba(0, 0, 0, .45); }
 .head { display: flex; justify-content: space-between; gap: 16px; }
-.title { margin: 0 0 4px; font-size: calc(18px * var(--pc-type-scale, 1)); }
-.hint { margin: 0; color: var(--dsw-alias-label-tertiary); font-size: calc(11px * var(--pc-type-scale, 1)); word-break: break-all; }
+.title { margin: 0 0 4px; font-size: var(--pc-text-display); }
+.hint { margin: 0; color: var(--dsw-alias-label-tertiary); font-size: var(--pc-text-meta); word-break: break-all; }
 .actions { display: flex; gap: 8px; }
-.button { height: 28px; padding: 0 10px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 7px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: calc(12px * var(--pc-type-scale, 1)); cursor: pointer; }
+.button { height: 28px; padding: 0 10px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 7px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: var(--pc-text-body); cursor: pointer; }
 .button:disabled { opacity: .45; cursor: default; }
-.editor { flex: 1; min-height: 380px; padding: 12px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 8px; background: var(--dsw-alias-bg-skeleton); color: var(--dsw-alias-label-secondary); font-family: "SF Mono", Menlo, monospace; font-size: calc(12px * var(--pc-type-scale, 1)); resize: vertical; }
-.error { margin: 0; color: #e5534b; font-size: calc(12px * var(--pc-type-scale, 1)); white-space: pre-wrap; }
-.ok { margin: 0; color: #43b581; font-size: calc(12px * var(--pc-type-scale, 1)); }
+.editor { flex: 1; min-height: 380px; padding: 12px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 8px; background: var(--dsw-alias-bg-skeleton); color: var(--dsw-alias-label-secondary); font-family: "SF Mono", Menlo, monospace; font-size: var(--pc-text-body); resize: vertical; }
+.error { margin: 0; color: var(--pc-color-danger); font-size: var(--pc-text-body); white-space: pre-wrap; }
+.ok { margin: 0; color: var(--pc-color-success); font-size: var(--pc-text-body); }
 .form { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
 .project { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 9px; }
 .workspace { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 8px; }
 .formRow { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
-.formRow label { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 140px; color: var(--dsw-alias-label-tertiary); font-size: calc(10px * var(--pc-type-scale, 1)); }
-.formRow input { height: 26px; padding: 0 7px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 6px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: calc(12px * var(--pc-type-scale, 1)); }
+.formRow label { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 140px; color: var(--dsw-alias-label-tertiary); font-size: var(--pc-text-caption); }
+.formRow input { height: 26px; padding: 0 7px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 6px; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; font-size: var(--pc-text-body); }
 .diffBox { max-height: 180px; overflow: auto; padding: 8px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 8px; background: var(--dsw-alias-bg-skeleton); }
-.diff { margin: 4px 0 0; color: var(--dsw-alias-label-secondary); font-size: calc(11px * var(--pc-type-scale, 1)); white-space: pre-wrap; }
+.diff { margin: 4px 0 0; color: var(--dsw-alias-label-secondary); font-size: var(--pc-text-meta); white-space: pre-wrap; }

@@ -8,10 +8,34 @@
   --pc-gap-5: 24px;
   --pc-radius: 8px;
   --pc-radius-lg: 10px;
-  --pc-font-xs: calc(11px * var(--pc-type-scale, 1));
-  --pc-font-s: calc(12px * var(--pc-type-scale, 1));
-  --pc-font-m: calc(13px * var(--pc-type-scale, 1));
   --pc-type-scale: 1;
+  --pc-density: 1;
+  --pc-text-display: calc(20px * var(--pc-type-scale, 1));
+  --pc-text-page: calc(17px * var(--pc-type-scale, 1));
+  --pc-text-title: calc(13px * var(--pc-type-scale, 1));
+  --pc-text-body: calc(13px * var(--pc-type-scale, 1));
+  --pc-text-meta: calc(11px * var(--pc-type-scale, 1));
+  --pc-text-caption: calc(10px * var(--pc-type-scale, 1));
+  --pc-text-mono: calc(11px * var(--pc-type-scale, 1));
+  --pc-line-body: calc(20px * var(--pc-type-scale, 1));
+  --pc-card-padding: calc(14px * var(--pc-density, 1));
+  --pc-row-height: calc(34px * var(--pc-density, 1));
+  --pc-font-xs: var(--pc-text-meta);
+  --pc-font-s: var(--pc-text-meta);
+  --pc-font-m: var(--pc-text-body);
+  --pc-color-surface: var(--dsw-alias-settings-card-fill);
+  --pc-color-line: var(--dsw-alias-settings-card-stroke);
+  --pc-color-text: var(--dsw-alias-label-primary);
+  --pc-color-text-2: var(--dsw-alias-label-secondary);
+  --pc-color-text-3: var(--dsw-alias-label-tertiary);
+  --pc-color-accent: var(--dsw-alias-brand-primary, #5b8def);
+  --pc-color-success: var(--dsw-alias-state-success-primary, #43b581);
+  --pc-color-warning: var(--dsw-alias-state-warn-primary, #d9a441);
+  --pc-color-danger: var(--dsw-alias-state-error-primary, #e5534b);
+  --pc-color-danger-line: color-mix(in srgb, var(--pc-color-danger) 45%, transparent);
+  --pc-motion-fast: 100ms;
+  --pc-motion-normal: 170ms;
+  --pc-motion-slow: 220ms;
   line-height: 1.55;
   display: flex;
   flex-direction: column;
@@ -30,7 +54,7 @@
 
 .title {
   margin: 0;
-  font-size: calc(20px * var(--pc-type-scale, 1));
+  font-size: var(--pc-text-display);
   font-weight: 500;
 }
 
@@ -732,14 +756,26 @@
   color: var(--dsw-alias-brand-primary);
 }
 
-/* Reading-size levels: auto picks comfortable on scaled Retina, compact on narrow screens. */
+/* Reading levels change type, spacing, and density, not just a font multiplier. */
 .page[data-reading='comfortable'] {
-  --pc-type-scale: 1.25;
-  line-height: 1.6;
+  --pc-type-scale: 1.2;
+  --pc-density: 1.15;
+  line-height: 1.7;
 }
 
 .page[data-reading='compact'] {
   --pc-type-scale: 0.95;
+  --pc-density: 0.9;
+  line-height: 1.45;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page, .page * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 .studioShellFull {
