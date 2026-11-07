@@ -581,6 +581,12 @@ export function ProjectConsolePage({
           </select>
           <span className={css.toolDivider} aria-hidden="true" />
           <button type="button" className={css.select} onClick={() => { refresh() }}>{t('refresh')}</button>
+          <details className={css.moreTools}>
+            <summary className={css.select}>{t('moreTools')}</summary>
+            <div className={css.moreMenu}>
+              <button type="button" className={css.select} onClick={() => { setReloadNotice(true) }}>{t('refreshPage')}</button>
+            </div>
+          </details>
           <select
             className={css.select}
             aria-label={t('readingSize')}
@@ -702,12 +708,6 @@ export function ProjectConsolePage({
           >
             {t('globalInbox')}{inboxTotal === 0 ? '' : ` ${String(inboxTotal)}`}
           </button>
-          <details className={css.moreTools}>
-            <summary className={css.select}>{t('moreTools')}</summary>
-            <div className={css.moreMenu}>
-              <button type="button" className={css.select} onClick={() => { setReloadNotice(true) }}>{t('refreshPage')}</button>
-            </div>
-          </details>
           {workspaceBack === undefined
             ? null
             : (
