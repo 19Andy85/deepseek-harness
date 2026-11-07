@@ -42,6 +42,10 @@ for (const bundle of bundlePaths) {
   copyFileSync(bundle, `${bundle}.prev.js`)
   if (existsSync(`${bundle}.map`)) copyFileSync(`${bundle}.map`, `${bundle}.map.prev`)
 }
+// The bundle is produced from `lib/types`, not directly from `src`. Compile
+// first so a source edit cannot silently ship an older bundle.
+const compile = spawnSync('pnpm', ['exec', 'tsc', '-b', 'packages/experimental/client-ui-dev-console'], { cwd: repo, stdio: 'inherit' })
+if (compile.status !== 0) fail(`client source compile failed with exit ${String(compile.status)}`)
 const command = 'pnpm'
 const result = spawnSync(command, ['exec', 'tsdown', '--config-loader', 'native', '--env.DSH_BUILD_FACE', 'client'], { cwd: repo, stdio: 'inherit' })
 if (result.status !== 0) fail(`client bundle build failed with exit ${String(result.status)}`)

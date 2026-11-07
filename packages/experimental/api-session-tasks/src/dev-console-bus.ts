@@ -9,7 +9,7 @@ import { z } from 'zod'
 import { defineDomain } from '@deepseek-ai/dsh-storage-domain'
 
 /** Acting roles recognized by the console. */
-export type DevConsoleRole = 'maintainer' | 'implementer' | 'domain-reviewer' | 'system'
+export type DevConsoleRole = 'maintainer' | 'implementer' | 'workspace-reviewer' | 'system'
 
 /** Message kinds. */
 export type DevConsoleMessageKind = 'note' | 'request' | 'decision' | 'handoff' | 'report'
@@ -81,7 +81,10 @@ export interface DevConsoleBusState {
   readonly briefs: readonly DevConsoleBrief[]
 }
 
-const roleSchema = z.enum(['maintainer', 'implementer', 'domain-reviewer', 'system'])
+const roleSchema: z.ZodType<DevConsoleRole> = z.union([
+  z.enum(['maintainer', 'implementer', 'workspace-reviewer', 'system']),
+  z.literal('domain-reviewer').transform((): DevConsoleRole => 'workspace-reviewer'),
+])
 const kindSchema = z.enum(['note', 'request', 'decision', 'handoff', 'report'])
 const statusSchema = z.enum(['unread', 'acknowledged', 'resolved', 'stale'])
 const briefStatusSchema = z.enum(['draft', 'ready', 'assigned', 'in_review', 'accepted', 'changes_requested', 'closed'])

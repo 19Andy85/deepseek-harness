@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import type { ProjectConsoleKey } from './locales.ts'
 import css from './MessageCenter.module.css'
 
-export type Role = 'maintainer' | 'implementer' | 'domain-reviewer' | 'system'
+export type Role = 'maintainer' | 'implementer' | 'workspace-reviewer' | 'system'
 type MessageKind = 'note' | 'request' | 'decision' | 'handoff' | 'report'
 type BriefStatus = 'draft' | 'ready' | 'assigned' | 'in_review' | 'accepted' | 'changes_requested' | 'closed'
 
@@ -44,7 +44,7 @@ export interface BriefView {
 }
 
 const ROLE_KEYS: Record<Role, ProjectConsoleKey> = {
-  maintainer: 'roleMaintainer', implementer: 'roleImplementer', 'domain-reviewer': 'roleDomainReviewer', system: 'roleSystem',
+  maintainer: 'roleMaintainer', implementer: 'roleImplementer', 'workspace-reviewer': 'roleWorkspaceReviewer', system: 'roleSystem',
 }
 const KIND_KEYS: Record<MessageKind, ProjectConsoleKey> = {
   note: 'kindNote', request: 'kindRequest', decision: 'kindDecision', handoff: 'kindHandoff', report: 'kindReport',
@@ -151,7 +151,7 @@ export function MessageCenter({
           <div className={css.actions}>
             <label className={css.label}>{t('currentRole')}
               <select value={role} onChange={(event) => { setRole(event.currentTarget.value as Role) }}>
-                {(['maintainer', 'implementer', 'domain-reviewer', 'system'] as const).map(value => (
+                {(['maintainer', 'implementer', 'workspace-reviewer', 'system'] as const).map(value => (
                   <option key={value} value={value}>{t(ROLE_KEYS[value])}</option>
                 ))}
               </select>
@@ -234,7 +234,7 @@ export function MessageCenter({
                   <div className={css.row}>
                     <label className={css.label}>{t('recipient')}
                       <select value={toRole} onChange={(event) => { setToRole(event.currentTarget.value as Role) }}>
-                        {(['maintainer', 'implementer', 'domain-reviewer', 'system'] as const).map(value => (
+                        {(['maintainer', 'implementer', 'workspace-reviewer', 'system'] as const).map(value => (
                           <option key={value} value={value}>{t(ROLE_KEYS[value])}</option>
                         ))}
                       </select>
