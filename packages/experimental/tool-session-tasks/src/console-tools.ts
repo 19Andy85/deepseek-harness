@@ -10,6 +10,7 @@ const TEXT_OUTPUT = {
 
 const PROMPT = 'Use console_plan_propose to turn the current task into a durable task and draft plan. '
   + 'Use console_plan_update_step to record step progress, console_report to report back, and console_handoff for review. '
+  + 'Use console_task_transition to move an assigned task to review before handoff. '
   + 'These writes are scoped to the calling Session; never invent a workspace id.'
 
 /**
@@ -142,6 +143,26 @@ export function registerConsoleTools(ctx: Context): void {
         branch: input.branch, commit: input.commit, summary: input.summary, tests: [...input.tests],
       })
       return JSON.stringify({ messageId: message.id })
+    },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'console_task_transition',
+    description: 'Move an assigned dev-console task into review for maintainer acceptance.',
+    parameters: {
+      brief_id: { type: 'string', description: 'Task id to transition.' },
+      reason: { type: 'string', description: 'Optional reason for the transition.' },
+    },
+    output: TEXT_OUTPUT,
+    isConcurrencySafe: () => false,
+    execute: async (args) => {
+      const input = args as { brief_id?: string; reason?: string }
+      if (input.brief_id === undefined) throw new Error('console_task_transition requires brief_id')
+      const brief = await ctx.sessionTasks.devConsoleTransitionBrief({
+        briefId: input.brief_id, to: 'in_review', role: 'implementer',
+        ...input.reason === undefined ? {} : { reason: input.reason },
+      })
+      return JSON.stringify({ briefId: brief.id, status: brief.status })
     },
   }))
 }

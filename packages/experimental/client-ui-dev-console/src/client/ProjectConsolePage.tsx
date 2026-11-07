@@ -844,6 +844,7 @@ export function ProjectConsolePage({
                 approvePlan={approvePlanAndDeliver}
                 sendMessage={messageCenter.sendMessage}
                 messageAction={messageCenter.messageAction}
+                transitionBrief={messageCenter.transitionBrief}
                 compact={surface !== 'main'}
                 actionItems={actionItems}
                 onOpenAction={(item: ActionItem) => {

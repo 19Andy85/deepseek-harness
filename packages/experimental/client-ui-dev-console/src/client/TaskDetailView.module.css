@@ -47,3 +47,5 @@
 .pageCompact { grid-template-columns: 1fr; overflow: auto; }
 .pageCompact .master { max-height: 180px; border-right: 0; border-bottom: 1px solid var(--pc-color-line); }
 .pageCompact .detail { overflow: visible; }
+
+.statusActions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--pc-gap-3); }

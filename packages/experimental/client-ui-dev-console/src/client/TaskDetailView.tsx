@@ -28,6 +28,7 @@ export interface TaskDetailInjected {
   readonly approvePlan: (planId: string) => Promise<PlanView>
   readonly sendMessage: MessageCenterInjected['sendMessage']
   readonly messageAction: MessageCenterInjected['messageAction']
+  readonly transitionBrief: MessageCenterInjected['transitionBrief']
 }
 
 /** Props of the task detail page. */
@@ -45,7 +46,10 @@ export interface TaskDetailViewProps extends TaskDetailInjected {
  * @returns the task detail page.
  */
 export function TaskDetailView(props: TaskDetailViewProps) {
-  const { briefs, plans, messages, approvePlan, sendMessage, messageAction, actionItems = [], onOpenAction, compact = false, t } = props
+  const {
+    briefs, plans, messages, approvePlan, sendMessage, messageAction, transitionBrief,
+    actionItems = [], onOpenAction, compact = false, t,
+  } = props
   const [briefRows, setBriefRows] = useState<readonly BriefView[]>([])
   const [planRows, setPlanRows] = useState<readonly PlanView[]>([])
   const [messageRows, setMessageRows] = useState<readonly MessageView[]>([])
@@ -81,6 +85,13 @@ export function TaskDetailView(props: TaskDetailViewProps) {
         old.title === step.title && old.outcome !== step.outcome
       ))).map(step => step.title),
     }
+
+  const transition = (to: BriefView['status']): void => {
+    if (selected === undefined) return
+    void transitionBrief(selected.id, to).then((updated) => {
+      setBriefRows(rows => rows.map(brief => brief.id === updated.id ? updated : brief))
+    }).catch(() => { setError(t('actionFailed')) })
+  }
 
   return (
     <div className={compact ? `${css.page} ${css.pageCompact}` : css.page}>
@@ -133,6 +144,19 @@ export function TaskDetailView(props: TaskDetailViewProps) {
                   )}
                 </div>
               </header>
+              <div className={css.statusActions}>
+                {selected.status === 'draft' ? <button type="button" className={css.button} onClick={() => { transition('ready') }}>{t('briefReady')}</button> : null}
+                {selected.status === 'ready' ? <button type="button" className={css.button} onClick={() => { transition('assigned') }}>{t('briefAssigned')}</button> : null}
+                {selected.status === 'assigned' ? <button type="button" className={css.button} onClick={() => { transition('in_review') }}>{t('briefInReview')}</button> : null}
+                {selected.status === 'in_review' ? (
+                  <>
+                    <button type="button" className={css.button} onClick={() => { transition('accepted') }}>{t('briefAccepted')}</button>
+                    <button type="button" className={css.button} onClick={() => { transition('changes_requested') }}>{t('briefChangesRequested')}</button>
+                  </>
+                ) : null}
+                {selected.status === 'changes_requested' ? <button type="button" className={css.button} onClick={() => { transition('assigned') }}>{t('briefAssigned')}</button> : null}
+                {selected.status !== 'closed' ? <button type="button" className={css.button} onClick={() => { transition('closed') }}>{t('briefClosed')}</button> : null}
+              </div>
               <div className={css.tabs}>
                 <button type="button" className={tab === 'task' ? css.tabActive : css.tab} onClick={() => { setTab('task') }}>{t('todoTab')}</button>
                 <button type="button" className={tab === 'plan' ? css.tabActive : css.tab} onClick={() => { setTab('plan') }}>{t('plansTitle')}</button>
