@@ -205,6 +205,14 @@ export interface DevConsoleSessionContextValue {
   readonly briefTitle?: string | undefined
   readonly planId?: string | undefined
   readonly planVersion?: number | undefined
+  /** Recent console directives delivered to this Session. */
+  readonly directives?: readonly {
+    readonly id: string
+    readonly type: string
+    readonly summary: string
+    readonly status: 'pending' | 'delivered' | 'failed'
+    readonly createdAt: number
+  }[] | undefined
 }
 
 /** Deliver one structured console directive into a Session. */

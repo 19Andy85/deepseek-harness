@@ -152,6 +152,13 @@ export function WorkspaceView({
     readonly briefTitle?: string | undefined
     readonly planVersion?: number | undefined
     readonly workspaceId?: string | undefined
+    readonly directives?: readonly {
+      readonly id: string
+      readonly type: string
+      readonly summary: string
+      readonly status: 'pending' | 'delivered' | 'failed'
+      readonly createdAt: number
+    }[] | undefined
   }
   const [sessionInfo, setSessionInfo] = useState<SessionInfo | undefined>(undefined)
   const [busy, setBusy] = useState<string | undefined>(undefined)
@@ -368,8 +375,17 @@ export function WorkspaceView({
                   </div>
                   {sessionInfo === undefined ? null : (
                     <div className={css.contextBanner}>
-                      当前会话：{sessionInfo.briefTitle ?? '未关联任务单'}
-                      {sessionInfo.planVersion === undefined ? '' : ` · 计划 v${String(sessionInfo.planVersion)}`}
+                      <div>当前会话：{sessionInfo.briefTitle ?? '未关联任务单'}
+                        {sessionInfo.planVersion === undefined ? '' : ` · 计划 v${String(sessionInfo.planVersion)}`}
+                      </div>
+                      {sessionInfo.briefTitle === undefined
+                        ? <div className={css.contextMuted}>先在「消息 → 任务单」创建任务单并关联工作区，计划批准后会在这里出现。</div>
+                        : null}
+                      {(sessionInfo.directives ?? []).length === 0 ? null : (
+                        <div className={css.contextMuted}>
+                          最近指令：{sessionInfo.directives?.slice(0, 3).map(item => `${item.type} · ${item.status}`).join('；')}
+                        </div>
+                      )}
                     </div>
                   )}
                   <dl className={css.facts}>

@@ -198,7 +198,7 @@ export function ProjectConsolePage({
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
   const [filter, setFilter] = useState<HealthFilter>(undefined)
-  const [view, setView] = useState<ConsoleView>(() => (compact ? 'studio' : readViewPreference()))
+  const [view, setView] = useState<ConsoleView>(() => (compact ? 'workspaces' : readViewPreference()))
   const [studioMode, setStudioMode] = useState(() => (compact ? 'board' : readStudioMode()))
   const statuses = useSessionStatus(state => state)
   const state = useSyncExternalStore(

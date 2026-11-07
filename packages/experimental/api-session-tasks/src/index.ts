@@ -79,6 +79,16 @@ const DEFAULT_STALL_AFTER_MS = 900_000
 /** Default refresh cadence of the durable derivation relation cache. */
 const DEFAULT_RELATIONS_REFRESH_MS = 5_000
 
+function directivesForSession(
+  state: DevConsoleBusState,
+  sessionId: string,
+): Array<{ id: string; type: string; summary: string; status: 'pending' | 'delivered' | 'failed'; createdAt: number }> {
+  return state.directives
+    .filter(item => item.sessionId === sessionId)
+    .slice(0, 5)
+    .map(item => ({ id: item.id, type: item.type, summary: item.summary, status: item.status, createdAt: item.createdAt }))
+}
+
 declare module '@deepseek-ai/cordis' {
   interface Context {
     /** Host session task overview Remote namespace owner. */
@@ -466,7 +476,11 @@ export class SessionTasksController extends TypertRemoteService {
     const record = (await query.listSessions()).find(item => item.header.id === request.sessionId)
     if (record === undefined) throw new RemoteError('gateway/bad-request', `session ${request.sessionId} not found`, {})
     const cwd = record.header.cwd
-    if (cwd === undefined) return { sessionId: request.sessionId }
+    const directives = this.busState().directives
+      .filter(item => item.sessionId === request.sessionId)
+      .slice(0, 5)
+      .map(item => ({ id: item.id, type: item.type, summary: item.summary, status: item.status, createdAt: item.createdAt }))
+    if (cwd === undefined) return { sessionId: request.sessionId, directives }
     const canonical = await realpath(cwd).catch(() => cwd)
     const config = loadDevConsoleConfig(this.resolveDevConsoleConfigFile())
     if (config.config === undefined) throw new RemoteError('gateway/bad-request', 'Dev Console config is invalid', {})
@@ -485,6 +499,7 @@ export class SessionTasksController extends TypertRemoteService {
           sessionId: request.sessionId,
           workspaceId: workspace.id,
           projectId: project.id,
+          directives: directivesForSession(state, request.sessionId),
           ...brief === undefined ? {} : { briefId: brief.id, briefTitle: brief.title },
           ...plan === undefined ? {} : { planId: plan.id, planVersion: plan.version },
         }
