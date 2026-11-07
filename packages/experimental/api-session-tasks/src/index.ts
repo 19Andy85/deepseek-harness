@@ -44,7 +44,8 @@ import type { DevConsoleWorkspaceConfig } from './dev-console-config.ts'
 import type {
   DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleAutoConfigRequest, DevConsoleAutoConfigValue,
   DevConsoleSummary, DevConsoleSummaryRequest,
-  DevConsoleApprovePlanRequest, DevConsoleBindRequest, DevConsoleBriefsRequest, DevConsoleBriefsValue, DevConsoleConfigValue,
+  DevConsoleAgentProposalRequest, DevConsoleAgentProposalValue, DevConsoleApprovePlanRequest, DevConsoleBindRequest,
+  DevConsoleBriefsRequest, DevConsoleBriefsValue, DevConsoleConfigValue,
   DevConsoleProjectsValue,
   DevConsoleDirectiveRequest, DevConsoleDirectiveValue, DevConsoleSessionContextRequest, DevConsoleSessionContextValue,
   DevConsoleCreateBriefRequest, DevConsoleCreatePlanRequest,
@@ -609,6 +610,33 @@ export class SessionTasksController extends TypertRemoteService {
       && (request.parentPlanId === undefined || plan.parentPlanId === request.parentPlanId))
       .sort((a, b) => b.updatedAt - a.updatedAt)
     return { plans }
+  }
+
+  /**
+   * Create a Brief and its first draft plan from an execution Agent's proposal.
+   * @param request - Agent proposal with the calling Session and steps.
+   * @returns the created Brief and draft plan.
+   */
+  async devConsoleProposeFromAgent(request: DevConsoleAgentProposalRequest): Promise<DevConsoleAgentProposalValue> {
+    const config = loadDevConsoleConfig(this.resolveDevConsoleConfigFile()).config
+    if (config === undefined) throw new RemoteError('gateway/bad-request', 'Dev Console config is invalid', {})
+    const cwd = request.cwd === undefined ? undefined : await realpath(request.cwd).catch(() => request.cwd)
+    let workspaceId: string | undefined
+    for (const project of config.projects) {
+      for (const workspace of project.workspaces) {
+        const root = await realpath(workspace.worktree).catch(() => workspace.worktree)
+        if (cwd !== undefined && (cwd === root || cwd.startsWith(`${root}/`))) { workspaceId = workspace.id; break }
+      }
+      if (workspaceId !== undefined) break
+    }
+    if (workspaceId === undefined) throw new RemoteError('gateway/bad-request', 'Agent cwd does not match a configured workspace', {})
+    const brief = await this.devConsoleCreateBrief({
+      workspaceId, title: request.title, goal: request.goal, acceptance: request.acceptance, authorRole: 'implementer',
+    })
+    const plan = await this.devConsoleCreatePlan({
+      briefId: brief.id, title: request.title, steps: request.steps, role: 'implementer',
+    })
+    return { brief, plan }
   }
 
   @Remote('devConsoleCreatePlan')

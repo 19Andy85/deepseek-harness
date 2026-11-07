@@ -6,6 +6,18 @@ import type { ActionItem } from './action-items.ts'
 import css from './TaskDetailView.module.css'
 
 /** Data access needed by the task detail page. */
+
+const BRIEF_STATUS_KEYS: Record<BriefView['status'], ProjectConsoleKey> = {
+  draft: 'briefDraft', ready: 'briefReady', assigned: 'briefAssigned', in_review: 'briefInReview',
+  accepted: 'briefAccepted', changes_requested: 'briefChangesRequested', closed: 'briefClosed',
+}
+const PLAN_STATUS_KEYS: Record<PlanView['status'], ProjectConsoleKey> = {
+  draft: 'planDraft', approved: 'planApproved', superseded: 'planSuperseded', completed: 'planCompleted',
+}
+const MESSAGE_KIND_KEYS: Record<MessageView['kind'], ProjectConsoleKey> = {
+  note: 'kindNote', request: 'kindRequest', decision: 'kindDecision', handoff: 'kindHandoff', report: 'kindReport',
+}
+
 export interface TaskDetailInjected {
   readonly briefs: () => Promise<readonly BriefView[]>
   readonly plans: (briefId?: string) => Promise<readonly PlanView[]>
@@ -61,6 +73,9 @@ export function TaskDetailView(props: TaskDetailViewProps) {
     : {
       added: current.steps.filter(step => !previous.steps.some(old => old.title === step.title)).map(step => step.title),
       removed: previous.steps.filter(old => !current.steps.some(step => step.title === old.title)).map(old => old.title),
+      modified: current.steps.filter(step => previous.steps.some(old => (
+        old.title === step.title && old.outcome !== step.outcome
+      ))).map(step => step.title),
     }
 
   return (
@@ -89,7 +104,7 @@ export function TaskDetailView(props: TaskDetailViewProps) {
             onClick={() => { setSelectedId(brief.id); setTab('task') }}
           >
             <span className={css.treeTitle}>{brief.title}</span>
-            <span className={css.treeMeta}>{brief.status}</span>
+            <span className={css.treeMeta}>{t(BRIEF_STATUS_KEYS[brief.status])}</span>
           </button>
         ))}
         {briefRows.length === 0 ? <p className={css.empty}>{t('noPending')}</p> : null}
@@ -103,7 +118,7 @@ export function TaskDetailView(props: TaskDetailViewProps) {
               <header className={css.detailHead}>
                 <div>
                   <h1>{selected.title}</h1>
-                  <p className={css.meta}>{selected.workspaceId} · {selected.status}</p>
+                  <p className={css.meta}>{selected.workspaceId} · {t(BRIEF_STATUS_KEYS[selected.status])}</p>
                 </div>
                 {props.onOpenSession === undefined ? null : <button type="button" className={css.button} onClick={props.onOpenSession}>{t('openSession')}</button>}
               </header>
@@ -129,7 +144,7 @@ export function TaskDetailView(props: TaskDetailViewProps) {
                       <>
                         <div className={css.planHead}>
                           <h3>{t('plansTitle')} v{current.version}</h3>
-                          <span className={css.meta}>{current.status}</span>
+                          <span className={css.meta}>{t(PLAN_STATUS_KEYS[current.status])}</span>
                           {current.status === 'draft' ? (
                             <button type="button" className={css.button} onClick={() => {
                               void approvePlan(current.id).then((updated) => {
@@ -142,16 +157,16 @@ export function TaskDetailView(props: TaskDetailViewProps) {
                           <div className={css.history}>
                             {selectedPlans.map(plan => (
                               <button key={plan.id} type="button" className={plan.id === current.id ? css.historyActive : css.historyItem} onClick={() => { setVersionId(plan.id) }}>
-                                v{plan.version} · {plan.status}
+                                v{plan.version} · {t(PLAN_STATUS_KEYS[plan.status])}
                               </button>
                             ))}
                           </div>
                         ) : null}
                         {changed === undefined ? null : (
                           <p className={css.diff}>
-                            {changed.added.length === 0 && changed.removed.length === 0
+                            {changed.added.length === 0 && changed.removed.length === 0 && changed.modified.length === 0
                               ? t('noPlan')
-                              : [...changed.added.map(title => `+ ${title}`), ...changed.removed.map(title => `- ${title}`)].join('  ')}
+                              : [...changed.added.map(title => `+ ${title}`), ...changed.removed.map(title => `- ${title}`), ...changed.modified.map(title => `~ ${title}`)].join('  ')}
                           </p>
                         )}
                         <ol className={css.steps}>
@@ -203,7 +218,7 @@ export function TaskDetailView(props: TaskDetailViewProps) {
                       <article key={message.id} className={css.message}>
                         <strong>{message.subject}</strong>
                         <p>{message.body}</p>
-                        <span className={css.meta}>{message.kind} · {message.status}</span>
+                        <span className={css.meta}>{t(MESSAGE_KIND_KEYS[message.kind])} · {message.status}</span>
                       </article>
                     ))}
                   </div>

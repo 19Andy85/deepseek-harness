@@ -532,6 +532,20 @@ export function ProjectConsolePage({
   const focusPending = focus === undefined ? 0 : pendingItems.filter(item => item.sessionId === focus.sessionId).length
   const focusIdentity = focus?.row === undefined ? undefined : identityOf(focus.row, aliasesMap)
 
+  const approvePlanAndDeliver = async (planId: string): Promise<import('./message-types.ts').PlanView> => {
+    const plan = await messageCenter.approvePlan(planId)
+    if (railSessionId !== undefined) {
+      await messageCenter.deliverDirective({
+        sessionId: railSessionId,
+        type: 'plan.approved',
+        briefId: plan.briefId,
+        planId: plan.id,
+        summary: plan.title,
+      })
+    }
+    return plan
+  }
+
   return (
     <section
       className={css.page}
@@ -541,7 +555,7 @@ export function ProjectConsolePage({
     >
       <header className={css.head}>
         <h1 className={css.title}>{t('title')}</h1>
-        <p className={css.subtitle}>{view === 'workspaces' ? t('workspacesHint') : view === 'overview' ? t('overviewHint') : t('description')}</p>
+        <p className={css.subtitle}>{view === 'workspaces' ? t('workspacesHint') : view === 'overview' ? t('overviewHint') : view === 'task' ? t('taskHint') : t('description')}</p>
         {surface !== 'rail' || railSessionId === undefined
           ? null
           : railSessionId !== undefined
@@ -825,7 +839,7 @@ export function ProjectConsolePage({
                 briefs={messageCenter.briefs}
                 plans={messageCenter.plans}
                 messages={messageCenter.messages}
-                approvePlan={messageCenter.approvePlan}
+                approvePlan={approvePlanAndDeliver}
                 sendMessage={messageCenter.sendMessage}
                 messageAction={messageCenter.messageAction}
                 actionItems={actionItems}

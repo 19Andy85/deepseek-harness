@@ -312,6 +312,22 @@ export interface DevConsoleRevisePlanRequest {
   readonly role: DevConsoleRole
 }
 
+/** Proposal written by an execution Agent from its Session. */
+export interface DevConsoleAgentProposalRequest {
+  readonly sessionId: string
+  readonly cwd?: string | undefined
+  readonly title: string
+  readonly goal: string
+  readonly acceptance: string
+  readonly steps: readonly DevConsolePlanStepInput[]
+}
+
+/** Proposal result containing the new Brief and its draft plan. */
+export interface DevConsoleAgentProposalValue {
+  readonly brief: DevConsoleBrief
+  readonly plan: DevConsolePlan
+}
+
 /** Update one step's progress. */
 export interface DevConsolePlanStepUpdateRequest {
   readonly planId: string

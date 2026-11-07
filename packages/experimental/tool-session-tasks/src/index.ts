@@ -10,12 +10,13 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import {
   callerAgent, gatherSessionTasks, renderSessionTasks, VISIBLE_SCOPES, type VisibleScope,
 } from './tasks.ts'
+import { registerConsoleTools } from './console-tools.ts'
 
 /** Cordis plugin name used by Loader diagnostics. */
 export const name = 'tool-session-tasks'
 
 /** Capability services required by the model-facing consumer. */
-export const inject = ['tools', 'systemPrompt', 'agents']
+export const inject = ['tools', 'systemPrompt', 'agents', 'sessionTasks']
 
 /** Default visibility scope: the caller plus sessions created in the same working directory. */
 export const DEFAULT_VISIBLE_SCOPE: VisibleScope = 'same-cwd'
@@ -53,6 +54,8 @@ export function apply(ctx: Context, config: Config): void {
     order: ctx.systemPrompt.getSectionOrder('TOOL_SESSION_TASKS'),
     text: PROMPT_TEXT,
   })
+
+  registerConsoleTools(ctx)
 
   ctx.tools.register(defineTool({
     name: 'session_tasks',
