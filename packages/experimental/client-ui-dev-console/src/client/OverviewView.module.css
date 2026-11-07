@@ -26,3 +26,4 @@
 @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
 .projectGroup { display: flex; flex-direction: column; gap: 3px; padding-bottom: 6px; }
 .projectName { padding: 3px 9px 2px; color: var(--pc-color-text-3); font-size: var(--pc-text-caption); letter-spacing: .04em; }
+.cardFoot { margin-top: var(--pc-gap-2); padding-top: var(--pc-gap-2); border-top: 1px solid var(--pc-color-line); color: var(--pc-color-text-3); font-size: var(--pc-text-meta); line-height: var(--pc-line-body); }

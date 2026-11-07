@@ -56,7 +56,6 @@ export function OverviewView(props: OverviewViewProps) {
         {statusCount('idle', health.idle, css.muted)}
         <span className={css.spacer} />
         <span className={css.metric}><b className={css.warn}>{globalPending}</b><span>{t('globalInbox')}</span></span>
-        <span className={css.tokenMetric}>{t('workspaceTokens')} · {tokenFormat.format(usage)}</span>
         <button type="button" className={css.button} onClick={onRefresh}>{t('refresh')}</button>
       </div>
 
@@ -125,6 +124,7 @@ export function OverviewView(props: OverviewViewProps) {
                 </button>
               ))}
           </div>
+          <div className={css.cardFoot}>{t('workspaceTokens')} · {tokenFormat.format(usage)}</div>
         </section>
       </div>
     </div>

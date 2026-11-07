@@ -581,12 +581,7 @@ export function ProjectConsolePage({
           </select>
           <span className={css.toolDivider} aria-hidden="true" />
           <button type="button" className={css.select} onClick={() => { refresh() }}>{t('refresh')}</button>
-          <details className={css.moreTools}>
-            <summary className={css.select}>{t('moreTools')}</summary>
-            <div className={css.moreMenu}>
-              <button type="button" className={css.select} onClick={() => { setReloadNotice(true) }}>{t('refreshPage')}</button>
-            </div>
-          </details>
+          <button type="button" className={css.select} onClick={() => { setReloadNotice(true) }}>{t('refreshPage')}</button>
           <select
             className={css.select}
             aria-label={t('readingSize')}
@@ -681,16 +676,20 @@ export function ProjectConsolePage({
             : null}
           {surface === 'main' ? null : <button type="button" className={css.select} onClick={() => { setWorkspacesOpen(true) }} title={t('workspaceContext')}>{t('workspaceContext')}</button>}
           <button type="button" className={css.select} title={t('messagesHint')} onClick={() => { setMessagesOpen(true) }}>{t('messagesTitle')}</button>
-          <button
-            type="button"
-            className={css.select}
-            onClick={() => {
-              setRelationView(view => (view === 'inline' ? 'canvas' : 'inline'))
-              setInboxOpen(false)
-            }}
-          >
-            {relationView === 'inline' ? t('relationInline') : t('relationCanvas')}
-          </button>
+          {view === 'canvas'
+            ? (
+              <button
+                type="button"
+                className={css.select}
+                onClick={() => {
+                  setRelationView(view => (view === 'inline' ? 'canvas' : 'inline'))
+                  setInboxOpen(false)
+                }}
+              >
+                {relationView === 'inline' ? t('relationInline') : t('relationCanvas')}
+              </button>
+            )
+            : null}
           <button
             type="button"
             className={css.select}

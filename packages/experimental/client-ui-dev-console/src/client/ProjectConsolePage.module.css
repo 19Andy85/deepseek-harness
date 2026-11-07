@@ -1117,8 +1117,3 @@
 .overviewHost { flex: 1; min-height: 0; overflow: auto; }
 
 .toolDivider { width: 1px; height: 22px; margin: 0 2px; background: var(--pc-color-line); align-self: center; }
-.moreTools { position: relative; }
-.moreTools > summary { list-style: none; cursor: pointer; }
-.moreTools > summary::-webkit-details-marker { display: none; }
-.moreMenu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 5; display: flex; min-width: 140px; padding: 6px; border: 1px solid var(--pc-color-line); border-radius: var(--pc-radius); background: var(--pc-color-surface); box-shadow: 0 10px 30px rgba(0, 0, 0, .35); }
-.moreMenu .select { width: 100%; justify-content: flex-start; }
