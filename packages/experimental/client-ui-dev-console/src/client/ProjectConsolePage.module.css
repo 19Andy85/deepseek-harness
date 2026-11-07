@@ -1120,3 +1120,5 @@
 .bodyTask { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
 .bodyTask > :not(.taskHost) { display: none; }
 .taskHost { flex: 1; min-height: 0; overflow: hidden; display: flex; }
+.workNav { border-right: 1px solid var(--pc-color-line); padding-right: var(--pc-gap-2); }
+.collabNav { padding-left: 0; }

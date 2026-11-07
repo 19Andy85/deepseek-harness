@@ -752,6 +752,8 @@ export class SessionTasksController extends TypertRemoteService {
       fromRole: request.fromRole,
       toRole: request.toRole,
       ...request.workspaceId === undefined ? {} : { workspaceId: request.workspaceId },
+      ...request.briefId === undefined ? {} : { briefId: request.briefId },
+      ...request.planId === undefined ? {} : { planId: request.planId },
       kind: request.kind,
       subject,
       body: request.body,

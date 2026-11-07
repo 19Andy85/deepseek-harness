@@ -33,7 +33,7 @@ export interface TaskDetailInjected {
 /** Props of the task detail page. */
 export interface TaskDetailViewProps extends TaskDetailInjected {
   readonly t: (key: ProjectConsoleKey) => string
-  readonly onOpenSession?: (() => void) | undefined
+  readonly onOpenSession?: ((sessionId: string) => void) | undefined
   readonly actionItems?: readonly ActionItem[] | undefined
   readonly onOpenAction?: ((item: ActionItem) => void) | undefined
 }
@@ -69,7 +69,7 @@ export function TaskDetailView(props: TaskDetailViewProps) {
     .sort((left, right) => right.version - left.version)
   const current = selectedPlans.find(plan => plan.id === versionId) ?? selectedPlans[0]
   const previous = current === undefined ? undefined : selectedPlans.find(plan => plan.version < current.version)
-  const relatedMessages = messageRows.filter(message => message.subject.includes(selected?.title ?? ''))
+  const relatedMessages = messageRows.filter(message => (message.briefId !== undefined && message.briefId === selected?.id) || message.subject.includes(selected?.title ?? ''))
   const handoffs = relatedMessages.filter(message => message.kind === 'handoff')
   const changed = current === undefined || previous === undefined
     ? undefined
@@ -123,7 +123,14 @@ export function TaskDetailView(props: TaskDetailViewProps) {
                   <h1>{selected.title}</h1>
                   <p className={css.meta}>{selected.workspaceId} · {t(BRIEF_STATUS_KEYS[selected.status])}</p>
                 </div>
-                {props.onOpenSession === undefined ? null : <button type="button" className={css.button} onClick={props.onOpenSession}>{t('openSession')}</button>}
+                <div className={css.headActions}>
+                  {selected.sourceSessionRef === undefined ? null : (
+                    <span className={css.meta}>{selected.sourceSessionRef.sessionId}</span>
+                  )}
+                  {props.onOpenSession === undefined || selected.sourceSessionRef === undefined ? null : (
+                    <button type="button" className={css.button} onClick={() => { props.onOpenSession?.(selected.sourceSessionRef?.sessionId ?? '') }}>{t('openSession')}</button>
+                  )}
+                </div>
               </header>
               <div className={css.tabs}>
                 <button type="button" className={tab === 'task' ? css.tabActive : css.tab} onClick={() => { setTab('task') }}>{t('todoTab')}</button>
@@ -191,7 +198,7 @@ export function TaskDetailView(props: TaskDetailViewProps) {
                     <form className={css.compose} onSubmit={(event) => {
                       event.preventDefault()
                       if (subject.trim() === '' || body.trim() === '') return
-                      void sendMessage({ fromRole: 'maintainer', toRole: 'implementer', kind: 'request', subject, body })
+                      void sendMessage({ fromRole: 'maintainer', toRole: 'implementer', kind: 'request', subject, body, briefId: selected?.id })
                         .then((message) => { setMessageRows(rows => [message, ...rows]); setSubject(''); setBody('') })
                         .catch(() => { setError(t('actionFailed')) })
                     }}>

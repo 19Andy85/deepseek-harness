@@ -102,14 +102,18 @@ export function registerConsoleTools(ctx: Context): void {
     parameters: {
       subject: { type: 'string', description: 'Report subject.' },
       body: { type: 'string', description: 'Report body.' },
+      brief_id: { type: 'string', description: 'Optional task id this report belongs to.' },
+      plan_id: { type: 'string', description: 'Optional plan id this report belongs to.' },
     },
     output: TEXT_OUTPUT,
     isConcurrencySafe: () => false,
     execute: async (args) => {
-      const input = args as { subject?: string; body?: string }
+      const input = args as { subject?: string; body?: string; brief_id?: string; plan_id?: string }
       if (input.subject === undefined || input.body === undefined) throw new Error('console_report requires subject and body')
       const message = await ctx.sessionTasks.devConsoleSendMessage({
         fromRole: 'implementer', toRole: 'maintainer', kind: 'report', subject: input.subject, body: input.body,
+        ...input.brief_id === undefined ? {} : { briefId: input.brief_id },
+        ...input.plan_id === undefined ? {} : { planId: input.plan_id },
       })
       return JSON.stringify({ messageId: message.id })
     },

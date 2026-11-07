@@ -636,7 +636,7 @@ export function ProjectConsolePage({
               </span>
             )}
           <span className={css.toolDivider} aria-hidden="true" />
-          <div className={css.viewToggle} role="group" aria-label={t('viewCanvas')}>
+          <div className={`${css.viewToggle} ${css.workNav}`} role="group" aria-label={t('todoTab')}>
             {surface === 'main' ? (
               <button
                 type="button"
@@ -655,6 +655,9 @@ export function ProjectConsolePage({
                 {t('todoTab')}
               </button>
             ) : null}
+          </div>
+          <span className={css.toolDivider} aria-hidden="true" />
+          <div className={`${css.viewToggle} ${css.collabNav}`} role="group" aria-label={t('viewCanvas')}>
             <button
               type="button"
               className={view === 'canvas' ? `${css.viewButton} ${css.viewButtonActive}` : css.viewButton}
@@ -849,6 +852,7 @@ export function ProjectConsolePage({
                   if (item.workspaceId !== undefined && item.workspaceId !== selected) selectWorkspace(item.workspaceId)
                   if (item.sessionId !== undefined) focusSession(item.sessionId)
                 }}
+                onOpenSession={(sessionId: string) => { openSession(sessionId) }}
                 t={t}
               />
             </div>

@@ -9,6 +9,8 @@ export interface MessageView {
   readonly fromRole: Role
   readonly toRole: Role
   readonly workspaceId?: string | undefined
+  readonly briefId?: string | undefined
+  readonly planId?: string | undefined
   readonly kind: MessageKind
   readonly subject: string
   readonly body: string
@@ -96,6 +98,8 @@ export interface MessageCenterInjected {
     readonly kind: MessageKind
     readonly subject: string
     readonly body: string
+    readonly briefId?: string | undefined
+    readonly planId?: string | undefined
     readonly requiresResponse?: boolean
     readonly payload?: { readonly selectedOption?: string; readonly reason?: string }
   }) => Promise<MessageView>

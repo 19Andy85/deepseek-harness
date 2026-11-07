@@ -42,3 +42,4 @@
 .handoff { display: flex; flex-direction: column; gap: 6px; }
 .handoff h3 { margin: 0; font-size: var(--pc-text-title); font-weight: 500; }
 .handoffActions { display: flex; gap: 6px; }
+.headActions { display: flex; align-items: center; gap: 8px; }

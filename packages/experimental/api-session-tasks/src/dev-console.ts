@@ -171,6 +171,8 @@ export interface DevConsoleSendMessageRequest {
   readonly fromRole: DevConsoleRole
   readonly toRole: DevConsoleRole
   readonly workspaceId?: string | undefined
+  readonly briefId?: string | undefined
+  readonly planId?: string | undefined
   readonly kind: DevConsoleMessageKind
   readonly subject: string
   readonly body: string
