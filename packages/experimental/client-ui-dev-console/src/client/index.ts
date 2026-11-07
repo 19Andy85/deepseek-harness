@@ -379,7 +379,8 @@ function registerUi(ctx: Context): void {
           const workspace = ctx.workspaces.list.getSnapshot().items
             .find(item => item.sessionIds.includes(brandString<SessionId>(sessionId)))
           if (workspace !== undefined) void store.selectWorkspace(String(workspace.workspaceId))
-          rail.sidebarRight.openTabIn(brandString<SessionId>(sessionId), 'project-console')
+          ctx.uiWorkspace.openSession(brandString<SessionId>(sessionId))
+          setTimeout(() => { rail.sidebarRight.openTabIn(brandString<SessionId>(sessionId), 'project-console') }, 60)
         },
       }),
     }, SessionRailMenuItem))
