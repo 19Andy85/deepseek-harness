@@ -30,6 +30,7 @@ import { AttentionInbox } from './AttentionInbox.tsx'
 import { StudioView } from './StudioView.tsx'
 import { IsoStudioView } from './IsoStudioView.tsx'
 import { WorkspaceView, type WorkspaceOpenView, type WorkspaceSnapshotView } from './WorkspaceView.tsx'
+import { OverviewView } from './OverviewView.tsx'
 import { MessageCenter, type MessageCenterInjected } from './MessageCenter.tsx'
 import { readViewPreference, writeViewPreference, type ConsoleView } from './view-preference.ts'
 import { ActivityTrack, formatDuration, formatTokens, HealthSegments, StatusDot, Timeline, type HealthFilter } from './visual/visual.tsx'
@@ -519,7 +520,7 @@ export function ProjectConsolePage({
     >
       <header className={css.head}>
         <h1 className={css.title}>{t('title')}</h1>
-        <p className={css.subtitle}>{view === 'workspaces' ? t('workspacesHint') : t('description')}</p>
+        <p className={css.subtitle}>{view === 'workspaces' ? t('workspacesHint') : view === 'overview' ? t('overviewHint') : t('description')}</p>
         {surface !== 'rail' || railSessionId === undefined
           ? null
           : railSessionId !== undefined
@@ -598,6 +599,15 @@ export function ProjectConsolePage({
               </span>
             )}
           <div className={css.viewToggle} role="group" aria-label={t('viewCanvas')}>
+            {surface === 'main' ? (
+              <button
+                type="button"
+                className={view === 'overview' ? `${css.viewButton} ${css.viewButtonActive}` : css.viewButton}
+                onClick={() => { setView('overview'); writeViewPreference('overview') }}
+              >
+                {t('overview')}
+              </button>
+            ) : null}
             <button
               type="button"
               className={view === 'canvas' ? `${css.viewButton} ${css.viewButtonActive}` : css.viewButton}
@@ -722,7 +732,7 @@ export function ProjectConsolePage({
             </div>
           )
           : null}
-        {focus !== undefined || view === 'workspaces'
+        {focus !== undefined || view === 'workspaces' || view === 'overview'
           ? null
           : (
             <form className={css.compose} onSubmit={(event) => {
@@ -758,7 +768,26 @@ export function ProjectConsolePage({
           ? <div className={css.notice} role="alert"><span className={css.noticeText}>{t('actionFailed')}</span></div>
           : null}
       </header>
-      <div className={view === 'workspaces' && surface === 'main' ? `${css.body} ${css.bodyWorkspaces}` : css.body}>
+      <div className={view === 'overview' && surface === 'main' ? `${css.body} ${css.bodyOverview}` : view === 'workspaces' && surface === 'main' ? `${css.body} ${css.bodyWorkspaces}` : css.body}>
+        {view === 'overview' && surface === 'main'
+          ? (
+            <div className={css.overviewHost}>
+              <OverviewView
+                health={health}
+                usage={usageTotals}
+                attention={attention}
+                rows={rows}
+                workspaces={workspaces}
+                selectedWorkspaceId={selected}
+                t={t}
+                onSelectWorkspace={selectWorkspace}
+                onRefresh={refresh}
+                onOpenSession={openSession}
+                onFocusSession={focusSession}
+              />
+            </div>
+          )
+          : null}
         {view === 'workspaces' && surface === 'main'
           ? (
             <div className={css.workspaceHost}>

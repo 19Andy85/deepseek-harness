@@ -1112,3 +1112,6 @@
 .bodyWorkspaces { display: flex; flex-direction: row; gap: 0; padding: 0; overflow: hidden; }
 .bodyWorkspaces > :not(.workspaceHost) { display: none; }
 .workspaceHost { flex: 1; min-width: 0; min-height: 0; display: flex; }
+.bodyOverview { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.bodyOverview > :not(.overviewHost) { display: none; }
+.overviewHost { flex: 1; min-height: 0; overflow: auto; }
