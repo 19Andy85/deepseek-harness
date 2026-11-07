@@ -38,6 +38,7 @@ export interface TaskDetailViewProps extends TaskDetailInjected {
   readonly actionItems?: readonly ActionItem[] | undefined
   readonly onOpenAction?: ((item: ActionItem) => void) | undefined
   readonly compact?: boolean | undefined
+  readonly onBack?: (() => void) | undefined
 }
 
 /**
@@ -48,7 +49,7 @@ export interface TaskDetailViewProps extends TaskDetailInjected {
 export function TaskDetailView(props: TaskDetailViewProps) {
   const {
     briefs, plans, messages, approvePlan, sendMessage, messageAction, transitionBrief,
-    actionItems = [], onOpenAction, compact = false, t,
+    actionItems = [], onOpenAction, compact = false, onBack, t,
   } = props
   const [briefRows, setBriefRows] = useState<readonly BriefView[]>([])
   const [planRows, setPlanRows] = useState<readonly PlanView[]>([])
@@ -136,6 +137,7 @@ export function TaskDetailView(props: TaskDetailViewProps) {
                   <p className={css.meta}>{selected.workspaceId} · {t(BRIEF_STATUS_KEYS[selected.status])}</p>
                 </div>
                 <div className={css.headActions}>
+                  {onBack === undefined ? null : <button type="button" className={css.button} onClick={onBack}>{t('back')}</button>}
                   {selected.sourceSessionRef === undefined ? null : (
                     <span className={css.meta}>{selected.sourceSessionRef.sessionId}</span>
                   )}

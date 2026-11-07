@@ -185,7 +185,6 @@ export function ProjectConsolePage({
   const [projects, setProjects] = useState<readonly import('./OverviewView.tsx').ProjectSummaryView[]>([])
   const [workActionItems, setWorkActionItems] = useState<readonly ActionItem[]>([])
   const [allSessions, setAllSessions] = useState<readonly SessionTaskView[]>([])
-  const [workspacesOpen, setWorkspacesOpen] = useState(false)
   const [actions, setActions] = useState<readonly ConsoleAction[]>([])
   const channel = useRef<BroadcastChannel | undefined>(undefined)
   const workspaceRef = useRef<string | undefined>(undefined)
@@ -207,7 +206,7 @@ export function ProjectConsolePage({
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
   const [filter, setFilter] = useState<HealthFilter>(undefined)
-  const [view, setView] = useState<ConsoleView>(() => (compact ? 'studio' : readViewPreference()))
+  const [view, setView] = useState<ConsoleView>(() => (compact ? 'task' : readViewPreference()))
   const [studioMode, setStudioMode] = useState(() => (compact ? 'board' : readStudioMode()))
   const statuses = useSessionStatus(state => state)
   const state = useSyncExternalStore(
@@ -557,6 +556,9 @@ export function ProjectConsolePage({
       <header className={css.head}>
         <h1 className={css.title}>{t('title')}</h1>
         <p className={css.subtitle}>{view === 'workspaces' ? t('workspacesHint') : view === 'overview' ? t('overviewHint') : view === 'task' ? t('taskHint') : t('description')}</p>
+        {surface !== 'main' && view === 'task'
+          ? <button type="button" className={css.select} onClick={() => { setView('studio'); writeViewPreference('studio') }}>{t('back')}</button>
+          : null}
         {surface !== 'rail' || railSessionId === undefined
           ? null
           : railSessionId !== undefined
@@ -714,7 +716,6 @@ export function ProjectConsolePage({
               </button>
             )
             : null}
-          {surface === 'main' ? null : <button type="button" className={css.select} onClick={() => { setWorkspacesOpen(true) }} title={t('workspaceContext')}>{t('workspaceContext')}</button>}
           {view === 'canvas'
             ? (
               <button
@@ -846,6 +847,7 @@ export function ProjectConsolePage({
                 messageAction={messageCenter.messageAction}
                 transitionBrief={messageCenter.transitionBrief}
                 compact={surface !== 'main'}
+                onBack={() => { setView(surface === 'main' ? 'overview' : 'studio'); writeViewPreference(surface === 'main' ? 'overview' : 'studio') }}
                 actionItems={actionItems}
                 onOpenAction={(item: ActionItem) => {
                   if (item.source === 'message' || item.source === 'plan') return
@@ -1475,30 +1477,6 @@ export function ProjectConsolePage({
             </aside>
           )}
       </div>
-      {workspacesOpen
-        ? (
-          <WorkspaceView
-            t={t}
-            sessionId={railSessionId}
-            sessionContext={devConsoleSessionContext}
-            snapshot={devConsoleSnapshot}
-            inspect={devConsoleInspect}
-            history={devConsoleHistory}
-            state={devConsoleState}
-            bind={devConsoleBind}
-            summary={devConsoleSummary}
-            openWorkspace={devConsoleOpenWorkspace}
-            git={devConsoleGit}
-            agents={devConsoleAgents}
-            saveAgents={devConsoleSaveAgents}
-            autoConfig={devConsoleAutoConfig}
-            config={devConsoleConfig}
-            saveConfig={devConsoleSaveConfig}
-            openSession={openSession}
-            onClose={() => { setWorkspacesOpen(false) }}
-          />
-        )
-        : null}
     </section>
   )
 }
