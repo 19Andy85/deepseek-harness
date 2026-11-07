@@ -31,6 +31,8 @@ import { StudioView } from './StudioView.tsx'
 import { IsoStudioView } from './IsoStudioView.tsx'
 import { WorkspaceView, type WorkspaceOpenView, type WorkspaceSnapshotView } from './WorkspaceView.tsx'
 import { OverviewView } from './OverviewView.tsx'
+import { buildSessionActionItems, type ActionItem } from './action-items.ts'
+import { globalHealthCounts } from './global-inbox.ts'
 import { MessageCenter, type MessageCenterInjected } from './MessageCenter.tsx'
 import { readViewPreference, writeViewPreference, type ConsoleView } from './view-preference.ts'
 import { ActivityTrack, formatDuration, formatTokens, HealthSegments, StatusDot, Timeline, type HealthFilter } from './visual/visual.tsx'
@@ -216,6 +218,7 @@ export function ProjectConsolePage({
   )
   const inboxGroups = globalInboxGroups(statusFacts, workspaceSessions())
   const inboxTotal = globalInboxCount(inboxGroups)
+  const globalHealth = globalHealthCounts(statusFacts, workspaceSessions())
   const elsewhere = otherWorkspaceAttention(statusFacts, workspaceSessions(), selected)
   const aliasesMap = new Map(Object.entries(aliases))
   const rows = visibleSessions(state.sessions)
@@ -309,6 +312,7 @@ export function ProjectConsolePage({
   }
   const attention = attentionItems(rows, statusFacts, descriptorOf, failureOf)
   const health = healthCounts(rows, statusFacts, descriptorOf, failureOf)
+  const actionItems = buildSessionActionItems(attention, inboxGroups)
   const usageTotals = rows.reduce((sum, row) => sum + (row.usage?.totalTokens ?? 0), 0)
   const relations = relationHints(rows)
   const graphGroups = relationGroups(rows)
@@ -788,8 +792,9 @@ export function ProjectConsolePage({
             <div className={css.overviewHost}>
               <OverviewView
                 health={health}
+                globalHealth={globalHealth}
                 usage={usageTotals}
-                attention={attention}
+                actionItems={actionItems}
                 rows={rows}
                 workspaces={workspaces}
                 projects={projects}
@@ -799,7 +804,10 @@ export function ProjectConsolePage({
                 onSelectWorkspace={selectWorkspace}
                 onRefresh={refresh}
                 onOpenSession={openSession}
-                onFocusSession={focusSession}
+                onOpenAction={(item: ActionItem) => {
+                  if (item.workspaceId !== undefined && item.workspaceId !== selected) selectWorkspace(item.workspaceId)
+                  if (item.sessionId !== undefined) focusSession(item.sessionId)
+                }}
               />
             </div>
           )

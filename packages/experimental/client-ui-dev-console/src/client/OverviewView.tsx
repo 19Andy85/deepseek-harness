@@ -1,6 +1,8 @@
 /** Global console overview: attention, sessions, plans, and workspace portfolio. */
 import type { SessionTaskView } from '@deepseek-ai/dsh-experimental-api-session-tasks/types'
-import type { AttentionItem, HealthCounts } from './attention.ts'
+import type { HealthCounts } from './attention.ts'
+import type { ActionItem } from './action-items.ts'
+import type { GlobalHealthCounts } from './global-inbox.ts'
 import type { ConsoleWorkspace } from './ProjectConsoleStore.ts'
 import type { ReactNode } from 'react'
 import type { ProjectConsoleKey } from './locales.ts'
@@ -9,8 +11,9 @@ import css from './OverviewView.module.css'
 /** Props of the overview skeleton. */
 export interface OverviewViewProps {
   readonly health: HealthCounts
+  readonly globalHealth: GlobalHealthCounts
   readonly usage: number
-  readonly attention: readonly AttentionItem[]
+  readonly actionItems: readonly ActionItem[]
   readonly rows: readonly SessionTaskView[]
   readonly workspaces: readonly ConsoleWorkspace[]
   readonly selectedWorkspaceId?: string | undefined
@@ -20,7 +23,7 @@ export interface OverviewViewProps {
   readonly onSelectWorkspace: (workspaceId: string) => void
   readonly onRefresh: () => void
   readonly onOpenSession: (sessionId: string) => void
-  readonly onFocusSession: (sessionId: string) => void
+  readonly onOpenAction: (item: ActionItem) => void
 }
 
 /** One project and its workspaces for the portfolio card. */
@@ -40,8 +43,8 @@ const tokenFormat = new Intl.NumberFormat('zh-CN', { notation: 'compact', maximu
  */
 export function OverviewView(props: OverviewViewProps) {
   const {
-    health, usage, attention, rows, workspaces, selectedWorkspaceId, globalPending, projects, t,
-    onSelectWorkspace, onRefresh, onOpenSession, onFocusSession,
+    health, globalHealth, usage, actionItems, rows, workspaces, selectedWorkspaceId, globalPending, projects, t,
+    onSelectWorkspace, onRefresh, onOpenSession, onOpenAction,
   } = props
   const statusCount = (label: ProjectConsoleKey, value: number, tone: string | undefined): ReactNode => (
     <span className={css.metric} title={label}><b className={tone}>{value}</b><span>{t(label)}</span></span>
@@ -49,11 +52,11 @@ export function OverviewView(props: OverviewViewProps) {
   return (
     <div className={css.overview}>
       <div className={css.attention} aria-label={t('overview')}>
-        {statusCount('needsYou', health.needsYou, css.warn)}
+        {statusCount('needsYou', globalHealth.needsYou, css.warn)}
         {statusCount('failed', health.failed, css.bad)}
-        {statusCount('running', health.running, css.info)}
-        {statusCount('completedUnread', health.completedUnread, css.ok)}
-        {statusCount('idle', health.idle, css.muted)}
+        {statusCount('running', globalHealth.running, css.info)}
+        {statusCount('completedUnread', globalHealth.completedUnread, css.ok)}
+        {statusCount('idle', globalHealth.idle, css.muted)}
         <span className={css.spacer} />
         <span className={css.metric}><b className={css.warn}>{globalPending}</b><span>{t('globalInbox')}</span></span>
         <button type="button" className={css.button} onClick={onRefresh}>{t('refresh')}</button>
@@ -61,13 +64,13 @@ export function OverviewView(props: OverviewViewProps) {
 
       <div className={css.grid}>
         <section className={css.card}>
-          <div className={css.cardHead}><h2>{t('globalInbox')}</h2><span className={css.badge}>{globalPending}</span></div>
-          {attention.length === 0 ? <p className={css.empty}>{t('noPending')}</p> : (
+          <div className={css.cardHead}><h2>{t('globalInbox')}</h2><span className={css.badge}>{actionItems.length}</span></div>
+          {actionItems.length === 0 ? <p className={css.empty}>{t('noPending')}</p> : (
             <div className={css.list}>
-              {attention.slice(0, 5).map(item => (
-                <button key={item.sessionId} type="button" className={css.rowItem} onClick={() => { onFocusSession(item.sessionId) }}>
-                  <span className={css.rowTitle}>{item.row.title ?? item.sessionId}</span>
-                  <span className={css.rowMeta}>{item.pending === undefined ? t('failed') : item.pending.kind}</span>
+              {actionItems.slice(0, 5).map(item => (
+                <button key={item.id} type="button" className={css.rowItem} onClick={() => { onOpenAction(item) }}>
+                  <span className={css.rowTitle}>{item.title}</span>
+                  <span className={css.rowMeta}>{item.detail}</span>
                 </button>
               ))}
             </div>
