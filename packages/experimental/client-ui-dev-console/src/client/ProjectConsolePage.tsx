@@ -31,6 +31,7 @@ import { StudioView } from './StudioView.tsx'
 import { IsoStudioView } from './IsoStudioView.tsx'
 import { WorkspaceView, type WorkspaceOpenView, type WorkspaceSnapshotView } from './WorkspaceView.tsx'
 import { OverviewView } from './OverviewView.tsx'
+import { TaskDetailView } from './TaskDetailView.tsx'
 import { buildSessionActionItems, buildWorkActionItems, type ActionItem } from './action-items.ts'
 import { globalHealthCounts, globalRunningByWorkspace } from './global-inbox.ts'
 import { MessageCenter, type MessageCenterInjected } from './MessageCenter.tsx'
@@ -631,6 +632,15 @@ export function ProjectConsolePage({
                 {t('overview')}
               </button>
             ) : null}
+            {surface === 'main' ? (
+              <button
+                type="button"
+                className={view === 'task' ? `${css.viewButton} ${css.viewButtonActive}` : css.viewButton}
+                onClick={() => { setView('task'); writeViewPreference('task') }}
+              >
+                {t('taskView')}
+              </button>
+            ) : null}
             <button
               type="button"
               className={view === 'canvas' ? `${css.viewButton} ${css.viewButtonActive}` : css.viewButton}
@@ -690,7 +700,6 @@ export function ProjectConsolePage({
             )
             : null}
           {surface === 'main' ? null : <button type="button" className={css.select} onClick={() => { setWorkspacesOpen(true) }} title={t('workspaceContext')}>{t('workspaceContext')}</button>}
-          <button type="button" className={css.select} title={t('messagesHint')} onClick={() => { setMessagesOpen(true) }}>{t('messagesTitle')}</button>
           {view === 'canvas'
             ? (
               <button
@@ -761,7 +770,7 @@ export function ProjectConsolePage({
             </div>
           )
           : null}
-        {focus !== undefined || view === 'workspaces' || view === 'overview'
+        {focus !== undefined || view === 'workspaces' || view === 'overview' || view === 'task'
           ? null
           : (
             <form className={css.compose} onSubmit={(event) => {
@@ -797,7 +806,7 @@ export function ProjectConsolePage({
           ? <div className={css.notice} role="alert"><span className={css.noticeText}>{t('actionFailed')}</span></div>
           : null}
       </header>
-      <div className={view === 'overview' && surface === 'main' ? `${css.body} ${css.bodyOverview}` : view === 'workspaces' && surface === 'main' ? `${css.body} ${css.bodyWorkspaces}` : css.body}>
+      <div className={view === 'overview' && surface === 'main' ? `${css.body} ${css.bodyOverview}` : view === 'task' && surface === 'main' ? `${css.body} ${css.bodyTask}` : view === 'workspaces' && surface === 'main' ? `${css.body} ${css.bodyWorkspaces}` : css.body}>
         {view === 'overview' && surface === 'main'
           ? (
             <div className={css.overviewHost}>
@@ -816,12 +825,26 @@ export function ProjectConsolePage({
                 onRefresh={refresh}
                 onOpenAction={(item: ActionItem) => {
                   if (item.source === 'message' || item.source === 'plan') {
-                    setMessagesOpen(true)
+                    setView('task')
+                    writeViewPreference('task')
                     return
                   }
                   if (item.workspaceId !== undefined && item.workspaceId !== selected) selectWorkspace(item.workspaceId)
                   if (item.sessionId !== undefined) focusSession(item.sessionId)
                 }}
+              />
+            </div>
+          )
+          : null}
+        {view === 'task' && surface === 'main'
+          ? (
+            <div className={css.taskHost}>
+              <TaskDetailView
+                briefs={messageCenter.briefs}
+                plans={messageCenter.plans}
+                messages={messageCenter.messages}
+                approvePlan={messageCenter.approvePlan}
+                t={t}
               />
             </div>
           )

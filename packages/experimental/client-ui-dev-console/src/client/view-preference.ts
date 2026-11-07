@@ -1,5 +1,5 @@
 /** Which console view the user last chose. */
-export type ConsoleView = 'overview' | 'canvas' | 'studio' | 'workspaces'
+export type ConsoleView = 'overview' | 'task' | 'canvas' | 'studio' | 'workspaces'
 
 /** localStorage key of the view preference. */
 const VIEW_KEY = 'dsh.project-console.view.v1'
@@ -11,7 +11,7 @@ const VIEW_KEY = 'dsh.project-console.view.v1'
 export function readViewPreference(): ConsoleView {
   try {
     const stored = globalThis.localStorage?.getItem(VIEW_KEY)
-    return stored === 'overview' || stored === 'studio' || stored === 'workspaces' ? stored : stored === 'domains' ? 'workspaces' : 'overview'
+    return stored === 'overview' || stored === 'task' || stored === 'studio' || stored === 'workspaces' ? stored : stored === 'domains' ? 'workspaces' : 'overview'
   } catch (error) {
     void error
     return 'canvas'

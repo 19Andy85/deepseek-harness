@@ -1117,3 +1117,6 @@
 .overviewHost { flex: 1; min-height: 0; overflow: auto; }
 
 .toolDivider { width: 1px; height: 22px; margin: 0 2px; background: var(--pc-color-line); align-self: center; }
+.bodyTask { display: flex; flex-direction: column; padding: 0; overflow: hidden; }
+.bodyTask > :not(.taskHost) { display: none; }
+.taskHost { flex: 1; min-height: 0; overflow: hidden; display: flex; }
