@@ -557,7 +557,7 @@ export function ProjectConsolePage({
         <h1 className={css.title}>{t('title')}</h1>
         <p className={css.subtitle}>{view === 'workspaces' ? t('workspacesHint') : view === 'overview' ? t('overviewHint') : view === 'task' ? t('taskHint') : t('description')}</p>
         {surface !== 'main' && view === 'task'
-          ? <button type="button" className={css.select} onClick={() => { setView('studio'); writeViewPreference('studio') }}>{t('back')}</button>
+          ? <button type="button" className={`${css.select} ${css.railBack}`} onClick={() => { setView('studio'); writeViewPreference('studio') }}>{t('back')}</button>
           : null}
         {surface !== 'rail' || railSessionId === undefined
           ? null
@@ -847,6 +847,9 @@ export function ProjectConsolePage({
                 messageAction={messageCenter.messageAction}
                 transitionBrief={messageCenter.transitionBrief}
                 compact={surface !== 'main'}
+                sessionId={surface === 'rail' ? railSessionId : undefined}
+                sessionRunning={railSessionId === undefined ? false : statusFacts.get(railSessionId)?.running === true}
+                refreshKey={surface === 'rail' ? state.updatedAt : undefined}
                 onBack={() => { setView(surface === 'main' ? 'overview' : 'studio'); writeViewPreference(surface === 'main' ? 'overview' : 'studio') }}
                 actionItems={actionItems}
                 onOpenAction={(item: ActionItem) => {

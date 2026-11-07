@@ -1122,3 +1122,4 @@
 .taskHost { flex: 1; min-height: 0; overflow: hidden; display: flex; }
 .workNav { border-right: 1px solid var(--pc-color-line); padding-right: var(--pc-gap-2); }
 .collabNav { padding-left: 0; }
+.railBack { align-self: flex-start; width: auto; }

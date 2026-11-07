@@ -39,6 +39,9 @@ export interface TaskDetailViewProps extends TaskDetailInjected {
   readonly onOpenAction?: ((item: ActionItem) => void) | undefined
   readonly compact?: boolean | undefined
   readonly onBack?: (() => void) | undefined
+  readonly sessionId?: string | undefined
+  readonly sessionRunning?: boolean | undefined
+  readonly refreshKey?: number | undefined
 }
 
 /**
@@ -49,7 +52,7 @@ export interface TaskDetailViewProps extends TaskDetailInjected {
 export function TaskDetailView(props: TaskDetailViewProps) {
   const {
     briefs, plans, messages, approvePlan, sendMessage, messageAction, transitionBrief,
-    actionItems = [], onOpenAction, compact = false, onBack, t,
+    actionItems = [], onOpenAction, compact = false, onBack, sessionId, sessionRunning = false, refreshKey, t,
   } = props
   const [briefRows, setBriefRows] = useState<readonly BriefView[]>([])
   const [planRows, setPlanRows] = useState<readonly PlanView[]>([])
@@ -64,13 +67,18 @@ export function TaskDetailView(props: TaskDetailViewProps) {
   useEffect(() => {
     void briefs().then((rows) => {
       setBriefRows(rows)
-      setSelectedId(previous => previous ?? rows[0]?.id)
+      const first = sessionId === undefined
+        ? rows[0]?.id
+        : rows.find(brief => brief.sourceSessionRef?.sessionId === sessionId)?.id
+      setSelectedId(previous => previous ?? first)
     }).catch(() => { setError(t('actionFailed')) })
     void plans().then(setPlanRows).catch(() => { setError(t('actionFailed')) })
     void messages('maintainer', 'inbox').then(setMessageRows).catch(() => { setError(t('actionFailed')) })
-  }, [briefs, plans, messages, t])
+  }, [briefs, plans, messages, refreshKey, sessionId, t])
 
-  const selected = briefRows.find(brief => brief.id === selectedId)
+  const visibleBriefs = sessionId === undefined ? briefRows : briefRows.filter(brief => brief.sourceSessionRef?.sessionId === sessionId)
+  const visibleActions = sessionId === undefined ? actionItems : actionItems.filter(item => item.sessionId === sessionId)
+  const selected = visibleBriefs.find(brief => brief.id === selectedId)
   const selectedPlans = planRows.filter(plan => plan.briefId === selectedId)
     .sort((left, right) => right.version - left.version)
   const current = selectedPlans.find(plan => plan.id === versionId) ?? selectedPlans[0]
@@ -94,7 +102,7 @@ export function TaskDetailView(props: TaskDetailViewProps) {
     }).catch(() => { setError(t('actionFailed')) })
   }
 
-  if (briefRows.length === 0 && actionItems.length === 0) {
+  if (visibleBriefs.length === 0 && visibleActions.length === 0) {
     return (
       <div className={compact ? `${css.page} ${css.pageCompact} ${css.emptyOnly}` : `${css.page} ${css.emptyOnly}`}>
         <div className={css.emptyPage}>
@@ -104,8 +112,8 @@ export function TaskDetailView(props: TaskDetailViewProps) {
             <span className={css.emptyLineShort} />
             <span className={css.emptyCheck}>✓</span>
           </div>
-          <h2>{t('emptyTasksTitle')}</h2>
-          <p>{t('emptyTasksHint')}</p>
+          <h2>{sessionId === undefined ? t('emptyTasksTitle') : t('sessionTaskEmptyTitle')}</h2>
+          <p>{sessionId === undefined ? t('emptyTasksHint') : sessionRunning ? t('sessionTaskEmptyRunningHint') : t('sessionTaskEmptyHint')}</p>
         </div>
       </div>
     )
@@ -118,10 +126,10 @@ export function TaskDetailView(props: TaskDetailViewProps) {
           <h2>{t('todoTab')}</h2>
           <span className={css.count}>{briefRows.length}</span>
         </div>
-        {actionItems.length === 0 ? null : (
+        {visibleActions.length === 0 ? null : (
           <div className={css.actionGroup}>
             <div className={css.masterHead}><h3>{t('globalInbox')}</h3><span className={css.count}>{actionItems.length}</span></div>
-            {actionItems.slice(0, 5).map(item => (
+            {visibleActions.slice(0, 5).map(item => (
               <button key={item.id} type="button" className={css.treeItem} onClick={() => { onOpenAction?.(item) }}>
                 <span className={css.treeTitle}>{item.title}</span>
                 <span className={css.treeMeta}>{item.detail}</span>
@@ -129,7 +137,7 @@ export function TaskDetailView(props: TaskDetailViewProps) {
             ))}
           </div>
         )}
-        {briefRows.map(brief => (
+        {visibleBriefs.map(brief => (
           <button
             key={brief.id}
             type="button"
