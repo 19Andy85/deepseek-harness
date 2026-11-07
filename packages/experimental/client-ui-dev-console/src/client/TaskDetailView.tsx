@@ -36,6 +36,7 @@ export interface TaskDetailViewProps extends TaskDetailInjected {
   readonly onOpenSession?: ((sessionId: string) => void) | undefined
   readonly actionItems?: readonly ActionItem[] | undefined
   readonly onOpenAction?: ((item: ActionItem) => void) | undefined
+  readonly compact?: boolean | undefined
 }
 
 /**
@@ -44,7 +45,7 @@ export interface TaskDetailViewProps extends TaskDetailInjected {
  * @returns the task detail page.
  */
 export function TaskDetailView(props: TaskDetailViewProps) {
-  const { briefs, plans, messages, approvePlan, sendMessage, messageAction, actionItems = [], onOpenAction, t } = props
+  const { briefs, plans, messages, approvePlan, sendMessage, messageAction, actionItems = [], onOpenAction, compact = false, t } = props
   const [briefRows, setBriefRows] = useState<readonly BriefView[]>([])
   const [planRows, setPlanRows] = useState<readonly PlanView[]>([])
   const [messageRows, setMessageRows] = useState<readonly MessageView[]>([])
@@ -82,7 +83,7 @@ export function TaskDetailView(props: TaskDetailViewProps) {
     }
 
   return (
-    <div className={css.page}>
+    <div className={compact ? `${css.page} ${css.pageCompact}` : css.page}>
       <aside className={css.master}>
         <div className={css.masterHead}>
           <h2>{t('todoTab')}</h2>

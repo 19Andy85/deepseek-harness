@@ -43,3 +43,7 @@
 .handoff h3 { margin: 0; font-size: var(--pc-text-title); font-weight: 500; }
 .handoffActions { display: flex; gap: 6px; }
 .headActions { display: flex; align-items: center; gap: 8px; }
+
+.pageCompact { grid-template-columns: 1fr; overflow: auto; }
+.pageCompact .master { max-height: 180px; border-right: 0; border-bottom: 1px solid var(--pc-color-line); }
+.pageCompact .detail { overflow: visible; }

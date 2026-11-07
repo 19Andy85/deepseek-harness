@@ -646,15 +646,13 @@ export function ProjectConsolePage({
                 {t('overview')}
               </button>
             ) : null}
-            {surface === 'main' ? (
-              <button
-                type="button"
-                className={view === 'task' ? `${css.viewButton} ${css.viewButtonActive}` : css.viewButton}
-                onClick={() => { setView('task'); writeViewPreference('task') }}
-              >
-                {t('todoTab')}
-              </button>
-            ) : null}
+            <button
+              type="button"
+              className={view === 'task' ? `${css.viewButton} ${css.viewButtonActive}` : css.viewButton}
+              onClick={() => { setView('task'); writeViewPreference('task') }}
+            >
+              {t('todoTab')}
+            </button>
           </div>
           <span className={css.toolDivider} aria-hidden="true" />
           <div className={`${css.viewToggle} ${css.collabNav}`} role="group" aria-label={t('viewCanvas')}>
@@ -806,7 +804,7 @@ export function ProjectConsolePage({
           ? <div className={css.notice} role="alert"><span className={css.noticeText}>{t('actionFailed')}</span></div>
           : null}
       </header>
-      <div className={view === 'overview' && surface === 'main' ? `${css.body} ${css.bodyOverview}` : view === 'task' && surface === 'main' ? `${css.body} ${css.bodyTask}` : view === 'workspaces' && surface === 'main' ? `${css.body} ${css.bodyWorkspaces}` : css.body}>
+      <div className={view === 'overview' && surface === 'main' ? `${css.body} ${css.bodyOverview}` : view === 'task' ? `${css.body} ${css.bodyTask}` : view === 'workspaces' && surface === 'main' ? `${css.body} ${css.bodyWorkspaces}` : css.body}>
         {view === 'overview' && surface === 'main'
           ? (
             <div className={css.overviewHost}>
@@ -836,7 +834,7 @@ export function ProjectConsolePage({
             </div>
           )
           : null}
-        {view === 'task' && surface === 'main'
+        {view === 'task'
           ? (
             <div className={css.taskHost}>
               <TaskDetailView
@@ -846,6 +844,7 @@ export function ProjectConsolePage({
                 approvePlan={approvePlanAndDeliver}
                 sendMessage={messageCenter.sendMessage}
                 messageAction={messageCenter.messageAction}
+                compact={surface !== 'main'}
                 actionItems={actionItems}
                 onOpenAction={(item: ActionItem) => {
                   if (item.source === 'message' || item.source === 'plan') return
