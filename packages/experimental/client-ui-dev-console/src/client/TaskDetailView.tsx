@@ -123,12 +123,26 @@ export function TaskDetailView(props: TaskDetailViewProps) {
             <span className={css.treeMeta}>{t(BRIEF_STATUS_KEYS[brief.status])}</span>
           </button>
         ))}
-        {briefRows.length === 0 ? <p className={css.empty}>{t('noPending')}</p> : null}
+        {briefRows.length === 0
+          ? (
+            <div className={css.emptyState}>
+              <span className={css.emptyMark}>○</span>
+              <strong>{t('emptyTasksTitle')}</strong>
+              <p>{t('emptyTasksHint')}</p>
+            </div>
+          )
+          : null}
       </aside>
 
       <section className={css.detail}>
         {selected === undefined
-          ? <p className={css.empty}>{t('noPending')}</p>
+          ? (
+            <div className={css.emptyPage}>
+              <span className={css.emptyMark}>○</span>
+              <h2>{t('emptyTasksTitle')}</h2>
+              <p>{t('emptyTasksHint')}</p>
+            </div>
+          )
           : (
             <>
               <header className={css.detailHead}>

@@ -49,3 +49,8 @@
 .pageCompact .detail { overflow: visible; }
 
 .statusActions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--pc-gap-3); }
+.emptyState, .emptyPage { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: var(--pc-gap-5); border: 1px dashed var(--pc-color-line); border-radius: var(--pc-radius-lg); color: var(--pc-color-text-3); text-align: center; }
+.emptyPage { min-height: 220px; border: 0; background: transparent; }
+.emptyMark { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 1px solid var(--pc-color-line); border-radius: 15px; color: var(--pc-color-accent); font-size: 18px; }
+.emptyState strong, .emptyPage h2 { margin: 0; color: var(--pc-color-text-2); font-size: var(--pc-text-body); font-weight: 500; }
+.emptyState p, .emptyPage p { margin: 0; max-width: 340px; font-size: var(--pc-text-meta); line-height: var(--pc-line-body); }
