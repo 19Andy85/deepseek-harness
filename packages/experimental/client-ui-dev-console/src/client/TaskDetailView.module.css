@@ -54,3 +54,14 @@
 .emptyMark { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 1px solid var(--pc-color-line); border-radius: 15px; color: var(--pc-color-accent); font-size: 18px; }
 .emptyState strong, .emptyPage h2 { margin: 0; color: var(--pc-color-text-2); font-size: var(--pc-text-body); font-weight: 500; }
 .emptyState p, .emptyPage p { margin: 0; max-width: 340px; font-size: var(--pc-text-meta); line-height: var(--pc-line-body); }
+.emptyOnly { display: flex; align-items: center; justify-content: center; grid-template-columns: 1fr; min-height: 0; }
+.emptyOnly .emptyPage { border: 0; background: transparent; padding: 0; min-height: 0; }
+.pageCompact.emptyOnly { display: flex; padding: var(--pc-gap-4); }
+.emptyOnly .emptyArt { transform: scale(.86); }
+.emptyArt { position: relative; width: 76px; height: 64px; margin-bottom: 8px; }
+.emptySheet { position: absolute; left: 7px; top: 8px; width: 57px; height: 44px; border: 1px solid var(--pc-color-line); border-radius: 8px; background: var(--pc-color-surface); transform: rotate(-5deg); }
+.emptySheet::after { content: ''; position: absolute; inset: 5px; border: 1px solid color-mix(in srgb, var(--pc-color-line) 60%, transparent); border-radius: 5px; }
+.emptyLine, .emptyLineShort { position: absolute; left: 21px; height: 3px; border-radius: 2px; background: color-mix(in srgb, var(--pc-color-text-3) 50%, transparent); transform: rotate(-5deg); }
+.emptyLine { top: 24px; width: 30px; }
+.emptyLineShort { top: 33px; width: 20px; }
+.emptyCheck { position: absolute; right: 5px; bottom: 3px; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; border: 1px solid color-mix(in srgb, var(--pc-color-success) 55%, transparent); border-radius: 10px; background: var(--pc-color-surface); color: var(--pc-color-success); font-size: 11px; }

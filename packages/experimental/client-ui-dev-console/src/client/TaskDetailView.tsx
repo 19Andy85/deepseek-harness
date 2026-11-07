@@ -94,6 +94,23 @@ export function TaskDetailView(props: TaskDetailViewProps) {
     }).catch(() => { setError(t('actionFailed')) })
   }
 
+  if (briefRows.length === 0 && actionItems.length === 0) {
+    return (
+      <div className={compact ? `${css.page} ${css.pageCompact} ${css.emptyOnly}` : `${css.page} ${css.emptyOnly}`}>
+        <div className={css.emptyPage}>
+          <div className={css.emptyArt} aria-hidden="true">
+            <span className={css.emptySheet} />
+            <span className={css.emptyLine} />
+            <span className={css.emptyLineShort} />
+            <span className={css.emptyCheck}>✓</span>
+          </div>
+          <h2>{t('emptyTasksTitle')}</h2>
+          <p>{t('emptyTasksHint')}</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={compact ? `${css.page} ${css.pageCompact}` : css.page}>
       <aside className={css.master}>
@@ -123,22 +140,18 @@ export function TaskDetailView(props: TaskDetailViewProps) {
             <span className={css.treeMeta}>{t(BRIEF_STATUS_KEYS[brief.status])}</span>
           </button>
         ))}
-        {briefRows.length === 0
-          ? (
-            <div className={css.emptyState}>
-              <span className={css.emptyMark}>○</span>
-              <strong>{t('emptyTasksTitle')}</strong>
-              <p>{t('emptyTasksHint')}</p>
-            </div>
-          )
-          : null}
       </aside>
 
       <section className={css.detail}>
         {selected === undefined
           ? (
             <div className={css.emptyPage}>
-              <span className={css.emptyMark}>○</span>
+              <div className={css.emptyArt} aria-hidden="true">
+                <span className={css.emptySheet} />
+                <span className={css.emptyLine} />
+                <span className={css.emptyLineShort} />
+                <span className={css.emptyCheck}>✓</span>
+              </div>
               <h2>{t('emptyTasksTitle')}</h2>
               <p>{t('emptyTasksHint')}</p>
             </div>
