@@ -379,7 +379,7 @@ export function WorkspaceView({
                         {sessionInfo.planVersion === undefined ? '' : ` · 计划 v${String(sessionInfo.planVersion)}`}
                       </div>
                       {sessionInfo.briefTitle === undefined
-                        ? <div className={css.contextMuted}>先在「消息 → 任务单」创建任务单并关联工作区，计划批准后会在这里出现。</div>
+                        ? <div className={css.contextMuted}>尚未收到 Agent 提议的任务单与计划。自动提议通道仍在接入中，这里不会要求你手工建单。</div>
                         : null}
                       {(sessionInfo.directives ?? []).length === 0 ? null : (
                         <div className={css.contextMuted}>
@@ -396,6 +396,9 @@ export function WorkspaceView({
                   {current.inspection === undefined
                     ? <p className={css.muted}>{t('inspecting')}</p>
                     : current.inspection.problems.map(problem => <p key={problem} className={css.fail}>{problem}</p>)}
+                  {current.inspection?.problems.some(problem => problem.includes('dirty')) === true
+                    ? <p className={css.muted}>可用性由真实 Git 状态决定：先提交、stash 或移除未跟踪文件，再点「刷新」；可用「Git 状态」查看具体文件。</p>
+                    : null}
                   <div className={css.overview}>
                     {overviewLoading
                       ? <span className={css.muted}>{t('loading')}</span>
