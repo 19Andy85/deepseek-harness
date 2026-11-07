@@ -20,6 +20,45 @@ export type DevConsoleMessageStatus = 'unread' | 'acknowledged' | 'resolved' | '
 /** Brief lifecycle states. */
 export type DevConsoleBriefStatus = 'draft' | 'ready' | 'assigned' | 'in_review' | 'accepted' | 'changes_requested' | 'closed'
 
+/** Plan lifecycle states. */
+export type DevConsolePlanStatus = 'draft' | 'approved' | 'superseded' | 'completed'
+
+/** One plan step. */
+export interface DevConsolePlanStep {
+  readonly id: string
+  readonly title: string
+  readonly outcome: string
+  readonly status: 'todo' | 'in_progress' | 'blocked' | 'done' | 'skipped'
+  readonly dependsOn: readonly string[]
+  readonly evidence: readonly string[]
+  readonly sessionRefs: readonly { readonly sessionId: string; readonly seq: number }[]
+}
+
+/** A versioned plan for a Brief, or a local plan for one parent plan/step. */
+export interface DevConsolePlan {
+  readonly id: string
+  readonly briefId: string
+  readonly workspaceId: string
+  readonly title: string
+  readonly version: number
+  readonly status: DevConsolePlanStatus
+  readonly steps: readonly DevConsolePlanStep[]
+  readonly parentPlanId?: string | undefined
+  readonly changeReason?: string | undefined
+  readonly createdBy: DevConsoleRole
+  readonly approvedBy?: DevConsoleRole | undefined
+  readonly createdAt: number
+  readonly updatedAt: number
+  readonly approvedAt?: number | undefined
+}
+
+/** Assignment details of a Brief. */
+export interface DevConsoleAssignment {
+  readonly assigneeRole: DevConsoleRole
+  readonly assignedBy: DevConsoleRole
+  readonly assignedAt: number
+}
+
 /** Optional structured payload of a message. */
 export interface DevConsoleMessagePayload {
   /** Chosen option for a decision message. */
@@ -44,6 +83,9 @@ export interface DevConsoleMessage {
   readonly fromRole: DevConsoleRole
   readonly toRole: DevConsoleRole
   readonly workspaceId?: string | undefined
+  readonly briefId?: string | undefined
+  readonly planId?: string | undefined
+  readonly stepId?: string | undefined
   readonly kind: DevConsoleMessageKind
   readonly subject: string
   readonly body: string
@@ -64,6 +106,7 @@ export interface DevConsoleBrief {
   readonly status: DevConsoleBriefStatus
   readonly authorRole: DevConsoleRole
   readonly assigneeRole?: DevConsoleRole | undefined
+  readonly assignment?: DevConsoleAssignment | undefined
   readonly createdAt: number
   readonly updatedAt: number
   readonly history: readonly {
@@ -79,6 +122,7 @@ export interface DevConsoleBrief {
 export interface DevConsoleBusState {
   readonly messages: readonly DevConsoleMessage[]
   readonly briefs: readonly DevConsoleBrief[]
+  readonly plans: readonly DevConsolePlan[]
 }
 
 const roleSchema: z.ZodType<DevConsoleRole> = z.union([
@@ -104,12 +148,21 @@ const payloadSchema = z.object({
   handoff: handoffSchema.optional(),
 }).strict()
 
+const assignmentSchema = z.object({
+  assigneeRole: roleSchema,
+  assignedBy: roleSchema,
+  assignedAt: z.number().nonnegative(),
+}).strict()
+
 const messageSchema: z.ZodType<DevConsoleMessage> = z.object({
   id: z.string().min(1),
   threadId: z.string().min(1),
   fromRole: roleSchema,
   toRole: roleSchema,
   workspaceId: z.string().optional(),
+  briefId: z.string().optional(),
+  planId: z.string().optional(),
+  stepId: z.string().optional(),
   kind: kindSchema,
   subject: z.string().min(1),
   body: z.string(),
@@ -129,6 +182,7 @@ const briefSchema: z.ZodType<DevConsoleBrief> = z.object({
   status: briefStatusSchema,
   authorRole: roleSchema,
   assigneeRole: roleSchema.optional(),
+  assignment: assignmentSchema.optional(),
   createdAt: z.number().nonnegative(),
   updatedAt: z.number().nonnegative(),
   history: z.array(z.object({
@@ -140,9 +194,37 @@ const briefSchema: z.ZodType<DevConsoleBrief> = z.object({
   }).strict()),
 }).strict()
 
+const planStepSchema: z.ZodType<DevConsolePlanStep> = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  outcome: z.string().min(1),
+  status: z.enum(['todo', 'in_progress', 'blocked', 'done', 'skipped']),
+  dependsOn: z.array(z.string()),
+  evidence: z.array(z.string()),
+  sessionRefs: z.array(z.object({ sessionId: z.string(), seq: z.number().nonnegative() }).strict()),
+}).strict()
+
+const planSchema: z.ZodType<DevConsolePlan> = z.object({
+  id: z.string().min(1),
+  briefId: z.string().min(1),
+  workspaceId: z.string().min(1),
+  title: z.string().min(1),
+  version: z.number().int().nonnegative(),
+  status: z.enum(['draft', 'approved', 'superseded', 'completed']),
+  steps: z.array(planStepSchema),
+  parentPlanId: z.string().optional(),
+  changeReason: z.string().optional(),
+  createdBy: roleSchema,
+  approvedBy: roleSchema.optional(),
+  createdAt: z.number().nonnegative(),
+  updatedAt: z.number().nonnegative(),
+  approvedAt: z.number().nonnegative().optional(),
+}).strict()
+
 const busStateSchema: z.ZodType<DevConsoleBusState> = z.object({
   messages: z.array(messageSchema),
   briefs: z.array(briefSchema),
+  plans: z.array(planSchema).default([]),
 }).strict()
 
 /** Storage domain holding messages and Briefs. */
@@ -150,17 +232,20 @@ export const devConsoleBusDomain = defineDomain({
   name: 'experimental_dev_console_bus',
   version: 1,
   tables: {},
-  global: { schema: busStateSchema, initial: { messages: [], briefs: [] } },
+  global: { schema: busStateSchema, initial: { messages: [], briefs: [], plans: [] } },
 })
 
 /** Empty bus state. */
-export const EMPTY_DEV_CONSOLE_BUS: DevConsoleBusState = { messages: [], briefs: [] }
+export const EMPTY_DEV_CONSOLE_BUS: DevConsoleBusState = { messages: [], briefs: [], plans: [] }
 
 /** Create one outbound message. */
 export function createMessage(input: {
   readonly fromRole: DevConsoleRole
   readonly toRole: DevConsoleRole
   readonly workspaceId?: string | undefined
+  readonly briefId?: string | undefined
+  readonly planId?: string | undefined
+  readonly stepId?: string | undefined
   readonly kind: DevConsoleMessageKind
   readonly subject: string
   readonly body: string
@@ -175,6 +260,9 @@ export function createMessage(input: {
     fromRole: input.fromRole,
     toRole: input.toRole,
     ...input.workspaceId === undefined ? {} : { workspaceId: input.workspaceId },
+    ...input.briefId === undefined ? {} : { briefId: input.briefId },
+    ...input.planId === undefined ? {} : { planId: input.planId },
+    ...input.stepId === undefined ? {} : { stepId: input.stepId },
     kind: input.kind,
     subject: input.subject,
     body: input.body,

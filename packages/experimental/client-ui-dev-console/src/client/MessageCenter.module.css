@@ -20,3 +20,5 @@
 .checkbox { display: flex; align-items: center; gap: 5px; color: var(--dsw-alias-label-secondary); font-size: calc(12px * var(--pc-type-scale, 1)); }
 .empty { margin: 4px 0; padding: 16px; border: 1px dashed var(--dsw-alias-settings-card-stroke); border-radius: 9px; color: var(--dsw-alias-label-tertiary); font-size: calc(12px * var(--pc-type-scale, 1)); text-align: center; }
 .hint { margin: 4px 0 0; color: var(--dsw-alias-label-tertiary); font-size: calc(11px * var(--pc-type-scale, 1)); }
+.plan { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; padding: 8px; border: 1px solid var(--dsw-alias-settings-card-stroke); border-radius: 8px; background: color-mix(in srgb, var(--dsw-alias-bg-skeleton) 25%, transparent); }
+.stepRow { display: flex; align-items: baseline; gap: 8px; color: var(--dsw-alias-label-secondary); font-size: calc(12px * var(--pc-type-scale, 1)); }

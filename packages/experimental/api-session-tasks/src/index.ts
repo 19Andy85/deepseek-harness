@@ -35,16 +35,19 @@ import { loadDevConsoleConfig, validateConfig } from './dev-console-config.ts'
 import { devConsoleStateDomain, EMPTY_DEV_CONSOLE_STATE, type DevConsoleAuditEntry, type DevConsoleState } from './dev-console-state.ts'
 import {
   BRIEF_TRANSITIONS, createMessage, devConsoleBusDomain, EMPTY_DEV_CONSOLE_BUS,
-  type DevConsoleBrief, type DevConsoleBusState, type DevConsoleMessage,
+  type DevConsoleBrief, type DevConsoleBusState, type DevConsoleMessage, type DevConsolePlan,
 } from './dev-console-bus.ts'
 import { inspectWorkspace, openWorkspace } from './dev-console-workspace.ts'
 import type { DevConsoleWorkspaceConfig } from './dev-console-config.ts'
 import type {
   DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleAutoConfigRequest, DevConsoleAutoConfigValue,
   DevConsoleSummary, DevConsoleSummaryRequest,
-  DevConsoleBindRequest, DevConsoleBriefsRequest, DevConsoleBriefsValue, DevConsoleConfigValue, DevConsoleCreateBriefRequest,
-  DevConsoleHandoffRequest, DevConsoleHistoryRequest, DevConsoleHistoryValue, DevConsoleMessageActionRequest,
-  DevConsoleMessagesRequest, DevConsoleMessagesValue, DevConsoleSendMessageRequest, DevConsoleStateValue,
+  DevConsoleApprovePlanRequest, DevConsoleBindRequest, DevConsoleBriefsRequest, DevConsoleBriefsValue, DevConsoleConfigValue,
+  DevConsoleCreateBriefRequest, DevConsoleCreatePlanRequest,
+  DevConsoleHandoffRequest, DevConsoleHistoryRequest, DevConsoleHistoryValue, DevConsoleInboxRequest, DevConsoleInboxValue,
+  DevConsoleMessageActionRequest,
+  DevConsoleMessagesRequest, DevConsoleMessagesValue, DevConsolePlanStepUpdateRequest, DevConsolePlansRequest, DevConsolePlansValue,
+  DevConsoleRevisePlanRequest, DevConsoleSendMessageRequest, DevConsoleStateValue,
   DevConsoleTransitionBriefRequest,
   DevConsoleInspectRequest, DevConsoleInspectValue, DevConsoleSaveConfigRequest, DevConsoleSaveConfigValue,
   DevConsoleWorkspaceStatus, DevConsoleGitRequest, DevConsoleGitValue, DevConsoleSaveAgentsRequest, DevConsoleSaveAgentsValue,
@@ -453,6 +456,145 @@ export class SessionTasksController extends TypertRemoteService {
     await this.busDomain.global.set(next)
   }
 
+  @Remote('devConsoleInbox')
+  async devConsoleInbox(request: DevConsoleInboxRequest): Promise<DevConsoleInboxValue> {
+    const state = this.busState()
+    const items = []
+    for (const message of state.messages) {
+      if (!message.requiresResponse || message.status === 'resolved' || message.toRole !== request.role) continue
+      if (request.workspaceId !== undefined && message.workspaceId !== request.workspaceId) continue
+      items.push({
+        id: `message:${message.id}`, kind: 'message' as const, title: message.subject, detail: message.body,
+        ...message.briefId === undefined ? {} : { briefId: message.briefId },
+        ...message.planId === undefined ? {} : { planId: message.planId },
+        messageId: message.id, action: 'handle-message' as const,
+      })
+    }
+    for (const brief of state.briefs) {
+      if (request.workspaceId !== undefined && brief.workspaceId !== request.workspaceId) continue
+      const assigned = brief.assignment?.assigneeRole === request.role && brief.status === 'assigned'
+      const review = (request.role === 'maintainer' || request.role === 'workspace-reviewer') && brief.status === 'in_review'
+      if (!assigned && !review) continue
+      items.push({
+        id: `brief:${brief.id}`, kind: 'brief' as const, title: brief.title,
+        detail: assigned ? 'Brief 已分配，等待实现' : '交接待评审',
+        briefId: brief.id, action: assigned ? 'assign-brief' as const : 'review-handoff' as const,
+      })
+    }
+    if (request.role === 'maintainer') {
+      for (const plan of state.plans) {
+        if (plan.status !== 'draft') continue
+        if (request.workspaceId !== undefined && plan.workspaceId !== request.workspaceId) continue
+        items.push({
+          id: `plan:${plan.id}`, kind: 'plan' as const, title: `计划待批准：${plan.title}`,
+          detail: `Brief ${plan.briefId} · v${String(plan.version)}`,
+          briefId: plan.briefId, planId: plan.id, action: 'approve-plan' as const,
+        })
+      }
+    }
+    return { items }
+  }
+
+  @Remote('devConsolePlans')
+  async devConsolePlans(request: DevConsolePlansRequest): Promise<DevConsolePlansValue> {
+    const plans = this.busState().plans.filter(plan =>
+      (request.briefId === undefined || plan.briefId === request.briefId)
+      && (request.workspaceId === undefined || plan.workspaceId === request.workspaceId)
+      && (request.parentPlanId === undefined || plan.parentPlanId === request.parentPlanId))
+      .sort((a, b) => b.updatedAt - a.updatedAt)
+    return { plans }
+  }
+
+  @Remote('devConsoleCreatePlan')
+  async devConsoleCreatePlan(request: DevConsoleCreatePlanRequest): Promise<DevConsolePlan> {
+    const state = this.busState()
+    const brief = state.briefs.find(item => item.id === request.briefId)
+    if (brief === undefined) throw new RemoteError('gateway/bad-request', `brief ${request.briefId} not found`, {})
+    if (request.steps.length === 0 || request.steps.some(step => step.title.trim() === '' || step.outcome.trim() === '')) {
+      throw new RemoteError('gateway/bad-request', 'plan needs at least one step with a title and outcome', {})
+    }
+    if (request.parentPlanId !== undefined) {
+      const parent = state.plans.find(plan => plan.id === request.parentPlanId)
+      if (parent === undefined || parent.briefId !== request.briefId) {
+        throw new RemoteError('gateway/bad-request', 'parent plan must belong to the same brief', {})
+      }
+    }
+    const siblingVersions = state.plans
+      .filter(plan => plan.briefId === brief.id && plan.parentPlanId === request.parentPlanId)
+      .map(plan => plan.version)
+    const version = Math.max(0, ...siblingVersions) + 1
+    const now = Date.now()
+    const plan: DevConsolePlan = {
+      id: randomUUID(), briefId: brief.id, workspaceId: brief.workspaceId,
+      title: request.title.trim() === '' ? brief.title : request.title,
+      version, status: 'draft',
+      steps: request.steps.map((step, index) => ({
+        id: `step-${String(index + 1)}`, title: step.title, outcome: step.outcome, status: 'todo',
+        dependsOn: [], evidence: [], sessionRefs: [],
+      })),
+      ...request.parentPlanId === undefined ? {} : { parentPlanId: request.parentPlanId },
+      createdBy: request.role, createdAt: now, updatedAt: now,
+    }
+    await this.writeBus({ ...state, plans: [plan, ...state.plans].slice(0, 100) })
+    return plan
+  }
+
+  @Remote('devConsoleApprovePlan')
+  async devConsoleApprovePlan(request: DevConsoleApprovePlanRequest): Promise<DevConsolePlan> {
+    if (request.role !== 'maintainer') throw new RemoteError('gateway/bad-request', 'only a maintainer may approve a plan', {})
+    const state = this.busState()
+    const plan = state.plans.find(item => item.id === request.planId)
+    if (plan === undefined) throw new RemoteError('gateway/bad-request', `plan ${request.planId} not found`, {})
+    if (plan.status !== 'draft') throw new RemoteError('gateway/bad-request', 'only a draft plan may be approved', {})
+    const now = Date.now()
+    const approved: DevConsolePlan = { ...plan, status: 'approved', approvedBy: request.role, approvedAt: now, updatedAt: now }
+    const plans = state.plans.map((item) => {
+      if (item.id === approved.id) return approved
+      if (item.briefId === approved.briefId && item.parentPlanId === approved.parentPlanId && item.status === 'approved') {
+        return { ...item, status: 'superseded' as const, updatedAt: now }
+      }
+      return item
+    })
+    await this.writeBus({ ...state, plans })
+    return approved
+  }
+
+  @Remote('devConsoleRevisePlan')
+  async devConsoleRevisePlan(request: DevConsoleRevisePlanRequest): Promise<DevConsolePlan> {
+    const state = this.busState()
+    const base = state.plans.find(item => item.id === request.planId)
+    if (base === undefined) throw new RemoteError('gateway/bad-request', `plan ${request.planId} not found`, {})
+    if (request.reason.trim() === '') throw new RemoteError('gateway/bad-request', 'plan revision requires a reason', {})
+    const now = Date.now()
+    const plan: DevConsolePlan = {
+      ...base, id: randomUUID(), version: base.version + 1, status: 'draft', steps: request.steps.map((step, index) => ({
+        id: `step-${String(index + 1)}`, title: step.title, outcome: step.outcome, status: 'todo',
+        dependsOn: [], evidence: [], sessionRefs: [],
+      })), changeReason: request.reason, createdBy: request.role, createdAt: now, updatedAt: now,
+    }
+    await this.writeBus({ ...state, plans: [plan, ...state.plans].slice(0, 100) })
+    return plan
+  }
+
+  @Remote('devConsoleUpdatePlanStep')
+  async devConsoleUpdatePlanStep(request: DevConsolePlanStepUpdateRequest): Promise<DevConsolePlan> {
+    const state = this.busState()
+    const plan = state.plans.find(item => item.id === request.planId)
+    if (plan === undefined) throw new RemoteError('gateway/bad-request', `plan ${request.planId} not found`, {})
+    const step = plan.steps.find(item => item.id === request.stepId)
+    if (step === undefined) throw new RemoteError('gateway/bad-request', `plan step ${request.stepId} not found`, {})
+    const updated: DevConsolePlan = {
+      ...plan,
+      updatedAt: Date.now(),
+      steps: plan.steps.map(item => item.id === step.id ? {
+        ...item, status: request.status,
+        ...request.evidence === undefined ? {} : { evidence: [...item.evidence, request.evidence] },
+      } : item),
+    }
+    await this.writeBus({ ...state, plans: state.plans.map(item => item.id === updated.id ? updated : item) })
+    return updated
+  }
+
   @Remote('devConsoleMessages')
   async devConsoleMessages(request: DevConsoleMessagesRequest): Promise<DevConsoleMessagesValue> {
     const state = this.busState()
@@ -545,11 +687,15 @@ export class SessionTasksController extends TypertRemoteService {
     if (request.to === 'changes_requested' && request.reason === undefined) {
       throw new RemoteError('gateway/bad-request', 'changes_requested requires a reason', {})
     }
+    const assigneeRole = request.assigneeRole ?? (request.to === 'assigned' ? 'implementer' : undefined)
     const updated: DevConsoleBrief = {
       ...brief,
       status: request.to,
       updatedAt: Date.now(),
-      ...request.assigneeRole === undefined ? {} : { assigneeRole: request.assigneeRole },
+      ...assigneeRole === undefined ? {} : { assigneeRole },
+      ...request.to !== 'assigned' || assigneeRole === undefined ? {} : {
+        assignment: { assigneeRole, assignedBy: request.role, assignedAt: Date.now() },
+      },
       history: [...brief.history, {
         at: Date.now(), from: brief.status, to: request.to, role: request.role,
         ...request.reason === undefined ? {} : { reason: request.reason },
@@ -596,6 +742,7 @@ export class SessionTasksController extends TypertRemoteService {
     await this.writeBus({
       messages: [message, ...state.messages].slice(0, 200),
       briefs: state.briefs.map(item => item.id === updatedBrief.id ? updatedBrief : item),
+      plans: state.plans,
     })
     return message
   }

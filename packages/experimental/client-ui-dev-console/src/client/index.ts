@@ -238,6 +238,26 @@ function registerUi(ctx: Context): void {
       return result.value
     },
     messageCenter: {
+      inbox: async (role) => {
+        const result = await ctx.remote.sessionTasks.devConsoleInbox({ role })
+        if (!result.ok) throw new Error(result.error.message)
+        return result.value.items
+      },
+      plans: async (briefId) => {
+        const result = await ctx.remote.sessionTasks.devConsolePlans({ ...briefId === undefined ? {} : { briefId } })
+        if (!result.ok) throw new Error(result.error.message)
+        return result.value.plans
+      },
+      createPlan: async (input) => {
+        const result = await ctx.remote.sessionTasks.devConsoleCreatePlan({ ...input, role: 'maintainer' })
+        if (!result.ok) throw new Error(result.error.message)
+        return result.value
+      },
+      approvePlan: async (planId) => {
+        const result = await ctx.remote.sessionTasks.devConsoleApprovePlan({ planId, role: 'maintainer' })
+        if (!result.ok) throw new Error(result.error.message)
+        return result.value
+      },
       messages: async (role, box) => {
         const result = await ctx.remote.sessionTasks.devConsoleMessages({ role, box })
         if (!result.ok) throw new Error(result.error.message)

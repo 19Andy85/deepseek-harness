@@ -57,7 +57,47 @@ const BRIEF_STATUS_KEYS: Record<BriefStatus, ProjectConsoleKey> = {
   accepted: 'briefAccepted', changes_requested: 'briefChangesRequested', closed: 'briefClosed',
 }
 
+export interface InboxItemView {
+  readonly id: string
+  readonly kind: 'message' | 'brief' | 'plan'
+  readonly title: string
+  readonly detail: string
+  readonly briefId?: string | undefined
+  readonly planId?: string | undefined
+  readonly messageId?: string | undefined
+  readonly action: 'approve-plan' | 'review-handoff' | 'handle-message' | 'assign-brief'
+}
+
+export interface PlanStepView {
+  readonly id: string
+  readonly title: string
+  readonly outcome: string
+  readonly status: 'todo' | 'in_progress' | 'blocked' | 'done' | 'skipped'
+  readonly evidence: readonly string[]
+}
+
+export interface PlanView {
+  readonly id: string
+  readonly briefId: string
+  readonly workspaceId: string
+  readonly title: string
+  readonly version: number
+  readonly status: 'draft' | 'approved' | 'superseded' | 'completed'
+  readonly steps: readonly PlanStepView[]
+  readonly parentPlanId?: string | undefined
+  readonly changeReason?: string | undefined
+  readonly approvedAt?: number | undefined
+}
+
 export interface MessageCenterInjected {
+  readonly inbox: (role: Role) => Promise<readonly InboxItemView[]>
+  readonly plans: (briefId?: string) => Promise<readonly PlanView[]>
+  readonly createPlan: (input: {
+    readonly briefId: string
+    readonly title: string
+    readonly steps: readonly { readonly title: string; readonly outcome: string }[]
+  }) => Promise<PlanView>
+  readonly approvePlan: (planId: string) => Promise<PlanView>
   readonly messages: (role: Role, box: 'inbox' | 'outbox') => Promise<readonly MessageView[]>
   readonly sendMessage: (input: {
     readonly fromRole: Role
@@ -97,12 +137,17 @@ export interface MessageCenterProps extends MessageCenterInjected {
  * @returns the message center.
  */
 export function MessageCenter({
-  messages, sendMessage, messageAction, briefs, createBrief, transitionBrief, handoff, t, onClose,
+  messages, sendMessage, messageAction, briefs, createBrief, transitionBrief, handoff, inbox, plans, createPlan, approvePlan, t, onClose,
 }: MessageCenterProps) {
   const [role, setRole] = useState<Role>('maintainer')
-  const [tab, setTab] = useState<'inbox' | 'outbox' | 'briefs'>('inbox')
+  const [tab, setTab] = useState<'todo' | 'inbox' | 'outbox' | 'briefs'>('todo')
   const [rows, setRows] = useState<readonly MessageView[]>([])
   const [briefRows, setBriefRows] = useState<readonly BriefView[]>([])
+  const [planRows, setPlanRows] = useState<readonly PlanView[]>([])
+  const [inboxRows, setInboxRows] = useState<readonly InboxItemView[]>([])
+  const [planBrief, setPlanBrief] = useState('')
+  const [planTitle, setPlanTitle] = useState('')
+  const [planSteps, setPlanSteps] = useState('')
   const [error, setError] = useState<string | undefined>(undefined)
   const [toRole, setToRole] = useState<Role>('implementer')
   const [kind, setKind] = useState<MessageKind>('request')
@@ -129,8 +174,12 @@ export function MessageCenter({
   }
   const reload = async (): Promise<void> => {
     try {
-      if (tab === 'briefs') setBriefRows(await briefs())
-      else setRows(await messages(role, tab === 'outbox' ? 'outbox' : 'inbox'))
+      if (tab === 'briefs') {
+        setBriefRows(await briefs())
+        setPlanRows(await plans())
+      } else if (tab === 'todo') {
+        setInboxRows(await inbox(role))
+      } else setRows(await messages(role, tab === 'outbox' ? 'outbox' : 'inbox'))
       setError(undefined)
     } catch (reasonValue) { fail(reasonValue) }
   }
@@ -161,123 +210,181 @@ export function MessageCenter({
           </div>
         </header>
         <div className={css.tabs}>
+          <button type="button" className={tab === 'todo' ? css.tabActive : css.tab} onClick={() => { setTab('todo') }}>{t('todoTab')}</button>
           <button type="button" className={tab === 'inbox' ? css.tabActive : css.tab} onClick={() => { setTab('inbox') }}>{t('inbox')}</button>
           <button type="button" className={tab === 'outbox' ? css.tabActive : css.tab} onClick={() => { setTab('outbox') }}>{t('outbox')}</button>
           <button type="button" className={tab === 'briefs' ? css.tabActive : css.tab} onClick={() => { setTab('briefs') }}>{t('briefs')}</button>
         </div>
         {error === undefined ? null : <p className={css.error}>{error}</p>}
         <div className={css.body}>
-          {tab === 'briefs'
+          {tab === 'todo'
             ? (
               <>
-                <form className={css.compose} onSubmit={(event) => {
-                  event.preventDefault()
-                  void createBrief({
-                    workspaceId: briefWorkspace, title: briefTitle, goal: briefGoal, acceptance: briefAcceptance,
-                  }).then(() => {
-                    setBriefTitle(''); setBriefGoal(''); setBriefAcceptance(''); void reload()
-                  }).catch((value: unknown) => { fail(value) })
-                }}>
-                  <input placeholder={t('workspaceIdLabel')} value={briefWorkspace} onChange={(event) => { setBriefWorkspace(event.currentTarget.value) }} />
-                  <input placeholder={t('briefTitle')} value={briefTitle} onChange={(event) => { setBriefTitle(event.currentTarget.value) }} />
-                  <input placeholder={t('briefGoal')} value={briefGoal} onChange={(event) => { setBriefGoal(event.currentTarget.value) }} />
-                  <input placeholder={t('briefAcceptance')} value={briefAcceptance} onChange={(event) => { setBriefAcceptance(event.currentTarget.value) }} />
-                  <button type="submit" className={css.button}>{t('createBrief')}</button>
-                </form>
-                {briefRows.length === 0 ? <p className={css.empty}>{t('noBriefsHint')}</p> : null}
-                {briefRows.map(brief => (
-                  <article key={brief.id} className={css.card}>
-                    <strong>{brief.title}</strong>
-                    <span className={css.meta}>{t(BRIEF_STATUS_KEYS[brief.status])} · {brief.workspaceId}</span>
+                {inboxRows.length === 0 ? <p className={css.empty}>{t('noTodo')}</p> : null}
+                {inboxRows.map(item => (
+                  <article key={item.id} className={css.card}>
+                    <div className={css.row}>
+                      <strong>{item.title}</strong>
+                      <span className={css.meta}>{item.kind}</span>
+                    </div>
+                    <p>{item.detail}</p>
                     <div className={css.actions}>
-                      {(brief.status === 'draft' || brief.status === 'ready' || brief.status === 'assigned' || brief.status === 'in_review' || brief.status === 'changes_requested') && (
+                      {item.action === 'approve-plan' && item.planId !== undefined ? (
                         <button type="button" className={css.button} onClick={() => {
-                          const next: BriefStatus = brief.status === 'draft' ? 'ready'
-                            : brief.status === 'ready' ? 'assigned'
-                              : brief.status === 'assigned' ? 'in_review'
-                                : brief.status === 'in_review' ? 'accepted' : 'assigned'
-                          void transitionBrief(brief.id, next).then(() => { void reload() }).catch((value: unknown) => {
-                            fail(value)
-                          })
-                        }}>{t('advanceBrief')}</button>
-                      )}
-                      {brief.status === 'assigned' && (
-                        <button type="button" className={css.button} onClick={() => { setHandoffBrief(brief.id) }}>{t('handoff')}</button>
-                      )}
+                          void approvePlan(item.planId as string).then(() => { void reload() }).catch((value: unknown) => { fail(value) })
+                        }}>{t('approvePlan')}</button>
+                      ) : null}
+                      {item.action === 'handle-message' ? <button type="button" className={css.button} onClick={() => { setTab('inbox') }}>{t('openMessage')}</button> : null}
+                      {item.action === 'review-handoff' || item.action === 'assign-brief' ? <button type="button" className={css.button} onClick={() => { setTab('briefs') }}>{t('openBrief')}</button> : null}
                     </div>
                   </article>
                 ))}
-                {handoffBrief === '' ? null : (
-                  <form className={css.compose} onSubmit={(event) => {
-                    event.preventDefault()
-                    void handoff({ briefId: handoffBrief, branch, commit, summary, tests: tests.split(',').map(item => item.trim()).filter(Boolean) }).then(() => {
-                      setHandoffBrief(''); setBranch(''); setCommit(''); setSummary(''); setTests(''); void reload()
-                    }).catch((value: unknown) => { fail(value) })
-                  }}>
-                    <input placeholder={t('branch')} value={branch} onChange={(event) => { setBranch(event.currentTarget.value) }} />
-                    <input placeholder={t('commit')} value={commit} onChange={(event) => { setCommit(event.currentTarget.value) }} />
-                    <input placeholder={t('summary')} value={summary} onChange={(event) => { setSummary(event.currentTarget.value) }} />
-                    <input placeholder={t('tests')} value={tests} onChange={(event) => { setTests(event.currentTarget.value) }} />
-                    <button type="submit" className={css.button}>{t('sendHandoff')}</button>
-                  </form>
-                )}
               </>
             )
-            : (
-              <>
-                <form className={css.compose} onSubmit={(event) => {
-                  event.preventDefault()
-                  void sendMessage({ fromRole: role, toRole, kind, subject, body, requiresResponse, ...kind === 'decision' ? { payload: { selectedOption, reason } } : {} }).then(() => {
-                    setSubject(''); setBody(''); setSelectedOption(''); setReason(''); void reload()
-                  }).catch((value: unknown) => { fail(value) })
-                }}>
-                  <div className={css.row}>
-                    <label className={css.label}>{t('recipient')}
-                      <select value={toRole} onChange={(event) => { setToRole(event.currentTarget.value as Role) }}>
-                        {(['maintainer', 'implementer', 'workspace-reviewer', 'system'] as const).map(value => (
-                          <option key={value} value={value}>{t(ROLE_KEYS[value])}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className={css.label}>{t('messageKind')}
-                      <select value={kind} onChange={(event) => { setKind(event.currentTarget.value as MessageKind) }}>
-                        {(['note', 'request', 'decision', 'handoff', 'report'] as const).map(value => (
-                          <option key={value} value={value}>{t(KIND_KEYS[value])}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className={css.checkbox}>
-                      <input type="checkbox" checked={requiresResponse} onChange={(event) => { setRequiresResponse(event.currentTarget.checked) }} />
-                      {t('requiresResponse')}
-                    </label>
-                  </div>
-                  <input placeholder={t('subject')} value={subject} onChange={(event) => { setSubject(event.currentTarget.value) }} />
-                  <textarea placeholder={t('messageBody')} value={body} onChange={(event) => { setBody(event.currentTarget.value) }} />
-                  {kind !== 'decision' ? null : <input placeholder={t('selectedOption')} value={selectedOption} onChange={(event) => { setSelectedOption(event.currentTarget.value) }} />}
-                  {kind !== 'decision' ? null : <input placeholder={t('reason')} value={reason} onChange={(event) => { setReason(event.currentTarget.value) }} />}
-                  <button type="submit" className={css.button}>{t('sendMessage')}</button>
-                </form>
-                {rows.length === 0 ? <p className={css.empty}>{tab === 'inbox' ? t('emptyInboxHint') : t('noMessages')}</p> : null}
-                {rows.map(message => (
-                  <article key={message.id} className={css.card}>
+            : tab === 'briefs'
+              ? (
+                <>
+                  <form className={css.compose} onSubmit={(event) => {
+                    event.preventDefault()
+                    void createBrief({
+                      workspaceId: briefWorkspace, title: briefTitle, goal: briefGoal, acceptance: briefAcceptance,
+                    }).then(() => {
+                      setBriefTitle(''); setBriefGoal(''); setBriefAcceptance(''); void reload()
+                    }).catch((value: unknown) => { fail(value) })
+                  }}>
+                    <input placeholder={t('workspaceIdLabel')} value={briefWorkspace} onChange={(event) => { setBriefWorkspace(event.currentTarget.value) }} />
+                    <input placeholder={t('briefTitle')} value={briefTitle} onChange={(event) => { setBriefTitle(event.currentTarget.value) }} />
+                    <input placeholder={t('briefGoal')} value={briefGoal} onChange={(event) => { setBriefGoal(event.currentTarget.value) }} />
+                    <input placeholder={t('briefAcceptance')} value={briefAcceptance} onChange={(event) => { setBriefAcceptance(event.currentTarget.value) }} />
+                    <button type="submit" className={css.button}>{t('createBrief')}</button>
+                  </form>
+                  {briefRows.length === 0 ? <p className={css.empty}>{t('noBriefsHint')}</p> : null}
+                  {briefRows.map(brief => (
+                    <article key={brief.id} className={css.card}>
+                      <strong>{brief.title}</strong>
+                      <span className={css.meta}>{t(BRIEF_STATUS_KEYS[brief.status])} · {brief.workspaceId}</span>
+                      <div className={css.actions}>
+                        {(brief.status === 'draft' || brief.status === 'ready' || brief.status === 'assigned' || brief.status === 'in_review' || brief.status === 'changes_requested') && (
+                          <button type="button" className={css.button} onClick={() => {
+                            const next: BriefStatus = brief.status === 'draft' ? 'ready'
+                              : brief.status === 'ready' ? 'assigned'
+                                : brief.status === 'assigned' ? 'in_review'
+                                  : brief.status === 'in_review' ? 'accepted' : 'assigned'
+                            void transitionBrief(brief.id, next).then(() => { void reload() }).catch((value: unknown) => {
+                              fail(value)
+                            })
+                          }}>{t('advanceBrief')}</button>
+                        )}
+                        {brief.status === 'assigned' && (
+                          <button type="button" className={css.button} onClick={() => { setHandoffBrief(brief.id) }}>{t('handoff')}</button>
+                        )}
+                        <button type="button" className={css.button} onClick={() => { setPlanBrief(brief.id); setPlanTitle(brief.title) }}>{t('createPlan')}</button>
+                      </div>
+                      {planRows.filter(plan => plan.briefId === brief.id).map(plan => (
+                        <div key={plan.id} className={css.plan}>
+                          <div className={css.row}>
+                            <strong>{plan.title}</strong>
+                            <span className={css.meta}>v{plan.version} · {plan.status}</span>
+                            {plan.status === 'draft' ? <button type="button" className={css.button} onClick={() => { void approvePlan(plan.id).then(() => { void reload() }).catch((value: unknown) => { fail(value) }) }}>{t('approvePlan')}</button> : null}
+                          </div>
+                          {plan.steps.map(step => (
+                            <div key={step.id} className={css.stepRow}>
+                              <span>{step.status === 'done' ? '✓' : step.status === 'in_progress' ? '▶' : step.status === 'blocked' ? '!' : '○'}</span>
+                              <span>{step.title}</span>
+                              <span className={css.meta}>{step.outcome}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </article>
+                  ))}
+                  {planBrief === '' ? null : (
+                    <form className={css.compose} onSubmit={(event) => {
+                      event.preventDefault()
+                      const steps = planSteps.split('\n').map(line => line.trim()).filter(Boolean).map((line) => {
+                        const [title, outcome] = line.split('|').map(part => part.trim())
+                        return { title: title ?? '', outcome: outcome ?? title ?? '' }
+                      })
+                      void createPlan({ briefId: planBrief, title: planTitle, steps }).then(() => {
+                        setPlanBrief(''); setPlanTitle(''); setPlanSteps(''); void reload()
+                      }).catch((value: unknown) => { fail(value) })
+                    }}>
+                      <input value={planTitle} onChange={(event) => { setPlanTitle(event.currentTarget.value) }} />
+                      <textarea placeholder={t('planStepsHint')} value={planSteps} onChange={(event) => { setPlanSteps(event.currentTarget.value) }} />
+                      <button type="submit" className={css.button}>{t('createPlan')}</button>
+                    </form>
+                  )}
+                  {handoffBrief === '' ? null : (
+                    <form className={css.compose} onSubmit={(event) => {
+                      event.preventDefault()
+                      void handoff({ briefId: handoffBrief, branch, commit, summary, tests: tests.split(',').map(item => item.trim()).filter(Boolean) }).then(() => {
+                        setHandoffBrief(''); setBranch(''); setCommit(''); setSummary(''); setTests(''); void reload()
+                      }).catch((value: unknown) => { fail(value) })
+                    }}>
+                      <input placeholder={t('branch')} value={branch} onChange={(event) => { setBranch(event.currentTarget.value) }} />
+                      <input placeholder={t('commit')} value={commit} onChange={(event) => { setCommit(event.currentTarget.value) }} />
+                      <input placeholder={t('summary')} value={summary} onChange={(event) => { setSummary(event.currentTarget.value) }} />
+                      <input placeholder={t('tests')} value={tests} onChange={(event) => { setTests(event.currentTarget.value) }} />
+                      <button type="submit" className={css.button}>{t('sendHandoff')}</button>
+                    </form>
+                  )}
+                </>
+              )
+              : (
+                <>
+                  <form className={css.compose} onSubmit={(event) => {
+                    event.preventDefault()
+                    void sendMessage({ fromRole: role, toRole, kind, subject, body, requiresResponse, ...kind === 'decision' ? { payload: { selectedOption, reason } } : {} }).then(() => {
+                      setSubject(''); setBody(''); setSelectedOption(''); setReason(''); void reload()
+                    }).catch((value: unknown) => { fail(value) })
+                  }}>
                     <div className={css.row}>
-                      <strong>{message.subject}</strong>
-                      <span className={css.meta}>{t(KIND_KEYS[message.kind])} · {t(ROLE_KEYS[message.fromRole])} → {t(ROLE_KEYS[message.toRole])} · {t(MESSAGE_STATUS_KEYS[message.status] ?? 'messageUnread')}</span>
+                      <label className={css.label}>{t('recipient')}
+                        <select value={toRole} onChange={(event) => { setToRole(event.currentTarget.value as Role) }}>
+                          {(['maintainer', 'implementer', 'workspace-reviewer', 'system'] as const).map(value => (
+                            <option key={value} value={value}>{t(ROLE_KEYS[value])}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className={css.label}>{t('messageKind')}
+                        <select value={kind} onChange={(event) => { setKind(event.currentTarget.value as MessageKind) }}>
+                          {(['note', 'request', 'decision', 'handoff', 'report'] as const).map(value => (
+                            <option key={value} value={value}>{t(KIND_KEYS[value])}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label className={css.checkbox}>
+                        <input type="checkbox" checked={requiresResponse} onChange={(event) => { setRequiresResponse(event.currentTarget.checked) }} />
+                        {t('requiresResponse')}
+                      </label>
                     </div>
-                    <p>{message.body}</p>
-                    <div className={css.actions}>
-                      {tab === 'inbox' && message.status === 'unread' ? <button type="button" className={css.button} onClick={() => { void messageAction(message.id, 'ack', role).then(() => { void reload() }).catch((value: unknown) => { fail(value) }) }}>{t('acknowledge')}</button> : null}
-                      {tab === 'inbox' && message.status !== 'resolved' ? (
-                        <>
-                          <input placeholder={t('reply')} value={response} onChange={(event) => { setResponse(event.currentTarget.value) }} />
-                          <button type="button" className={css.button} onClick={() => { void messageAction(message.id, 'resolve', role, response).then(() => { setResponse(''); void reload() }).catch((value: unknown) => { fail(value) }) }}>{t('resolve')}</button>
-                        </>
-                      ) : null}
-                    </div>
-                  </article>
-                ))}
-              </>
-            )}
+                    <input placeholder={t('subject')} value={subject} onChange={(event) => { setSubject(event.currentTarget.value) }} />
+                    <textarea placeholder={t('messageBody')} value={body} onChange={(event) => { setBody(event.currentTarget.value) }} />
+                    {kind !== 'decision' ? null : <input placeholder={t('selectedOption')} value={selectedOption} onChange={(event) => { setSelectedOption(event.currentTarget.value) }} />}
+                    {kind !== 'decision' ? null : <input placeholder={t('reason')} value={reason} onChange={(event) => { setReason(event.currentTarget.value) }} />}
+                    <button type="submit" className={css.button}>{t('sendMessage')}</button>
+                  </form>
+                  {rows.length === 0 ? <p className={css.empty}>{tab === 'inbox' ? t('emptyInboxHint') : t('noMessages')}</p> : null}
+                  {rows.map(message => (
+                    <article key={message.id} className={css.card}>
+                      <div className={css.row}>
+                        <strong>{message.subject}</strong>
+                        <span className={css.meta}>{t(KIND_KEYS[message.kind])} · {t(ROLE_KEYS[message.fromRole])} → {t(ROLE_KEYS[message.toRole])} · {t(MESSAGE_STATUS_KEYS[message.status] ?? 'messageUnread')}</span>
+                      </div>
+                      <p>{message.body}</p>
+                      <div className={css.actions}>
+                        {tab === 'inbox' && message.status === 'unread' ? <button type="button" className={css.button} onClick={() => { void messageAction(message.id, 'ack', role).then(() => { void reload() }).catch((value: unknown) => { fail(value) }) }}>{t('acknowledge')}</button> : null}
+                        {tab === 'inbox' && message.status !== 'resolved' ? (
+                          <>
+                            <input placeholder={t('reply')} value={response} onChange={(event) => { setResponse(event.currentTarget.value) }} />
+                            <button type="button" className={css.button} onClick={() => { void messageAction(message.id, 'resolve', role, response).then(() => { setResponse(''); void reload() }).catch((value: unknown) => { fail(value) }) }}>{t('resolve')}</button>
+                          </>
+                        ) : null}
+                      </div>
+                    </article>
+                  ))}
+                </>
+              )}
         </div>
       </section>
     </div>

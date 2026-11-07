@@ -1,7 +1,8 @@
 /** Dev Console Remote wire values: config, workspace inspections, and cwd sessions. */
 import type { DevConsoleConfig, DevConsoleConfigProblem, DevConsoleWorkspaceConfig } from './dev-console-config.ts'
 import type {
-  DevConsoleBrief, DevConsoleBriefStatus, DevConsoleMessage, DevConsoleMessageKind, DevConsoleMessagePayload, DevConsoleRole,
+  DevConsoleBrief, DevConsoleBriefStatus, DevConsoleMessage, DevConsoleMessageKind, DevConsoleMessagePayload,
+  DevConsolePlan, DevConsolePlanStep, DevConsoleRole,
 } from './dev-console-bus.ts'
 import type { WorkspaceInspection } from './dev-console-workspace.ts'
 
@@ -188,6 +189,79 @@ export interface DevConsoleMessageActionRequest {
 /** Message list result. */
 export interface DevConsoleMessagesValue {
   readonly messages: readonly DevConsoleMessage[]
+}
+
+/** Inbox row derived from Briefs, plans, and messages that need action. */
+export interface DevConsoleInboxItem {
+  readonly id: string
+  readonly kind: 'message' | 'brief' | 'plan'
+  readonly title: string
+  readonly detail: string
+  readonly briefId?: string | undefined
+  readonly planId?: string | undefined
+  readonly messageId?: string | undefined
+  readonly action: 'approve-plan' | 'review-handoff' | 'handle-message' | 'assign-brief'
+}
+
+/** Inbox request. */
+export interface DevConsoleInboxRequest {
+  readonly role: DevConsoleRole
+  readonly workspaceId?: string | undefined
+}
+
+/** Inbox result. */
+export interface DevConsoleInboxValue {
+  readonly items: readonly DevConsoleInboxItem[]
+}
+
+/** Plan list request. */
+export interface DevConsolePlansRequest {
+  readonly briefId?: string | undefined
+  readonly workspaceId?: string | undefined
+  readonly parentPlanId?: string | undefined
+}
+
+/** Plan list result. */
+export interface DevConsolePlansValue {
+  readonly plans: readonly DevConsolePlan[]
+}
+
+/** Plan step input. */
+export interface DevConsolePlanStepInput {
+  readonly title: string
+  readonly outcome: string
+}
+
+/** Create a draft plan. */
+export interface DevConsoleCreatePlanRequest {
+  readonly briefId: string
+  readonly title: string
+  readonly steps: readonly DevConsolePlanStepInput[]
+  readonly parentPlanId?: string | undefined
+  readonly role: DevConsoleRole
+}
+
+/** Approve a draft plan. */
+export interface DevConsoleApprovePlanRequest {
+  readonly planId: string
+  readonly role: DevConsoleRole
+}
+
+/** Revise an approved plan into a new draft version. */
+export interface DevConsoleRevisePlanRequest {
+  readonly planId: string
+  readonly steps: readonly DevConsolePlanStepInput[]
+  readonly reason: string
+  readonly role: DevConsoleRole
+}
+
+/** Update one step's progress. */
+export interface DevConsolePlanStepUpdateRequest {
+  readonly planId: string
+  readonly stepId: string
+  readonly status: DevConsolePlanStep['status']
+  readonly evidence?: string | undefined
+  readonly role: DevConsoleRole
 }
 
 /** Brief list request. */
