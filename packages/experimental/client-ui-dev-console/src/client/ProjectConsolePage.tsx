@@ -588,6 +588,7 @@ export function ProjectConsolePage({
             <option value="compact">{t('readingCompact')}</option>
             <option value="standard">{t('readingStandard')}</option>
             <option value="comfortable">{t('readingComfortable')}</option>
+            <option value="extra-large">{t('readingExtraLarge')}</option>
           </select>
           {state.updatedAt === undefined
             ? null

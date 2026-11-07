@@ -2,10 +2,10 @@
 const STORAGE_KEY = 'project-console.reading-scale.v1'
 
 /** User-facing reading-size option. */
-export type ReadingMode = 'auto' | 'compact' | 'standard' | 'comfortable'
+export type ReadingMode = 'auto' | 'compact' | 'standard' | 'comfortable' | 'extra-large'
 
 /** Concrete reading level applied to the page. */
-export type ReadingLevel = 'compact' | 'standard' | 'comfortable'
+export type ReadingLevel = 'compact' | 'standard' | 'comfortable' | 'extra-large'
 
 /** Display facts the automatic level reads. */
 export interface DisplayFacts {
@@ -61,7 +61,7 @@ export function resolveReadingLevel(mode: ReadingMode, facts: DisplayFacts): Rea
 export function readReadingMode(): ReadingMode {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw === 'compact' || raw === 'standard' || raw === 'comfortable' || raw === 'auto') return raw
+    if (raw === 'compact' || raw === 'standard' || raw === 'comfortable' || raw === 'extra-large' || raw === 'auto') return raw
   } catch {
     // Storage unavailable keeps the automatic default.
   }
