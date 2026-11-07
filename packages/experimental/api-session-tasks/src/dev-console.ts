@@ -2,7 +2,7 @@
 import type { DevConsoleConfig, DevConsoleConfigProblem, DevConsoleWorkspaceConfig } from './dev-console-config.ts'
 import type {
   DevConsoleBrief, DevConsoleBriefStatus, DevConsoleMessage, DevConsoleMessageKind, DevConsoleMessagePayload,
-  DevConsolePlan, DevConsolePlanStep, DevConsoleRole,
+  DevConsolePlan, DevConsolePlanStep, DevConsoleRole, DevConsoleDirective,
 } from './dev-console-bus.ts'
 import type { WorkspaceInspection } from './dev-console-workspace.ts'
 
@@ -189,6 +189,37 @@ export interface DevConsoleMessageActionRequest {
 /** Message list result. */
 export interface DevConsoleMessagesValue {
   readonly messages: readonly DevConsoleMessage[]
+}
+
+/** Resolve the console context of one Session. */
+export interface DevConsoleSessionContextRequest {
+  readonly sessionId: string
+}
+
+/** Session context result. */
+export interface DevConsoleSessionContextValue {
+  readonly sessionId: string
+  readonly workspaceId?: string | undefined
+  readonly projectId?: string | undefined
+  readonly briefId?: string | undefined
+  readonly briefTitle?: string | undefined
+  readonly planId?: string | undefined
+  readonly planVersion?: number | undefined
+}
+
+/** Deliver one structured console directive into a Session. */
+export interface DevConsoleDirectiveRequest {
+  readonly sessionId: string
+  readonly type: string
+  readonly briefId?: string | undefined
+  readonly planId?: string | undefined
+  readonly summary: string
+  readonly payload?: string | undefined
+}
+
+/** Directive delivery result. */
+export interface DevConsoleDirectiveValue {
+  readonly directive: DevConsoleDirective
 }
 
 /** Inbox row derived from Briefs, plans, and messages that need action. */

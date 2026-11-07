@@ -29,6 +29,8 @@ import { basename, dirname, isAbsolute, join, resolve } from 'node:path'
 import { createHash } from 'node:crypto'
 import { copyFile, readFile, realpath, rename, writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
+import { brandString } from '@deepseek-ai/dsh-brand'
+import type { SessionRequestId } from '@deepseek-ai/dsh-api-session-controller/types'
 import { promisify } from 'node:util'
 import { dump, load } from 'js-yaml'
 import { loadDevConsoleConfig, validateConfig } from './dev-console-config.ts'
@@ -43,6 +45,7 @@ import type {
   DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleAutoConfigRequest, DevConsoleAutoConfigValue,
   DevConsoleSummary, DevConsoleSummaryRequest,
   DevConsoleApprovePlanRequest, DevConsoleBindRequest, DevConsoleBriefsRequest, DevConsoleBriefsValue, DevConsoleConfigValue,
+  DevConsoleDirectiveRequest, DevConsoleDirectiveValue, DevConsoleSessionContextRequest, DevConsoleSessionContextValue,
   DevConsoleCreateBriefRequest, DevConsoleCreatePlanRequest,
   DevConsoleHandoffRequest, DevConsoleHistoryRequest, DevConsoleHistoryValue, DevConsoleInboxRequest, DevConsoleInboxValue,
   DevConsoleMessageActionRequest,
@@ -456,6 +459,79 @@ export class SessionTasksController extends TypertRemoteService {
     await this.busDomain.global.set(next)
   }
 
+  @Remote('devConsoleSessionContext')
+  async devConsoleSessionContext(request: DevConsoleSessionContextRequest): Promise<DevConsoleSessionContextValue> {
+    const query = this.ctx.get('sessionQuery')
+    if (query === undefined) throw new RemoteError('gateway/bad-request', 'session query is unavailable', {})
+    const record = (await query.listSessions()).find(item => item.header.id === request.sessionId)
+    if (record === undefined) throw new RemoteError('gateway/bad-request', `session ${request.sessionId} not found`, {})
+    const cwd = record.header.cwd
+    if (cwd === undefined) return { sessionId: request.sessionId }
+    const canonical = await realpath(cwd).catch(() => cwd)
+    const config = loadDevConsoleConfig(this.resolveDevConsoleConfigFile())
+    if (config.config === undefined) throw new RemoteError('gateway/bad-request', 'Dev Console config is invalid', {})
+    for (const project of config.config.projects) {
+      for (const workspace of project.workspaces) {
+        const expected = workspace.canonicalWorktree ?? workspace.worktree
+        if (expected !== canonical) continue
+        const state = this.busState()
+        const brief = state.briefs
+          .filter(item => item.workspaceId === workspace.id && (item.status === 'assigned' || item.status === 'in_review' || item.status === 'ready'))
+          .sort((a, b) => b.updatedAt - a.updatedAt)[0]
+        const plan = brief === undefined ? undefined : state.plans
+          .filter(item => item.briefId === brief.id && item.status === 'approved')
+          .sort((a, b) => b.version - a.version)[0]
+        return {
+          sessionId: request.sessionId,
+          workspaceId: workspace.id,
+          projectId: project.id,
+          ...brief === undefined ? {} : { briefId: brief.id, briefTitle: brief.title },
+          ...plan === undefined ? {} : { planId: plan.id, planVersion: plan.version },
+        }
+      }
+    }
+    return { sessionId: request.sessionId }
+  }
+
+  @Remote('devConsoleDeliverDirective')
+  async devConsoleDeliverDirective(request: DevConsoleDirectiveRequest): Promise<DevConsoleDirectiveValue> {
+    const state = this.busState()
+    const directive = {
+      id: randomUUID(), sessionId: request.sessionId, type: request.type,
+      ...request.briefId === undefined ? {} : { briefId: request.briefId },
+      ...request.planId === undefined ? {} : { planId: request.planId },
+      summary: request.summary,
+      ...request.payload === undefined ? {} : { payload: request.payload },
+      source: 'maintainer' as const, createdAt: Date.now(), status: 'pending' as const,
+    }
+    await this.writeBus({ ...state, directives: [directive, ...state.directives].slice(0, 100) })
+    const text = `【研发控制台指令】${request.summary}${request.payload === undefined ? '' : `\n${request.payload}`}`
+    const controller = this.ctx.get('sessionController')
+    if (controller === undefined) {
+      const failed = { ...directive, status: 'failed' as const }
+      await this.writeBus({ ...this.busState(), directives: this.busState().directives.map(item => item.id === failed.id ? failed : item) })
+      return { directive: failed }
+    }
+    try {
+      await controller.prompt({
+        requestId: brandString<SessionRequestId>(randomUUID()),
+        sessionId: brandString<SessionId>(request.sessionId),
+        mode: 'queue',
+        content: [{ type: 'text', text }],
+      }, new AbortController().signal)
+      const delivered = { ...directive, status: 'delivered' as const }
+      await this.writeBus({
+        ...this.busState(),
+        directives: this.busState().directives.map(item => item.id === delivered.id ? delivered : item),
+      })
+      return { directive: delivered }
+    } catch {
+      const failed = { ...directive, status: 'failed' as const }
+      await this.writeBus({ ...this.busState(), directives: this.busState().directives.map(item => item.id === failed.id ? failed : item) })
+      return { directive: failed }
+    }
+  }
+
   @Remote('devConsoleInbox')
   async devConsoleInbox(request: DevConsoleInboxRequest): Promise<DevConsoleInboxValue> {
     const state = this.busState()
@@ -743,6 +819,7 @@ export class SessionTasksController extends TypertRemoteService {
       messages: [message, ...state.messages].slice(0, 200),
       briefs: state.briefs.map(item => item.id === updatedBrief.id ? updatedBrief : item),
       plans: state.plans,
+      directives: state.directives,
     })
     return message
   }

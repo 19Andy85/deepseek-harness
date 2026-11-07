@@ -118,11 +118,26 @@ export interface DevConsoleBrief {
   }[]
 }
 
+/** Structured instruction from the console back into one Session. */
+export interface DevConsoleDirective {
+  readonly id: string
+  readonly sessionId: string
+  readonly type: string
+  readonly briefId?: string | undefined
+  readonly planId?: string | undefined
+  readonly summary: string
+  readonly payload?: string | undefined
+  readonly source: 'maintainer'
+  readonly createdAt: number
+  readonly status: 'pending' | 'delivered' | 'failed'
+}
+
 /** Persisted bus state. */
 export interface DevConsoleBusState {
   readonly messages: readonly DevConsoleMessage[]
   readonly briefs: readonly DevConsoleBrief[]
   readonly plans: readonly DevConsolePlan[]
+  readonly directives: readonly DevConsoleDirective[]
 }
 
 const roleSchema: z.ZodType<DevConsoleRole> = z.union([
@@ -221,10 +236,24 @@ const planSchema: z.ZodType<DevConsolePlan> = z.object({
   approvedAt: z.number().nonnegative().optional(),
 }).strict()
 
+const directiveSchema: z.ZodType<DevConsoleDirective> = z.object({
+  id: z.string().min(1),
+  sessionId: z.string().min(1),
+  type: z.string().min(1),
+  briefId: z.string().optional(),
+  planId: z.string().optional(),
+  summary: z.string().min(1),
+  payload: z.string().optional(),
+  source: z.literal('maintainer'),
+  createdAt: z.number().nonnegative(),
+  status: z.enum(['pending', 'delivered', 'failed']),
+}).strict()
+
 const busStateSchema: z.ZodType<DevConsoleBusState> = z.object({
   messages: z.array(messageSchema),
   briefs: z.array(briefSchema),
   plans: z.array(planSchema).default([]),
+  directives: z.array(directiveSchema).default([]),
 }).strict()
 
 /** Storage domain holding messages and Briefs. */
@@ -232,11 +261,11 @@ export const devConsoleBusDomain = defineDomain({
   name: 'experimental_dev_console_bus',
   version: 1,
   tables: {},
-  global: { schema: busStateSchema, initial: { messages: [], briefs: [], plans: [] } },
+  global: { schema: busStateSchema, initial: { messages: [], briefs: [], plans: [], directives: [] } },
 })
 
 /** Empty bus state. */
-export const EMPTY_DEV_CONSOLE_BUS: DevConsoleBusState = { messages: [], briefs: [], plans: [] }
+export const EMPTY_DEV_CONSOLE_BUS: DevConsoleBusState = { messages: [], briefs: [], plans: [], directives: [] }
 
 /** Create one outbound message. */
 export function createMessage(input: {
