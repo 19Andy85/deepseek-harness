@@ -87,6 +87,7 @@ export interface ProjectConsoleInjected {
   readonly openInSidebar: () => void
   /** Read the Dev Console workspace registry. */
   readonly devConsoleSnapshot: () => Promise<WorkspaceSnapshotView>
+  readonly devConsoleAllSessions: () => Promise<readonly SessionTaskView[]>
   readonly devConsoleInspect: (workspaceIds?: readonly string[], refresh?: boolean) => Promise<readonly import('./WorkspaceView.tsx').WorkspaceStatusView[]>
   readonly devConsoleHistory: (workspaceId: string, options?: { readonly offset?: number; readonly query?: string }) => Promise<{
     readonly sessions: readonly { readonly sessionId: string; readonly live: boolean }[]
@@ -168,7 +169,7 @@ function statusText(
 export function ProjectConsolePage({
   t, store, workspaceOptions, workspaceSessions, selectedWorkspaceId, selectWorkspace, refresh, openSession, focusSession,
   closeFocus, resetShift, dispatch, sendToSession, cancelSession, answerApproval, answerQuestion, useSessionStatus, openInSidebar,
-  devConsoleSnapshot, devConsoleInspect, devConsoleHistory, devConsoleSummary, devConsoleProjects,
+  devConsoleSnapshot, devConsoleAllSessions, devConsoleInspect, devConsoleHistory, devConsoleSummary, devConsoleProjects,
   devConsoleSessionContext, devConsoleState, devConsoleBind,
   devConsoleOpenWorkspace, devConsoleGit, devConsoleAgents,
   devConsoleSaveAgents, devConsoleAutoConfig,
@@ -182,6 +183,7 @@ export function ProjectConsolePage({
   const [reloadNotice, setReloadNotice] = useState(false)
   const [projects, setProjects] = useState<readonly import('./OverviewView.tsx').ProjectSummaryView[]>([])
   const [workActionItems, setWorkActionItems] = useState<readonly ActionItem[]>([])
+  const [allSessions, setAllSessions] = useState<readonly SessionTaskView[]>([])
   const [workspacesOpen, setWorkspacesOpen] = useState(false)
   const [messagesOpen, setMessagesOpen] = useState(false)
   const [actions, setActions] = useState<readonly ConsoleAction[]>([])
@@ -220,6 +222,7 @@ export function ProjectConsolePage({
   const inboxGroups = globalInboxGroups(statusFacts, workspaceSessions())
   const inboxTotal = globalInboxCount(inboxGroups)
   const globalHealth = globalHealthCounts(statusFacts, workspaceSessions())
+  const globalFailed = allSessions.filter(session => session.outcome === 'failed').length
   const runningByWorkspace = globalRunningByWorkspace(statusFacts, workspaceSessions())
   const elsewhere = otherWorkspaceAttention(statusFacts, workspaceSessions(), selected)
   const aliasesMap = new Map(Object.entries(aliases))
@@ -481,6 +484,9 @@ export function ProjectConsolePage({
   useEffect(() => {
     void messageCenter.inbox('maintainer').then((items) => { setWorkActionItems(buildWorkActionItems(items)) }).catch(() => { setWorkActionItems([]) })
   }, [messageCenter])
+  useEffect(() => {
+    void devConsoleAllSessions().then(setAllSessions).catch(() => { setAllSessions([]) })
+  }, [])
   useEffect(() => {
     if (focus?.sessionId !== undefined) setActiveId(focus.sessionId)
   }, [focus?.sessionId])
@@ -796,8 +802,8 @@ export function ProjectConsolePage({
           ? (
             <div className={css.overviewHost}>
               <OverviewView
-                health={health}
                 globalHealth={globalHealth}
+                globalFailed={globalFailed}
                 usage={usageTotals}
                 actionItems={actionItems}
                 runningByWorkspace={runningByWorkspace}

@@ -212,6 +212,11 @@ function registerUi(ctx: Context): void {
       if (!result.ok) throw new Error(result.error.message)
       return result.value
     },
+    devConsoleAllSessions: async () => {
+      const result = await ctx.remote.sessionTasks.snapshot({})
+      if (!result.ok) throw new Error(result.error.message)
+      return result.value.sessions
+    },
     devConsoleOpenWorkspace: async (workspaceId) => {
       const result = await ctx.remote.sessionTasks.devConsoleOpenWorkspace({ workspaceId })
       if (!result.ok) throw new Error(result.error.message)

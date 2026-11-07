@@ -1,5 +1,4 @@
 /** Global console overview: attention, sessions, plans, and workspace portfolio. */
-import type { HealthCounts } from './attention.ts'
 import type { ActionItem } from './action-items.ts'
 import type { GlobalHealthCounts, WorkspaceRunningCount } from './global-inbox.ts'
 import type { ConsoleWorkspace } from './ProjectConsoleStore.ts'
@@ -9,8 +8,8 @@ import css from './OverviewView.module.css'
 
 /** Props of the overview skeleton. */
 export interface OverviewViewProps {
-  readonly health: HealthCounts
   readonly globalHealth: GlobalHealthCounts
+  readonly globalFailed: number
   readonly usage: number
   readonly actionItems: readonly ActionItem[]
   readonly runningByWorkspace: readonly WorkspaceRunningCount[]
@@ -41,7 +40,7 @@ const tokenFormat = new Intl.NumberFormat('zh-CN', { notation: 'compact', maximu
  */
 export function OverviewView(props: OverviewViewProps) {
   const {
-    health, globalHealth, usage, actionItems, runningByWorkspace, workspaces, selectedWorkspaceId, globalPending, projects, t,
+    globalHealth, globalFailed, usage, actionItems, runningByWorkspace, workspaces, selectedWorkspaceId, globalPending, projects, t,
     onSelectWorkspace, onRefresh, onOpenAction,
   } = props
   const statusCount = (label: ProjectConsoleKey, value: number, tone: string | undefined): ReactNode => (
@@ -51,7 +50,7 @@ export function OverviewView(props: OverviewViewProps) {
     <div className={css.overview}>
       <div className={css.attention} aria-label={t('overview')}>
         {statusCount('needsYou', globalHealth.needsYou, css.warn)}
-        {statusCount('failed', health.failed, css.bad)}
+        {statusCount('failed', globalFailed, css.bad)}
         {statusCount('running', globalHealth.running, css.info)}
         {statusCount('completedUnread', globalHealth.completedUnread, css.ok)}
         {statusCount('idle', globalHealth.idle, css.muted)}
