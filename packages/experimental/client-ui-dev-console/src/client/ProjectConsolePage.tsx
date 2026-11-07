@@ -198,7 +198,7 @@ export function ProjectConsolePage({
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
   const [filter, setFilter] = useState<HealthFilter>(undefined)
-  const [view, setView] = useState<ConsoleView>(() => (compact ? 'workspaces' : readViewPreference()))
+  const [view, setView] = useState<ConsoleView>(() => (compact ? 'studio' : readViewPreference()))
   const [studioMode, setStudioMode] = useState(() => (compact ? 'board' : readStudioMode()))
   const statuses = useSessionStatus(state => state)
   const state = useSyncExternalStore(
@@ -611,13 +611,15 @@ export function ProjectConsolePage({
             >
               {t('viewStudio')}
             </button>
-            <button
-              type="button"
-              className={view === 'workspaces' ? `${css.viewButton} ${css.viewButtonActive}` : css.viewButton}
-              onClick={() => { setView('workspaces'); writeViewPreference('workspaces') }}
-            >
-              {t('workspacesTitle')}
-            </button>
+            {surface === 'main' ? (
+              <button
+                type="button"
+                className={view === 'workspaces' ? `${css.viewButton} ${css.viewButtonActive}` : css.viewButton}
+                onClick={() => { setView('workspaces'); writeViewPreference('workspaces') }}
+              >
+                {t('workspacesTitle')}
+              </button>
+            ) : null}
           </div>
           {view === 'studio'
             ? (
@@ -652,7 +654,7 @@ export function ProjectConsolePage({
               </button>
             )
             : null}
-          {surface === 'main' ? null : <button type="button" className={css.select} onClick={() => { setWorkspacesOpen(true) }}>{t('workspacesTitle')}</button>}
+          {surface === 'main' ? null : <button type="button" className={css.select} onClick={() => { setWorkspacesOpen(true) }} title={t('workspaceContext')}>{t('workspaceContext')}</button>}
           <button type="button" className={css.select} onClick={() => { setMessagesOpen(true) }}>{t('messagesTitle')}</button>
           <button
             type="button"
