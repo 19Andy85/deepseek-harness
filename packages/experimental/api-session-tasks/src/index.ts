@@ -859,6 +859,7 @@ export class SessionTasksController extends TypertRemoteService {
       fromRole: request.fromRole,
       toRole: request.toRole,
       workspaceId: brief.workspaceId,
+      briefId: brief.id,
       kind: 'handoff',
       subject: `Handoff: ${brief.title}`,
       body: request.summary,
