@@ -1,7 +1,8 @@
 /** Task detail page: the durable task, its plan versions, and related messages. */
 import { useEffect, useState } from 'react'
 import type { ProjectConsoleKey } from './locales.ts'
-import type { BriefView, MessageView, PlanView } from './MessageCenter.tsx'
+import type { BriefView, MessageView, MessageCenterInjected, PlanView } from './message-types.ts'
+import type { ActionItem } from './action-items.ts'
 import css from './TaskDetailView.module.css'
 
 /** Data access needed by the task detail page. */
@@ -10,12 +11,16 @@ export interface TaskDetailInjected {
   readonly plans: (briefId?: string) => Promise<readonly PlanView[]>
   readonly messages: (role: 'maintainer', box: 'inbox') => Promise<readonly MessageView[]>
   readonly approvePlan: (planId: string) => Promise<PlanView>
+  readonly sendMessage: MessageCenterInjected['sendMessage']
+  readonly messageAction: MessageCenterInjected['messageAction']
 }
 
 /** Props of the task detail page. */
 export interface TaskDetailViewProps extends TaskDetailInjected {
   readonly t: (key: ProjectConsoleKey) => string
   readonly onOpenSession?: (() => void) | undefined
+  readonly actionItems?: readonly ActionItem[] | undefined
+  readonly onOpenAction?: ((item: ActionItem) => void) | undefined
 }
 
 /**
@@ -24,13 +29,16 @@ export interface TaskDetailViewProps extends TaskDetailInjected {
  * @returns the task detail page.
  */
 export function TaskDetailView(props: TaskDetailViewProps) {
-  const { briefs, plans, messages, approvePlan, t } = props
+  const { briefs, plans, messages, approvePlan, sendMessage, messageAction, actionItems = [], onOpenAction, t } = props
   const [briefRows, setBriefRows] = useState<readonly BriefView[]>([])
   const [planRows, setPlanRows] = useState<readonly PlanView[]>([])
   const [messageRows, setMessageRows] = useState<readonly MessageView[]>([])
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined)
   const [tab, setTab] = useState<'task' | 'plan' | 'messages'>('task')
   const [error, setError] = useState<string | undefined>(undefined)
+  const [subject, setSubject] = useState('')
+  const [body, setBody] = useState('')
+  const [versionId, setVersionId] = useState<string | undefined>(undefined)
 
   useEffect(() => {
     void briefs().then((rows) => {
@@ -44,8 +52,16 @@ export function TaskDetailView(props: TaskDetailViewProps) {
   const selected = briefRows.find(brief => brief.id === selectedId)
   const selectedPlans = planRows.filter(plan => plan.briefId === selectedId)
     .sort((left, right) => right.version - left.version)
-  const current = selectedPlans[0]
+  const current = selectedPlans.find(plan => plan.id === versionId) ?? selectedPlans[0]
+  const previous = current === undefined ? undefined : selectedPlans.find(plan => plan.version < current.version)
   const relatedMessages = messageRows.filter(message => message.subject.includes(selected?.title ?? ''))
+  const handoffs = relatedMessages.filter(message => message.kind === 'handoff')
+  const changed = current === undefined || previous === undefined
+    ? undefined
+    : {
+      added: current.steps.filter(step => !previous.steps.some(old => old.title === step.title)).map(step => step.title),
+      removed: previous.steps.filter(old => !current.steps.some(step => step.title === old.title)).map(old => old.title),
+    }
 
   return (
     <div className={css.page}>
@@ -54,6 +70,17 @@ export function TaskDetailView(props: TaskDetailViewProps) {
           <h2>{t('todoTab')}</h2>
           <span className={css.count}>{briefRows.length}</span>
         </div>
+        {actionItems.length === 0 ? null : (
+          <div className={css.actionGroup}>
+            <div className={css.masterHead}><h3>{t('globalInbox')}</h3><span className={css.count}>{actionItems.length}</span></div>
+            {actionItems.slice(0, 5).map(item => (
+              <button key={item.id} type="button" className={css.treeItem} onClick={() => { onOpenAction?.(item) }}>
+                <span className={css.treeTitle}>{item.title}</span>
+                <span className={css.treeMeta}>{item.detail}</span>
+              </button>
+            ))}
+          </div>
+        )}
         {briefRows.map(brief => (
           <button
             key={brief.id}
@@ -111,6 +138,22 @@ export function TaskDetailView(props: TaskDetailViewProps) {
                             }}>{t('approvePlan')}</button>
                           ) : null}
                         </div>
+                        {selectedPlans.length > 1 ? (
+                          <div className={css.history}>
+                            {selectedPlans.map(plan => (
+                              <button key={plan.id} type="button" className={plan.id === current.id ? css.historyActive : css.historyItem} onClick={() => { setVersionId(plan.id) }}>
+                                v{plan.version} · {plan.status}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                        {changed === undefined ? null : (
+                          <p className={css.diff}>
+                            {changed.added.length === 0 && changed.removed.length === 0
+                              ? t('noPlan')
+                              : [...changed.added.map(title => `+ ${title}`), ...changed.removed.map(title => `- ${title}`)].join('  ')}
+                          </p>
+                        )}
                         <ol className={css.steps}>
                           {current.steps.map(step => (
                             <li key={step.id} className={step.status === 'done' ? css.stepDone : css.step}>
@@ -127,6 +170,35 @@ export function TaskDetailView(props: TaskDetailViewProps) {
               {tab === 'messages'
                 ? (
                   <div className={css.section}>
+                    <form className={css.compose} onSubmit={(event) => {
+                      event.preventDefault()
+                      if (subject.trim() === '' || body.trim() === '') return
+                      void sendMessage({ fromRole: 'maintainer', toRole: 'implementer', kind: 'request', subject, body })
+                        .then((message) => { setMessageRows(rows => [message, ...rows]); setSubject(''); setBody('') })
+                        .catch(() => { setError(t('actionFailed')) })
+                    }}>
+                      <input value={subject} onChange={(event) => { setSubject(event.currentTarget.value) }} placeholder={t('messageSubject')} />
+                      <textarea value={body} onChange={(event) => { setBody(event.currentTarget.value) }} placeholder={t('messageBody')} />
+                      <button type="submit" className={css.button}>{t('sendMessage')}</button>
+                    </form>
+                    {handoffs.length === 0 ? null : (
+                      <div className={css.handoff}>
+                        <h3>{t('handoff')}</h3>
+                        {handoffs.map(message => (
+                          <article key={message.id} className={css.message}>
+                            <strong>{message.subject}</strong>
+                            <p>{message.body}</p>
+                            <div className={css.handoffActions}>
+                              <button type="button" className={css.button} onClick={() => {
+                                void messageAction(message.id, 'resolve', 'maintainer').then((updated) => {
+                                  setMessageRows(rows => rows.map(row => row.id === updated.id ? updated : row))
+                                }).catch(() => { setError(t('actionFailed')) })
+                              }}>{t('acceptHandoff')}</button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    )}
                     {relatedMessages.length === 0 ? <p className={css.empty}>{t('noMessages')}</p> : relatedMessages.map(message => (
                       <article key={message.id} className={css.message}>
                         <strong>{message.subject}</strong>

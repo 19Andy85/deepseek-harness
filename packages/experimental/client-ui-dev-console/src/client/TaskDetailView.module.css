@@ -30,3 +30,15 @@
 .button { height: var(--pc-row-height); padding: 0 10px; border: 1px solid var(--pc-color-line); border-radius: var(--pc-radius); background: transparent; color: var(--pc-color-text-2); font: inherit; font-size: var(--pc-text-meta); cursor: pointer; }
 .empty { padding: var(--pc-gap-3); color: var(--pc-color-text-3); font-size: var(--pc-text-meta); }
 .error { color: var(--pc-color-danger); font-size: var(--pc-text-meta); }
+.actionGroup { margin-bottom: var(--pc-gap-3); }
+.actionGroup h3 { margin: 0; font-size: var(--pc-text-meta); font-weight: 500; color: var(--pc-color-text-3); }
+.history { display: flex; gap: 5px; flex-wrap: wrap; }
+.historyItem, .historyActive { padding: 3px 7px; border: 1px solid var(--pc-color-line); border-radius: 999px; background: transparent; color: var(--pc-color-text-3); font: inherit; font-size: var(--pc-text-meta); cursor: pointer; }
+.historyActive { border-color: var(--pc-color-accent); color: var(--pc-color-text); }
+.diff { color: var(--pc-color-warning); }
+.compose { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 1px solid var(--pc-color-line); border-radius: var(--pc-radius); }
+.compose input, .compose textarea { padding: 6px 8px; border: 1px solid var(--pc-color-line); border-radius: 6px; background: transparent; color: var(--pc-color-text); font: inherit; font-size: var(--pc-text-body); }
+.compose textarea { min-height: 70px; resize: vertical; }
+.handoff { display: flex; flex-direction: column; gap: 6px; }
+.handoff h3 { margin: 0; font-size: var(--pc-text-title); font-weight: 500; }
+.handoffActions { display: flex; gap: 6px; }

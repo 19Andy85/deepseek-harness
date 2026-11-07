@@ -34,7 +34,7 @@ import { OverviewView } from './OverviewView.tsx'
 import { TaskDetailView } from './TaskDetailView.tsx'
 import { buildSessionActionItems, buildWorkActionItems, type ActionItem } from './action-items.ts'
 import { globalHealthCounts, globalRunningByWorkspace } from './global-inbox.ts'
-import { MessageCenter, type MessageCenterInjected } from './MessageCenter.tsx'
+import type { MessageCenterInjected } from './message-types.ts'
 import { readViewPreference, writeViewPreference, type ConsoleView } from './view-preference.ts'
 import { ActivityTrack, formatDuration, formatTokens, HealthSegments, StatusDot, Timeline, type HealthFilter } from './visual/visual.tsx'
 import type { ProjectConsoleKey } from './locales.ts'
@@ -186,7 +186,6 @@ export function ProjectConsolePage({
   const [workActionItems, setWorkActionItems] = useState<readonly ActionItem[]>([])
   const [allSessions, setAllSessions] = useState<readonly SessionTaskView[]>([])
   const [workspacesOpen, setWorkspacesOpen] = useState(false)
-  const [messagesOpen, setMessagesOpen] = useState(false)
   const [actions, setActions] = useState<readonly ConsoleAction[]>([])
   const channel = useRef<BroadcastChannel | undefined>(undefined)
   const workspaceRef = useRef<string | undefined>(undefined)
@@ -638,7 +637,7 @@ export function ProjectConsolePage({
                 className={view === 'task' ? `${css.viewButton} ${css.viewButtonActive}` : css.viewButton}
                 onClick={() => { setView('task'); writeViewPreference('task') }}
               >
-                {t('taskView')}
+                {t('todoTab')}
               </button>
             ) : null}
             <button
@@ -714,23 +713,6 @@ export function ProjectConsolePage({
               </button>
             )
             : null}
-          <button
-            type="button"
-            className={css.select}
-            aria-expanded={inboxOpen}
-            onClick={() => {
-              setInboxOpen((open) => {
-                if (!open) {
-                  closeFocus()
-                  setRelationView('inline')
-                }
-                return !open
-              })
-            }}
-            title={t('globalInboxHint')}
-          >
-            {t('globalInbox')}{inboxTotal === 0 ? '' : ` ${String(inboxTotal)}`}
-          </button>
           {workspaceBack === undefined
             ? null
             : (
@@ -844,6 +826,14 @@ export function ProjectConsolePage({
                 plans={messageCenter.plans}
                 messages={messageCenter.messages}
                 approvePlan={messageCenter.approvePlan}
+                sendMessage={messageCenter.sendMessage}
+                messageAction={messageCenter.messageAction}
+                actionItems={actionItems}
+                onOpenAction={(item: ActionItem) => {
+                  if (item.source === 'message' || item.source === 'plan') return
+                  if (item.workspaceId !== undefined && item.workspaceId !== selected) selectWorkspace(item.workspaceId)
+                  if (item.sessionId !== undefined) focusSession(item.sessionId)
+                }}
                 t={t}
               />
             </div>
@@ -1466,9 +1456,6 @@ export function ProjectConsolePage({
             </aside>
           )}
       </div>
-      {messagesOpen
-        ? <MessageCenter {...messageCenter} sessionId={railSessionId} t={t} onClose={() => { setMessagesOpen(false) }} />
-        : null}
       {workspacesOpen
         ? (
           <WorkspaceView

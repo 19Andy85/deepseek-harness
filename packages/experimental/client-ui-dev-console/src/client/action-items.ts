@@ -1,7 +1,7 @@
 /** Unified action items across Session attention and durable work queues. */
 import type { AttentionItem } from './attention.ts'
 import type { GlobalInboxGroup } from './global-inbox.ts'
-import type { InboxItemView } from './MessageCenter.tsx'
+import type { InboxItemView } from './message-types.ts'
 
 /** Source that produced one action item. */
 export type ActionSource = 'session' | 'message' | 'plan'
