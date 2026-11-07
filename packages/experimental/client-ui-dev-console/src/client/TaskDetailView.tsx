@@ -14,6 +14,9 @@ const BRIEF_STATUS_KEYS: Record<BriefView['status'], ProjectConsoleKey> = {
 const PLAN_STATUS_KEYS: Record<PlanView['status'], ProjectConsoleKey> = {
   draft: 'planDraft', approved: 'planApproved', superseded: 'planSuperseded', completed: 'planCompleted',
 }
+const MESSAGE_STATUS_KEYS: Record<string, ProjectConsoleKey> = {
+  unread: 'messageUnread', acknowledged: 'messageAcknowledged', resolved: 'messageResolved', stale: 'messageStale',
+}
 const MESSAGE_KIND_KEYS: Record<MessageView['kind'], ProjectConsoleKey> = {
   note: 'kindNote', request: 'kindRequest', decision: 'kindDecision', handoff: 'kindHandoff', report: 'kindReport',
 }
@@ -218,7 +221,7 @@ export function TaskDetailView(props: TaskDetailViewProps) {
                       <article key={message.id} className={css.message}>
                         <strong>{message.subject}</strong>
                         <p>{message.body}</p>
-                        <span className={css.meta}>{t(MESSAGE_KIND_KEYS[message.kind])} · {message.status}</span>
+                        <span className={css.meta}>{t(MESSAGE_KIND_KEYS[message.kind])} · {t(MESSAGE_STATUS_KEYS[message.status] ?? 'messageUnread')}</span>
                       </article>
                     ))}
                   </div>

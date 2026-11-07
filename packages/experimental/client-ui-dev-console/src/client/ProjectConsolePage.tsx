@@ -534,9 +534,10 @@ export function ProjectConsolePage({
 
   const approvePlanAndDeliver = async (planId: string): Promise<import('./message-types.ts').PlanView> => {
     const plan = await messageCenter.approvePlan(planId)
-    if (railSessionId !== undefined) {
+    const targetSessionId = plan.sourceSessionRef?.sessionId ?? railSessionId
+    if (targetSessionId !== undefined) {
       await messageCenter.deliverDirective({
-        sessionId: railSessionId,
+        sessionId: targetSessionId,
         type: 'plan.approved',
         briefId: plan.briefId,
         planId: plan.id,

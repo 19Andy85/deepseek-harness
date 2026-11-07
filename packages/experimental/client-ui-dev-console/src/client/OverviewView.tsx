@@ -67,7 +67,7 @@ export function OverviewView(props: OverviewViewProps) {
               {actionItems.slice(0, 5).map(item => (
                 <button key={item.id} type="button" className={css.rowItem} onClick={() => { onOpenAction(item) }}>
                   <span className={css.rowTitle}>{item.title}</span>
-                  <span className={css.rowMeta}>{item.detail}</span>
+                  <span className={css.rowMeta}>{item.detailKind === 'approval' || item.detailKind === 'question' || item.detailKind === 'plan-review' ? t('needsYou') : item.detailKind === 'completed' ? t('completedUnread') : item.detailKind === 'failed' ? t('failed') : item.detail}</span>
                 </button>
               ))}
             </div>

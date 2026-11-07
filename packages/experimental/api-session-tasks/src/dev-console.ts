@@ -2,7 +2,7 @@
 import type { DevConsoleConfig, DevConsoleConfigProblem, DevConsoleWorkspaceConfig } from './dev-console-config.ts'
 import type {
   DevConsoleBrief, DevConsoleBriefStatus, DevConsoleMessage, DevConsoleMessageKind, DevConsoleMessagePayload,
-  DevConsolePlan, DevConsolePlanStep, DevConsoleRole, DevConsoleDirective,
+  DevConsolePlan, DevConsolePlanStep, DevConsoleRole, DevConsoleDirective, DevConsoleSourceSessionRef,
 } from './dev-console-bus.ts'
 import type { WorkspaceInspection } from './dev-console-workspace.ts'
 
@@ -354,6 +354,7 @@ export interface DevConsoleCreateBriefRequest {
   readonly goal: string
   readonly acceptance: string
   readonly authorRole: DevConsoleRole
+  readonly sourceSessionRef?: DevConsoleSourceSessionRef | undefined
 }
 
 /** Transition one Brief. */

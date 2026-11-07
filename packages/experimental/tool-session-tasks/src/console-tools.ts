@@ -9,7 +9,8 @@ const TEXT_OUTPUT = {
 }
 
 const PROMPT = 'Use console_plan_propose to turn the current task into a durable task and draft plan. '
-  + 'The write is scoped to the workspace that contains the calling Session cwd; never invent a workspace id.'
+  + 'Use console_plan_update_step to record step progress, console_report to report back, and console_handoff for review. '
+  + 'These writes are scoped to the calling Session; never invent a workspace id.'
 
 /**
  * Register the plan proposal tool.
@@ -68,6 +69,75 @@ export function registerConsoleTools(ctx: Context): void {
         steps,
       })
       return JSON.stringify({ briefId: result.brief.id, planId: result.plan.id, version: result.plan.version })
+    },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'console_plan_update_step',
+    description: 'Record the status or evidence of one dev-console plan step.',
+    parameters: {
+      plan_id: { type: 'string', description: 'Plan id returned by console_plan_propose.' },
+      step_id: { type: 'string', description: 'Step id from the plan.' },
+      status: { type: 'string', enum: ['todo', 'in_progress', 'blocked', 'done', 'skipped'], description: 'New step status.' },
+      evidence: { type: 'string', description: 'Optional evidence text for this update.' },
+    },
+    output: TEXT_OUTPUT,
+    isConcurrencySafe: () => false,
+    execute: async (args) => {
+      const input = args as { plan_id?: string; step_id?: string; status?: 'todo' | 'in_progress' | 'blocked' | 'done' | 'skipped'; evidence?: string }
+      if (input.plan_id === undefined || input.step_id === undefined || input.status === undefined) {
+        throw new Error('console_plan_update_step requires plan_id, step_id, and status')
+      }
+      const plan = await ctx.sessionTasks.devConsoleUpdatePlanStep({
+        planId: input.plan_id, stepId: input.step_id, status: input.status, role: 'implementer',
+        ...input.evidence === undefined ? {} : { evidence: input.evidence },
+      })
+      return JSON.stringify({ planId: plan.id, stepId: input.step_id, status: input.status })
+    },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'console_report',
+    description: 'Send a report from the current execution Agent to the maintainer.',
+    parameters: {
+      subject: { type: 'string', description: 'Report subject.' },
+      body: { type: 'string', description: 'Report body.' },
+    },
+    output: TEXT_OUTPUT,
+    isConcurrencySafe: () => false,
+    execute: async (args) => {
+      const input = args as { subject?: string; body?: string }
+      if (input.subject === undefined || input.body === undefined) throw new Error('console_report requires subject and body')
+      const message = await ctx.sessionTasks.devConsoleSendMessage({
+        fromRole: 'implementer', toRole: 'maintainer', kind: 'report', subject: input.subject, body: input.body,
+      })
+      return JSON.stringify({ messageId: message.id })
+    },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'console_handoff',
+    description: 'Submit a handoff for maintainer review.',
+    parameters: {
+      brief_id: { type: 'string', description: 'Task id this handoff belongs to.' },
+      branch: { type: 'string', description: 'Branch name.' },
+      commit: { type: 'string', description: 'Commit id.' },
+      summary: { type: 'string', description: 'What was delivered.' },
+      tests: { type: 'array', items: { type: 'string' }, description: 'Tests that passed.' },
+    },
+    output: TEXT_OUTPUT,
+    isConcurrencySafe: () => false,
+    execute: async (args) => {
+      const input = args as { brief_id?: string; branch?: string; commit?: string; summary?: string; tests?: readonly string[] }
+      if (input.brief_id === undefined || input.branch === undefined || input.commit === undefined
+        || input.summary === undefined || input.tests === undefined || input.tests.length === 0) {
+        throw new Error('console_handoff requires brief_id, branch, commit, summary, and tests')
+      }
+      const message = await ctx.sessionTasks.devConsoleHandoff({
+        briefId: input.brief_id, fromRole: 'implementer', toRole: 'maintainer',
+        branch: input.branch, commit: input.commit, summary: input.summary, tests: [...input.tests],
+      })
+      return JSON.stringify({ messageId: message.id })
     },
   }))
 }

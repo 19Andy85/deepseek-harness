@@ -37,6 +37,7 @@ export interface BriefView {
   readonly authorRole: Role
   readonly assigneeRole?: Role | undefined
   readonly updatedAt: number
+  readonly sourceSessionRef?: { readonly sessionId: string; readonly cwd?: string | undefined } | undefined
 }
 
 export interface InboxItemView {
@@ -69,6 +70,7 @@ export interface PlanView {
   readonly parentPlanId?: string | undefined
   readonly changeReason?: string | undefined
   readonly approvedAt?: number | undefined
+  readonly sourceSessionRef?: { readonly sessionId: string; readonly cwd?: string | undefined } | undefined
 }
 
 export interface MessageCenterInjected {

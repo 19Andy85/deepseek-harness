@@ -34,6 +34,12 @@ export interface DevConsolePlanStep {
   readonly sessionRefs: readonly { readonly sessionId: string; readonly seq: number }[]
 }
 
+/** Session that originated a task or plan proposal. */
+export interface DevConsoleSourceSessionRef {
+  readonly sessionId: string
+  readonly cwd?: string | undefined
+}
+
 /** A versioned plan for a Brief, or a local plan for one parent plan/step. */
 export interface DevConsolePlan {
   readonly id: string
@@ -44,6 +50,7 @@ export interface DevConsolePlan {
   readonly status: DevConsolePlanStatus
   readonly steps: readonly DevConsolePlanStep[]
   readonly parentPlanId?: string | undefined
+  readonly sourceSessionRef?: DevConsoleSourceSessionRef | undefined
   readonly changeReason?: string | undefined
   readonly createdBy: DevConsoleRole
   readonly approvedBy?: DevConsoleRole | undefined
@@ -107,6 +114,7 @@ export interface DevConsoleBrief {
   readonly authorRole: DevConsoleRole
   readonly assigneeRole?: DevConsoleRole | undefined
   readonly assignment?: DevConsoleAssignment | undefined
+  readonly sourceSessionRef?: DevConsoleSourceSessionRef | undefined
   readonly createdAt: number
   readonly updatedAt: number
   readonly history: readonly {
@@ -188,6 +196,8 @@ const messageSchema: z.ZodType<DevConsoleMessage> = z.object({
   payload: payloadSchema.optional(),
 }).strict()
 
+const sourceSessionSchema = z.object({ sessionId: z.string().min(1), cwd: z.string().optional() }).strict()
+
 const briefSchema: z.ZodType<DevConsoleBrief> = z.object({
   id: z.string().min(1),
   workspaceId: z.string().min(1),
@@ -198,6 +208,7 @@ const briefSchema: z.ZodType<DevConsoleBrief> = z.object({
   authorRole: roleSchema,
   assigneeRole: roleSchema.optional(),
   assignment: assignmentSchema.optional(),
+  sourceSessionRef: sourceSessionSchema.optional(),
   createdAt: z.number().nonnegative(),
   updatedAt: z.number().nonnegative(),
   history: z.array(z.object({
@@ -228,6 +239,7 @@ const planSchema: z.ZodType<DevConsolePlan> = z.object({
   status: z.enum(['draft', 'approved', 'superseded', 'completed']),
   steps: z.array(planStepSchema),
   parentPlanId: z.string().optional(),
+  sourceSessionRef: sourceSessionSchema.optional(),
   changeReason: z.string().optional(),
   createdBy: roleSchema,
   approvedBy: roleSchema.optional(),

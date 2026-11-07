@@ -20,6 +20,8 @@ export interface ActionItem {
   readonly title: string
   /** Short reason or scope. */
   readonly detail: string
+  /** Machine reason used to choose a localized label. */
+  readonly detailKind?: 'approval' | 'question' | 'plan-review' | 'completed' | 'failed' | 'message' | undefined
   /** Message identity, when the item came from the durable inbox. */
   readonly messageId?: string | undefined
   /** Plan identity, when the item is a plan decision. */
@@ -46,6 +48,7 @@ export function buildSessionActionItems(
       sessionId: item.sessionId,
       title: item.row.title ?? item.sessionId,
       detail: item.pending === undefined ? 'failed' : item.pending.kind,
+      detailKind: item.pending === undefined ? 'failed' : item.pending.kind === 'approval' ? 'approval' : item.pending.kind === 'plan-review' ? 'plan-review' : 'question',
     })
   }
   for (const group of groups) {
@@ -59,6 +62,7 @@ export function buildSessionActionItems(
         sessionId: item.sessionId,
         title: group.title,
         detail: item.kind,
+        detailKind: item.kind === 'completed' ? 'completed' : item.kind === 'plan-review' ? 'plan-review' : item.kind === 'approval' ? 'approval' : 'question',
       })
     }
   }
@@ -76,6 +80,7 @@ export function buildWorkActionItems(inbox: readonly InboxItemView[]): ActionIte
     source: item.kind === 'plan' ? 'plan' : 'message',
     title: item.title,
     detail: item.detail,
+    detailKind: 'message',
     messageId: item.kind === 'message' ? item.id : undefined,
     planId: item.kind === 'plan' ? item.planId : undefined,
   }))

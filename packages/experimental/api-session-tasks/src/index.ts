@@ -632,6 +632,7 @@ export class SessionTasksController extends TypertRemoteService {
     if (workspaceId === undefined) throw new RemoteError('gateway/bad-request', 'Agent cwd does not match a configured workspace', {})
     const brief = await this.devConsoleCreateBrief({
       workspaceId, title: request.title, goal: request.goal, acceptance: request.acceptance, authorRole: 'implementer',
+      sourceSessionRef: { sessionId: request.sessionId, ...request.cwd === undefined ? {} : { cwd: request.cwd } },
     })
     const plan = await this.devConsoleCreatePlan({
       briefId: brief.id, title: request.title, steps: request.steps, role: 'implementer',
@@ -667,6 +668,7 @@ export class SessionTasksController extends TypertRemoteService {
         dependsOn: [], evidence: [], sessionRefs: [],
       })),
       ...request.parentPlanId === undefined ? {} : { parentPlanId: request.parentPlanId },
+      ...brief.sourceSessionRef === undefined ? {} : { sourceSessionRef: brief.sourceSessionRef },
       createdBy: request.role, createdAt: now, updatedAt: now,
     }
     await this.writeBus({ ...state, plans: [plan, ...state.plans].slice(0, 100) })
@@ -802,6 +804,7 @@ export class SessionTasksController extends TypertRemoteService {
       acceptance: request.acceptance,
       status: 'draft',
       authorRole: request.authorRole,
+      ...request.sourceSessionRef === undefined ? {} : { sourceSessionRef: request.sourceSessionRef },
       createdAt: now,
       updatedAt: now,
       history: [],
