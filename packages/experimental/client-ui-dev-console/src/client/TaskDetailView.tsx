@@ -135,7 +135,7 @@ export function TaskDetailView(props: TaskDetailViewProps) {
               <div className={css.tabs}>
                 <button type="button" className={tab === 'task' ? css.tabActive : css.tab} onClick={() => { setTab('task') }}>{t('todoTab')}</button>
                 <button type="button" className={tab === 'plan' ? css.tabActive : css.tab} onClick={() => { setTab('plan') }}>{t('plansTitle')}</button>
-                <button type="button" className={tab === 'messages' ? css.tabActive : css.tab} onClick={() => { setTab('messages') }}>{t('messagesTitle')}</button>
+                <button type="button" className={tab === 'messages' ? css.tabActive : css.tab} onClick={() => { setTab('messages') }}>{t('messageTab')}</button>
               </div>
               {tab === 'task'
                 ? (
