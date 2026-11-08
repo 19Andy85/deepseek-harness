@@ -55,7 +55,7 @@ function readVisitMemory(workspaceId: string): VisitMemory | undefined {
 export const PANEL_ID = 'project-console' as MainPanelId
 
 /** Client capabilities the page contributes through. */
-export const inject = ['slots', 'locale', 'remote', 'remote.session', 'remote.account', 'workspaces', 'layout', 'uiWorkspace', 'uiSession', 'uiConversation', 'sidebarRight', 'sidebarRightTabs']
+export const inject = ['slots', 'locale', 'remote', 'remote.session', 'remote.account', 'workspaces', 'layout', 'uiWorkspace', 'uiSession', 'sidebarRight', 'sidebarRightTabs']
 
 /**
  * Mount the overview Remote, then contribute the console entry, the page it
@@ -90,12 +90,20 @@ function registerUi(ctx: Context): void {
   })
   setProposalLister(async (sessionId) => {
     const result = await ctx.remote.sessionTasks.devConsolePendingProposals({ sessionId })
-    return result.ok
-      ? result.value.proposals.map(item => ({
+    if (result.ok && result.value.proposals.length > 0) {
+      return result.value.proposals.map(item => ({
         messageId: item.messageId, title: item.proposal.title, goal: item.proposal.goal, acceptance: item.proposal.acceptance,
         steps: item.proposal.steps,
       }))
-      : []
+    }
+    const inbox = await ctx.remote.sessionTasks.devConsoleMessages({ box: 'inbox', role: 'maintainer' })
+    if (!inbox.ok) return []
+    return inbox.value.messages.flatMap((message) => {
+      const proposal = message.payload?.proposal
+      return proposal !== undefined && proposal.status === 'pending' && proposal.sourceSessionRef?.sessionId === sessionId
+        ? [{ messageId: message.id, title: proposal.title, goal: proposal.goal, acceptance: proposal.acceptance, steps: proposal.steps }]
+        : []
+    })
   })
   const store = new ProjectConsoleStore({
     listWorkspaces: () => ctx.workspaces.list.getSnapshot().items.map(workspace => ({
@@ -430,14 +438,18 @@ function registerUi(ctx: Context): void {
     id: 'project-console-restart',
     locale: NS,
   }, RestartAppButton)), 'project-console: restart app')
-  ctx.effect(() => ctx.slots.inject('tool.call.toolview', () => ctx.slots.register(
-    { name: 'tool.call.toolview', key: 'console_task_suggest', locale: NS },
-    TaskProposalCard,
-  )), 'project-console: proposal card')
-  ctx.effect(() => ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register(
-    { name: 'conversation.composer.dock', id: 'project-console-proposals', order: 40, locale: NS },
-    ProposalDock,
-  )), 'project-console: proposal dock')
+  try {
+    ctx.effect(() => ctx.slots.inject('tool.call.toolview', () => ctx.slots.register(
+      { name: 'tool.call.toolview', key: 'console_task_suggest', locale: NS },
+      TaskProposalCard,
+    )), 'project-console: proposal card')
+    ctx.effect(() => ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register(
+      { name: 'conversation.composer.dock', id: 'project-console-proposals', order: 40, locale: NS },
+      ProposalDock,
+    )), 'project-console: proposal dock')
+  } catch (error) {
+    console.warn('[project-console] proposal surfaces unavailable:', error)
+  }
   ctx.effect(() => ctx.slots.inject('sidebar.workspaces.workspace.menu.item', () => ctx.slots.register({
     name: 'sidebar.workspaces.workspace.menu.item',
     id: 'project-console',

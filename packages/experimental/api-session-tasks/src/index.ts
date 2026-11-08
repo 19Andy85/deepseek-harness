@@ -167,7 +167,9 @@ export class SessionTasksController extends TypertRemoteService {
         void bus.close()
       }
     })
-    if (this.ctx.get('storageDomain') !== undefined) await seenBinding
+    if (this.ctx.get('storageDomain') !== undefined) {
+      try { await seenBinding } catch (error) { console.warn('[session-tasks] storage domains unavailable:', error) }
+    }
     const binding = this.ctx.inject(['sessionProjections'], async (projectionCtx) => {
       const registration = await projectionCtx.sessionProjections.register(sessionTaskOutcomeProjection) as
         | { readonly dispose: () => void }
@@ -177,7 +179,9 @@ export class SessionTasksController extends TypertRemoteService {
         else registration.dispose()
       }
     })
-    if (this.ctx.get('sessionProjections') !== undefined) await binding
+    if (this.ctx.get('sessionProjections') !== undefined) {
+      try { await binding } catch (error) { console.warn('[session-tasks] outcome projection unavailable:', error) }
+    }
   }
 
   /**
