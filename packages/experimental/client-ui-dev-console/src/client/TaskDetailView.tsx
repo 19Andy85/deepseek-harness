@@ -81,7 +81,8 @@ export function TaskDetailView(props: TaskDetailViewProps) {
     void messages('maintainer', 'inbox').then(setMessageRows).catch(() => { setError(t('actionFailed')) })
   }, [briefs, plans, messages, refreshKey, sessionId, t])
 
-  const visibleBriefs = sessionId === undefined ? briefRows : briefRows.filter(brief => brief.sourceSessionRef?.sessionId === sessionId)
+  const visibleBriefs = (sessionId === undefined ? briefRows : briefRows.filter(brief => brief.sourceSessionRef?.sessionId === sessionId))
+    .filter(brief => brief.status !== 'closed')
   const visibleActions = sessionId === undefined ? actionItems : actionItems.filter(item => item.sessionId === sessionId)
   const selected = visibleBriefs.find(brief => brief.id === selectedId)
   const selectedPlans = planRows.filter(plan => plan.briefId === selectedId)
