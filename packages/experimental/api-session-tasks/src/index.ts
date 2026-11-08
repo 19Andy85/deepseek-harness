@@ -167,8 +167,13 @@ export class SessionTasksController extends TypertRemoteService {
     })
     if (this.ctx.get('storageDomain') !== undefined) await seenBinding
     const binding = this.ctx.inject(['sessionProjections'], async (projectionCtx) => {
-      const handle = await projectionCtx.sessionProjections.register(sessionTaskOutcomeProjection)
-      return () => { void handle.dispose() }
+      const registration = await projectionCtx.sessionProjections.register(sessionTaskOutcomeProjection) as
+        | { readonly dispose: () => void }
+        | (() => void)
+      return () => {
+        if (typeof registration === 'function') registration()
+        else registration.dispose()
+      }
     })
     if (this.ctx.get('sessionProjections') !== undefined) await binding
   }
