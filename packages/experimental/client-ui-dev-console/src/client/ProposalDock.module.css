@@ -1,0 +1,10 @@
+.dock { display: flex; flex-direction: column; gap: 6px; margin: 0 auto 6px; width: min(100%, 760px); }
+.card { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--dsw-alias-line-secondary, #ddd); border-radius: 10px; background: var(--dsw-alias-bg-elevated, #fff); }
+.heading { color: var(--dsw-alias-label-tertiary, #888); font-size: 12px; }
+.title { color: var(--dsw-alias-label-primary, #111); font-size: 14px; font-weight: 500; }
+.goal { color: var(--dsw-alias-label-secondary, #555); font-size: 12px; }
+.actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.form { display: flex; flex-direction: column; gap: 5px; }
+.form input, .form textarea { padding: 6px 8px; border: 1px solid var(--dsw-alias-line-secondary, #ddd); border-radius: 6px; background: transparent; color: var(--dsw-alias-label-primary, #111); font: inherit; font-size: 13px; }
+.form textarea { min-height: 48px; resize: vertical; }
+.error { margin: 0; color: var(--dsw-alias-label-error, #b00); font-size: 12px; }

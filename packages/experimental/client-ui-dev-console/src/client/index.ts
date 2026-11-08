@@ -26,7 +26,8 @@ import { ConsoleMainPage, ConsoleRailPage, type RailInjected } from './ConsoleSu
 import { SessionRailMenuItem, type SessionRailMenuInjected } from './SessionRailMenuItem.tsx'
 import { rememberRailSessionTitle } from './rail-session-title.ts'
 import { TaskProposalCard } from './TaskProposalCard.tsx'
-import { setProposalDecider } from './proposal-card-actions.ts'
+import { setProposalDecider, setProposalLister } from './proposal-card-actions.ts'
+import { ProposalDock } from './ProposalDock.tsx'
 import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
 import { BalanceBadge, type BalanceWallet } from './BalanceBadge.tsx'
 import { RestartAppButton } from './RestartAppButton.tsx'
@@ -54,7 +55,7 @@ function readVisitMemory(workspaceId: string): VisitMemory | undefined {
 export const PANEL_ID = 'project-console' as MainPanelId
 
 /** Client capabilities the page contributes through. */
-export const inject = ['slots', 'locale', 'remote', 'remote.session', 'remote.account', 'workspaces', 'layout', 'uiWorkspace', 'uiSession', 'sidebarRight', 'sidebarRightTabs']
+export const inject = ['slots', 'locale', 'remote', 'remote.session', 'remote.account', 'workspaces', 'layout', 'uiWorkspace', 'uiSession', 'uiConversation', 'sidebarRight', 'sidebarRightTabs']
 
 /**
  * Mount the overview Remote, then contribute the console entry, the page it
@@ -85,6 +86,14 @@ function registerUi(ctx: Context): void {
     })
     if (!result.ok) throw new Error(result.error.message)
     return { status: result.value.status }
+  })
+  setProposalLister(async (sessionId) => {
+    const result = await ctx.remote.sessionTasks.devConsolePendingProposals({ sessionId })
+    return result.ok
+      ? result.value.proposals.map(item => ({
+        messageId: item.messageId, title: item.proposal.title, goal: item.proposal.goal, acceptance: item.proposal.acceptance,
+      }))
+      : []
   })
   const store = new ProjectConsoleStore({
     listWorkspaces: () => ctx.workspaces.list.getSnapshot().items.map(workspace => ({
@@ -423,6 +432,10 @@ function registerUi(ctx: Context): void {
     { name: 'tool.call.toolview', key: 'console_task_suggest', locale: NS },
     TaskProposalCard,
   )), 'project-console: proposal card')
+  ctx.effect(() => ctx.slots.inject('conversation.input.dock', () => ctx.slots.register(
+    { name: 'conversation.input.dock', id: 'project-console-proposals', order: 40, locale: NS },
+    ProposalDock,
+  )), 'project-console: proposal dock')
   ctx.effect(() => ctx.slots.inject('sidebar.workspaces.workspace.menu.item', () => ctx.slots.register({
     name: 'sidebar.workspaces.workspace.menu.item',
     id: 'project-console',

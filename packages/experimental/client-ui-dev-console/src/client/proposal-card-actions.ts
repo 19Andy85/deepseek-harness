@@ -13,7 +13,30 @@ export interface ProposalDecisionResult {
 
 type Decider = (input: ProposalDecisionInput) => Promise<ProposalDecisionResult>
 
+export interface PendingProposalRow {
+  readonly messageId: string
+  readonly title: string
+  readonly goal: string
+  readonly acceptance: string
+}
+
+type Lister = (sessionId: string) => Promise<readonly PendingProposalRow[]>
+
 let decider: Decider | undefined
+let lister: Lister | undefined
+
+/** @param next - pending-proposal reader installed by the client plugin. */
+export function setProposalLister(next: Lister | undefined): void { lister = next }
+
+/**
+ * Read pending proposals for one Session.
+ * @param sessionId - source Session.
+ * @returns pending proposal rows.
+ */
+export async function loadPendingProposals(sessionId: string): Promise<readonly PendingProposalRow[]> {
+  if (lister === undefined) return []
+  return lister(sessionId)
+}
 
 /** @param next - console Remote decider installed by the client plugin. */
 export function setProposalDecider(next: Decider | undefined): void {

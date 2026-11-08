@@ -45,7 +45,8 @@ import type {
   DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleAutoConfigRequest, DevConsoleAutoConfigValue,
   DevConsoleSummary, DevConsoleSummaryRequest,
   DevConsoleAgentProposalRequest, DevConsoleAgentProposalValue, DevConsoleApprovePlanRequest, DevConsoleBindRequest,
-  DevConsoleDecideProposalRequest, DevConsoleDecideProposalValue, DevConsoleSuggestTaskRequest, DevConsoleSuggestTaskValue,
+  DevConsoleDecideProposalRequest, DevConsoleDecideProposalValue, DevConsolePendingProposalsRequest, DevConsolePendingProposalsValue,
+  DevConsoleSuggestTaskRequest, DevConsoleSuggestTaskValue,
   DevConsoleBriefsRequest, DevConsoleBriefsValue, DevConsoleConfigValue,
   DevConsoleProjectsValue,
   DevConsoleDirectiveRequest, DevConsoleDirectiveValue, DevConsoleSessionContextRequest, DevConsoleSessionContextValue,
@@ -656,6 +657,22 @@ export class SessionTasksController extends TypertRemoteService {
     })
     await this.writeBus({ ...this.busState(), messages: [message, ...this.busState().messages].slice(0, 200) })
     return { messageId: message.id, proposal }
+  }
+
+  /**
+   * List pending task proposals for one execution Session.
+   * @param request - source Session scoping the proposals.
+   * @returns pending proposals in reverse creation order.
+   */
+  @Remote('devConsolePendingProposals')
+  async devConsolePendingProposals(request: DevConsolePendingProposalsRequest): Promise<DevConsolePendingProposalsValue> {
+    const proposals = this.busState().messages.flatMap((message) => {
+      const proposal = message.payload?.proposal
+      return proposal !== undefined && proposal.status === 'pending' && proposal.sourceSessionRef?.sessionId === request.sessionId
+        ? [{ messageId: message.id, proposal }]
+        : []
+    })
+    return { proposals }
   }
 
   /**

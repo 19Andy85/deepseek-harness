@@ -332,6 +332,22 @@ export interface DevConsoleSuggestTaskValue {
   readonly proposal: import('./dev-console-bus.ts').DevConsoleTaskProposal
 }
 
+/** Pending proposals of one execution Session. */
+export interface DevConsolePendingProposalsRequest {
+  readonly sessionId: string
+}
+
+/** One pending proposal plus its message identity. */
+export interface DevConsolePendingProposal {
+  readonly messageId: string
+  readonly proposal: import('./dev-console-bus.ts').DevConsoleTaskProposal
+}
+
+/** Pending proposals for the dock and rail surfaces. */
+export interface DevConsolePendingProposalsValue {
+  readonly proposals: readonly DevConsolePendingProposal[]
+}
+
 /** Maintainer decision on a task proposal. */
 export interface DevConsoleDecideProposalRequest {
   readonly messageId: string
