@@ -1123,3 +1123,6 @@
 .workNav { border-right: 1px solid var(--pc-color-line); padding-right: var(--pc-gap-2); }
 .collabNav { padding-left: 0; }
 .railBack { align-self: flex-start; width: auto; }
+.railContext { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; color: var(--pc-color-text-2); font-size: var(--pc-text-meta); }
+.railContextLabel { color: var(--pc-color-text-3); }
+.railRunning { color: var(--pc-color-success); }

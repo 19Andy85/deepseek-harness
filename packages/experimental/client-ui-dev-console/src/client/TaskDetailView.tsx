@@ -42,6 +42,8 @@ export interface TaskDetailViewProps extends TaskDetailInjected {
   readonly sessionId?: string | undefined
   readonly sessionRunning?: boolean | undefined
   readonly refreshKey?: number | undefined
+  readonly onPropose?: (() => Promise<boolean>) | undefined
+  readonly sessionLive?: boolean | undefined
 }
 
 /**
@@ -52,7 +54,8 @@ export interface TaskDetailViewProps extends TaskDetailInjected {
 export function TaskDetailView(props: TaskDetailViewProps) {
   const {
     briefs, plans, messages, approvePlan, sendMessage, messageAction, transitionBrief,
-    actionItems = [], onOpenAction, compact = false, onBack, sessionId, sessionRunning = false, refreshKey, t,
+    actionItems = [], onOpenAction, compact = false, onBack, sessionId, sessionRunning = false,
+    sessionLive = true, refreshKey, onPropose, t,
   } = props
   const [briefRows, setBriefRows] = useState<readonly BriefView[]>([])
   const [planRows, setPlanRows] = useState<readonly PlanView[]>([])
@@ -63,6 +66,7 @@ export function TaskDetailView(props: TaskDetailViewProps) {
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
   const [versionId, setVersionId] = useState<string | undefined>(undefined)
+  const [proposing, setProposing] = useState(false)
 
   useEffect(() => {
     void briefs().then((rows) => {
@@ -114,6 +118,12 @@ export function TaskDetailView(props: TaskDetailViewProps) {
           </div>
           <h2>{sessionId === undefined ? t('emptyTasksTitle') : t('sessionTaskEmptyTitle')}</h2>
           <p>{sessionId === undefined ? t('emptyTasksHint') : sessionRunning ? t('sessionTaskEmptyRunningHint') : t('sessionTaskEmptyHint')}</p>
+          {onPropose === undefined || !sessionLive ? <p className={css.meta}>{t('sessionStoppedHint')}</p> : (
+            <button type="button" className={css.button} disabled={proposing} onClick={() => {
+              setProposing(true)
+              void onPropose().then((ok) => { if (!ok) setError(t('proposeTaskFailed')) }).finally(() => { setProposing(false) })
+            }}>{proposing ? t('proposeTaskSending') : t('proposeTask')}</button>
+          )}
         </div>
       </div>
     )

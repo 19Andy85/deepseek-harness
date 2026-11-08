@@ -556,6 +556,15 @@ export function ProjectConsolePage({
       <header className={css.head}>
         <h1 className={css.title}>{t('title')}</h1>
         <p className={css.subtitle}>{view === 'workspaces' ? t('workspacesHint') : view === 'overview' ? t('overviewHint') : view === 'task' ? t('taskHint') : t('description')}</p>
+        {surface !== 'main' && railSessionId !== undefined
+          ? (
+            <div className={css.railContext}>
+              <span className={css.railContextLabel}>{t('currentSession')}</span>
+              <span>{state.sessions.find(row => row.sessionId === railSessionId)?.title ?? rows.find(row => row.sessionId === railSessionId)?.title ?? t('untitled')}</span>
+              {statusFacts.get(railSessionId)?.running === true ? <span className={css.railRunning}>{t('running')}</span> : null}
+            </div>
+          )
+          : null}
         {surface !== 'main' && view === 'task'
           ? <button type="button" className={`${css.select} ${css.railBack}`} onClick={() => { setView('studio'); writeViewPreference('studio') }}>{t('back')}</button>
           : null}
@@ -849,7 +858,11 @@ export function ProjectConsolePage({
                 compact={surface !== 'main'}
                 sessionId={surface === 'rail' ? railSessionId : undefined}
                 sessionRunning={railSessionId === undefined ? false : statusFacts.get(railSessionId)?.running === true}
+                sessionLive={railSessionId === undefined ? false : statusFacts.get(railSessionId)?.running !== undefined}
                 refreshKey={surface === 'rail' ? state.updatedAt : undefined}
+                onPropose={surface === 'rail' && railSessionId !== undefined
+                  ? () => sendToSession(railSessionId, t('proposeTaskPrompt'), 'queue')
+                  : undefined}
                 onBack={() => { setView(surface === 'main' ? 'overview' : 'studio'); writeViewPreference(surface === 'main' ? 'overview' : 'studio') }}
                 actionItems={actionItems}
                 onOpenAction={(item: ActionItem) => {
