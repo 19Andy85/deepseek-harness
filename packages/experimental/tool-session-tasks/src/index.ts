@@ -16,7 +16,7 @@ import { registerConsoleTools } from './console-tools.ts'
 export const name = 'tool-session-tasks'
 
 /** Capability services required by the model-facing consumer. */
-export const inject = ['tools', 'systemPrompt', 'agents', 'sessionTasks']
+export const inject = ['tools', 'systemPrompt', 'agents']
 
 /** Default visibility scope: the caller plus sessions created in the same working directory. */
 export const DEFAULT_VISIBLE_SCOPE: VisibleScope = 'same-cwd'
