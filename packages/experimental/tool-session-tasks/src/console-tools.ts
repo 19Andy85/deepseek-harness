@@ -8,9 +8,9 @@ const TEXT_OUTPUT = {
   render: (_args: unknown, value: string) => [{ type: 'text' as const, text: value }],
 }
 
-const PROMPT = 'Use console_plan_propose to turn the current task into a durable task and draft plan. '
-  + 'Use console_plan_update_step to record step progress, console_report to report back, and console_handoff for review. '
-  + 'Use console_task_transition to move an assigned task to review before handoff. '
+const PROMPT = 'Use these console tools only when the maintainer explicitly asks you to create or update a dev-console task, '
+  + 'or when a console directive asks for it. Do not create a console task as a side effect of ordinary work. '
+  + 'Use console_plan_update_step, console_report, console_handoff, and console_task_transition only for an existing task. '
   + 'These writes are scoped to the calling Session; never invent a workspace id.'
 
 /**
@@ -25,7 +25,7 @@ export function registerConsoleTools(ctx: Context): void {
   })
   ctx.tools.register(defineTool({
     name: 'console_plan_propose',
-    description: 'Create a dev-console task and its first draft plan from the current Session.',
+    description: 'Create a dev-console task and draft plan only on an explicit maintainer request or console directive.',
     parameters: {
       title: { type: 'string', description: 'Task title.' },
       goal: { type: 'string', description: 'Why the task exists.' },
@@ -69,7 +69,14 @@ export function registerConsoleTools(ctx: Context): void {
         acceptance: input.acceptance,
         steps,
       })
-      return JSON.stringify({ briefId: result.brief.id, planId: result.plan.id, version: result.plan.version })
+      return JSON.stringify({
+        briefId: result.brief.id,
+        planId: result.plan.id,
+        version: result.plan.version,
+        steps: result.plan.steps.map(step => ({
+          id: step.id, title: step.title, outcome: step.outcome, status: step.status,
+        })),
+      })
     },
   }))
 
