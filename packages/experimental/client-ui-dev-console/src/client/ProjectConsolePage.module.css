@@ -1126,3 +1126,5 @@
 .railContext { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; color: var(--pc-color-text-2); font-size: var(--pc-text-meta); }
 .railContextLabel { color: var(--pc-color-text-3); }
 .railRunning { color: var(--pc-color-success); }
+.autoToggle { display: inline-flex; align-items: center; gap: 4px; color: var(--pc-color-text-3); font-size: var(--pc-text-caption); }
+.autoToggle input { margin: 0; }

@@ -1,5 +1,6 @@
 /** Global console overview: attention, sessions, plans, and workspace portfolio. */
 import type { ActionItem } from './action-items.ts'
+import { WorkflowGuide } from './WorkflowGuide.tsx'
 import type { GlobalHealthCounts, WorkspaceRunningCount } from './global-inbox.ts'
 import type { ConsoleWorkspace } from './ProjectConsoleStore.ts'
 import type { ReactNode } from 'react'
@@ -58,6 +59,7 @@ export function OverviewView(props: OverviewViewProps) {
         <span className={css.metric}><b className={css.warn}>{globalPending}</b><span>{t('globalInbox')}</span></span>
         <button type="button" className={css.button} onClick={onRefresh}>{t('refresh')}</button>
       </div>
+      <WorkflowGuide t={t} />
 
       <div className={css.grid}>
         <section className={css.card}>

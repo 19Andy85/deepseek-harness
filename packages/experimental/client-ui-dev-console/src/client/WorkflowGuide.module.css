@@ -1,0 +1,9 @@
+.guide { border: 1px solid var(--pc-color-line); border-radius: var(--pc-radius-lg); background: var(--pc-color-surface); padding: 10px 12px; }
+.guide summary { cursor: pointer; color: var(--pc-color-text-2); font-size: var(--pc-text-meta); }
+.guide ol { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
+.guide li { display: flex; gap: 8px; align-items: flex-start; }
+.number { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 18px; height: 18px; border: 1px solid var(--pc-color-line); border-radius: 9px; color: var(--pc-color-text-3); font-size: var(--pc-text-caption); }
+.guide strong { display: block; color: var(--pc-color-text-2); font-size: var(--pc-text-meta); font-weight: 500; }
+.guide p { margin: 2px 0 0; color: var(--pc-color-text-3); font-size: var(--pc-text-caption); line-height: 1.45; }
+.compact { padding: 8px 10px; }
+.compact ol { gap: 6px; }

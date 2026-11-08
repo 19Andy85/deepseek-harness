@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import type { ProjectConsoleKey } from './locales.ts'
 import type { BriefView, MessageView, MessageCenterInjected, PlanView } from './message-types.ts'
 import type { ActionItem } from './action-items.ts'
+import { WorkflowGuide } from './WorkflowGuide.tsx'
 import css from './TaskDetailView.module.css'
 
 /** Data access needed by the task detail page. */
@@ -118,6 +119,7 @@ export function TaskDetailView(props: TaskDetailViewProps) {
           </div>
           <h2>{sessionId === undefined ? t('emptyTasksTitle') : t('sessionTaskEmptyTitle')}</h2>
           <p>{sessionId === undefined ? t('emptyTasksHint') : sessionRunning ? t('sessionTaskEmptyRunningHint') : t('sessionTaskEmptyHint')}</p>
+          <WorkflowGuide t={t} compact={compact} />
           {onPropose === undefined || !sessionLive ? <p className={css.meta}>{t('sessionStoppedHint')}</p> : (
             <button type="button" className={css.button} disabled={proposing} onClick={() => {
               setProposing(true)

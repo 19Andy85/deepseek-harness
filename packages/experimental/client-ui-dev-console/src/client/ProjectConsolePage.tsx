@@ -33,6 +33,7 @@ import { WorkspaceView, type WorkspaceOpenView, type WorkspaceSnapshotView } fro
 import { OverviewView } from './OverviewView.tsx'
 import { TaskDetailView } from './TaskDetailView.tsx'
 import { buildSessionActionItems, buildWorkActionItems, type ActionItem } from './action-items.ts'
+import { readAutoPropose, writeAutoPropose } from './auto-propose.ts'
 import { globalHealthCounts, globalRunningByWorkspace } from './global-inbox.ts'
 import type { MessageCenterInjected } from './message-types.ts'
 import { readViewPreference, writeViewPreference, type ConsoleView } from './view-preference.ts'
@@ -186,6 +187,7 @@ export function ProjectConsolePage({
   const [workActionItems, setWorkActionItems] = useState<readonly ActionItem[]>([])
   const [allSessions, setAllSessions] = useState<readonly SessionTaskView[]>([])
   const [actions, setActions] = useState<readonly ConsoleAction[]>([])
+  const [autoPropose, setAutoPropose] = useState(readAutoPropose)
   const channel = useRef<BroadcastChannel | undefined>(undefined)
   const workspaceRef = useRef<string | undefined>(undefined)
   const replyRef = useRef<string | null>(null)
@@ -317,6 +319,17 @@ export function ProjectConsolePage({
   const attention = attentionItems(rows, statusFacts, descriptorOf, failureOf)
   const health = healthCounts(rows, statusFacts, descriptorOf, failureOf)
   const actionItems = [...buildSessionActionItems(attention, inboxGroups), ...workActionItems]
+  const autoAttempted = useRef(new Set<string>())
+  useEffect(() => {
+    if (!autoPropose || surface !== 'rail' || railSessionId === undefined) return
+    if (statusFacts.get(railSessionId)?.running !== true) return
+    void messageCenter.briefs().then((briefs) => {
+      if (briefs.some(brief => brief.sourceSessionRef?.sessionId === railSessionId)) return
+      if (autoAttempted.current.has(railSessionId)) return
+      autoAttempted.current.add(railSessionId)
+      void sendToSession(railSessionId, t('proposeTaskPrompt'), 'queue')
+    }).catch(() => {})
+  }, [autoPropose, surface, railSessionId, statusFacts, messageCenter, sendToSession, t])
   const usageTotals = rows.reduce((sum, row) => sum + (row.usage?.totalTokens ?? 0), 0)
   const relations = relationHints(rows)
   const graphGroups = relationGroups(rows)
@@ -562,6 +575,10 @@ export function ProjectConsolePage({
               <span className={css.railContextLabel}>{t('currentSession')}</span>
               <span>{state.sessions.find(row => row.sessionId === railSessionId)?.title ?? rows.find(row => row.sessionId === railSessionId)?.title ?? t('untitled')}</span>
               {statusFacts.get(railSessionId)?.running === true ? <span className={css.railRunning}>{t('running')}</span> : null}
+              <label className={css.autoToggle} title={t('autoProposeHint')}>
+                <input type="checkbox" checked={autoPropose} onChange={(event) => { setAutoPropose(event.currentTarget.checked); writeAutoPropose(event.currentTarget.checked) }} />
+                {t('autoPropose')}
+              </label>
             </div>
           )
           : null}
