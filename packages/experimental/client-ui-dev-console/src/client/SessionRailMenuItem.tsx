@@ -7,7 +7,7 @@ import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
 /** Behavior the rail menu row injects. */
 export interface SessionRailMenuInjected {
   /** @param sessionId - the row's Session. */
-  readonly openRail: (sessionId: string) => void
+  readonly openRail: (sessionId: string, displayTitle: string) => void
 }
 
 /** Props of the rail menu row. */
@@ -21,14 +21,14 @@ export type SessionRailMenuItemProps = PropsRuntime<'sidebar.workspaces.session.
  * @returns the menu row.
  */
 export function SessionRailMenuItem(props: SessionRailMenuItemProps) {
-  const { sessionId, useMenuOpenState, openRail, t } = props
+  const { sessionId, displayTitle, useMenuOpenState, openRail, t } = props
   const [, setMenuOpen] = useMenuOpenState()
   return (
     <MenuItemButton
       icon={<ProjectConsolePanelIcon />}
       onSelect={() => {
         setMenuOpen(false)
-        openRail(sessionId)
+        openRail(sessionId, displayTitle)
       }}
     >
       {t('openInSidebar')}

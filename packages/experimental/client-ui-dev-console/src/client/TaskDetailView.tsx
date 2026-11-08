@@ -39,7 +39,6 @@ export interface TaskDetailViewProps extends TaskDetailInjected {
   readonly actionItems?: readonly ActionItem[] | undefined
   readonly onOpenAction?: ((item: ActionItem) => void) | undefined
   readonly compact?: boolean | undefined
-  readonly onBack?: (() => void) | undefined
   readonly sessionId?: string | undefined
   readonly sessionRunning?: boolean | undefined
   readonly refreshKey?: number | undefined
@@ -55,7 +54,7 @@ export interface TaskDetailViewProps extends TaskDetailInjected {
 export function TaskDetailView(props: TaskDetailViewProps) {
   const {
     briefs, plans, messages, approvePlan, sendMessage, messageAction, transitionBrief,
-    actionItems = [], onOpenAction, compact = false, onBack, sessionId, sessionRunning = false,
+    actionItems = [], onOpenAction, compact = false, sessionId, sessionRunning = false,
     sessionLive = true, refreshKey, onPropose, t,
   } = props
   const [briefRows, setBriefRows] = useState<readonly BriefView[]>([])
@@ -163,6 +162,15 @@ export function TaskDetailView(props: TaskDetailViewProps) {
       </aside>
 
       <section className={css.detail}>
+        {compact && visibleBriefs.length > 1
+          ? (
+            <select className={css.taskSelect} value={selectedId ?? ''} aria-label={t('todoTab')} onChange={(event) => { setSelectedId(event.currentTarget.value); setTab('task') }}>
+              {visibleBriefs.map(brief => (
+                <option key={brief.id} value={brief.id}>{brief.title} · {t(BRIEF_STATUS_KEYS[brief.status])}</option>
+              ))}
+            </select>
+          )
+          : null}
         {selected === undefined
           ? (
             <div className={css.emptyPage}>
@@ -184,7 +192,6 @@ export function TaskDetailView(props: TaskDetailViewProps) {
                   <p className={css.meta}>{selected.workspaceId} · {t(BRIEF_STATUS_KEYS[selected.status])}</p>
                 </div>
                 <div className={css.headActions}>
-                  {onBack === undefined ? null : <button type="button" className={css.button} onClick={onBack}>{t('back')}</button>}
                   {selected.sourceSessionRef === undefined ? null : (
                     <span className={css.meta}>{selected.sourceSessionRef.sessionId}</span>
                   )}

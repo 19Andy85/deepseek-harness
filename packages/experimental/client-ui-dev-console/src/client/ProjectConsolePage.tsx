@@ -34,6 +34,7 @@ import { OverviewView } from './OverviewView.tsx'
 import { TaskDetailView } from './TaskDetailView.tsx'
 import { buildSessionActionItems, buildWorkActionItems, type ActionItem } from './action-items.ts'
 import { readAutoPropose, writeAutoPropose } from './auto-propose.ts'
+import { readRailSessionTitle } from './rail-session-title.ts'
 import { globalHealthCounts, globalRunningByWorkspace } from './global-inbox.ts'
 import type { MessageCenterInjected } from './message-types.ts'
 import { readViewPreference, writeViewPreference, type ConsoleView } from './view-preference.ts'
@@ -574,7 +575,7 @@ export function ProjectConsolePage({
           ? (
             <div className={css.railContext}>
               <span className={css.railContextLabel}>{t('currentSession')}</span>
-              <span>{state.sessions.find(row => row.sessionId === railSessionId)?.title ?? rows.find(row => row.sessionId === railSessionId)?.title ?? t('untitled')}</span>
+              <span>{readRailSessionTitle(railSessionId) ?? state.sessions.find(row => row.sessionId === railSessionId)?.title ?? t('untitled')}</span>
               {statusFacts.get(railSessionId)?.running === true ? <span className={css.railRunning}>{t('running')}</span> : null}
               <label className={css.autoToggle} title={t('autoProposeHint')}>
                 <input type="checkbox" checked={autoPropose} onChange={(event) => { setAutoPropose(event.currentTarget.checked); writeAutoPropose(event.currentTarget.checked) }} />
@@ -881,7 +882,6 @@ export function ProjectConsolePage({
                 onPropose={surface === 'rail' && railSessionId !== undefined
                   ? () => sendToSession(railSessionId, t('proposeTaskPrompt'), 'queue')
                   : undefined}
-                onBack={() => { setView(surface === 'main' ? 'overview' : 'studio'); writeViewPreference(surface === 'main' ? 'overview' : 'studio') }}
                 actionItems={actionItems}
                 onOpenAction={(item: ActionItem) => {
                   if (item.source === 'message' || item.source === 'plan') return

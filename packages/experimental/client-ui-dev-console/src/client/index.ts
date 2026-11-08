@@ -24,6 +24,7 @@ import { ProjectConsoleMenuItem, type ProjectConsoleMenuInjected } from './Proje
 import { type ProjectConsoleInjected } from './ProjectConsolePage.tsx'
 import { ConsoleMainPage, ConsoleRailPage, type RailInjected } from './ConsoleSurface.tsx'
 import { SessionRailMenuItem, type SessionRailMenuInjected } from './SessionRailMenuItem.tsx'
+import { rememberRailSessionTitle } from './rail-session-title.ts'
 import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
 import { BalanceBadge, type BalanceWallet } from './BalanceBadge.tsx'
 import { RestartAppButton } from './RestartAppButton.tsx'
@@ -375,7 +376,8 @@ function registerUi(ctx: Context): void {
       order: 461,
       locale: NS,
       inject: (): SessionRailMenuInjected => ({
-        openRail: (sessionId) => {
+        openRail: (sessionId, displayTitle) => {
+          rememberRailSessionTitle(sessionId, displayTitle)
           const workspace = ctx.workspaces.list.getSnapshot().items
             .find(item => item.sessionIds.includes(brandString<SessionId>(sessionId)))
           if (workspace !== undefined) void store.selectWorkspace(String(workspace.workspaceId))
