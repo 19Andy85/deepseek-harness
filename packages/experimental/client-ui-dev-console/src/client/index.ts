@@ -27,7 +27,6 @@ import { SessionRailMenuItem, type SessionRailMenuInjected } from './SessionRail
 import { rememberRailSessionTitle } from './rail-session-title.ts'
 import { TaskProposalCard } from './TaskProposalCard.tsx'
 import { setProposalDecider, setProposalLister } from './proposal-card-actions.ts'
-import { ProposalDock } from './ProposalDock.tsx'
 import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
 import { BalanceBadge, type BalanceWallet } from './BalanceBadge.tsx'
 import { RestartAppButton } from './RestartAppButton.tsx'
@@ -443,10 +442,6 @@ function registerUi(ctx: Context): void {
       { name: 'tool.call.toolview', key: 'console_task_suggest', locale: NS },
       TaskProposalCard,
     )), 'project-console: proposal card')
-    ctx.effect(() => ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register(
-      { name: 'conversation.composer.dock', id: 'project-console-proposals', order: 40, locale: NS },
-      ProposalDock,
-    )), 'project-console: proposal dock')
   } catch (error) {
     console.warn('[project-console] proposal surfaces unavailable:', error)
   }

@@ -18,6 +18,13 @@ declare module '../contract/chat-nodes.ts' {
 
 const MAX_DEPTH = 256
 
+/** A settled tool result whose presentation asks to sit outside the Turn process. */
+function isInlineResult(block: ToolCallBlock): boolean {
+  if (!('kind' in block) || block.kind !== 'tool-result') return false
+  const meta = block.meta
+  return typeof meta === 'object' && meta !== null && (meta as Record<string, unknown>)['inline'] === true
+}
+
 interface ToolState {
   /** Absent until a named delta or `tool/call` identifies the call. */
   readonly root: ToolCallBlock | undefined
@@ -345,10 +352,12 @@ export const toolDefinition: ConversationNodeDefinition<ToolState> = {
     const preparing = !('kind' in projected) && projected.phase === 'preparing'
     const visibility = preparing && interruptedAt !== undefined ? 'hidden' : 'visible'
     const location = contextLocation(context)
+    const groupTree = isInlineResult(projected) ? 'turn' : undefined
     const data = current?.data.root === projected ? current.data : { root: projected } satisfies ToolChatData
     if (current?.data === data && current.anchorSeq === anchor
-      && current.visibility === visibility && current.location === location) return current
-    return chatNode(context, 'tool-call', anchor, data, { visibility, location })
+      && current.visibility === visibility && current.location === location
+      && current.groupTree === groupTree) return current
+    return chatNode(context, 'tool-call', anchor, data, { visibility, location, ...groupTree === undefined ? {} : { groupTree } })
   },
 }
 
