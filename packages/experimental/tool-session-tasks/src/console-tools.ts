@@ -82,6 +82,25 @@ export function registerConsoleTools(ctx: Context): void {
   }))
 
   ctx.tools.register(defineTool({
+    name: 'interactive_block',
+    description: 'Render one registered interactive block inline in the conversation.',
+    parameters: {
+      type: { type: 'string', description: 'Registered block type.' },
+      props: { type: 'object', additionalProperties: true, description: 'Block props.' },
+    },
+    output: {
+      schema: { type: 'string' },
+      render: (_args, value) => [{ type: 'text', text: value }],
+      presentationMeta: (_args, value) => {
+        const block = JSON.parse(value) as Record<string, unknown>
+        return { inline: true, block } as never
+      },
+    },
+    isConcurrencySafe: () => false,
+    execute: async args => JSON.stringify({ version: 1, type: args.type, props: args.props ?? {} }),
+  }))
+
+  ctx.tools.register(defineTool({
     name: 'console_plan_propose',
     description: 'Create a dev-console task and draft plan only on an explicit maintainer request or console directive.',
     parameters: {

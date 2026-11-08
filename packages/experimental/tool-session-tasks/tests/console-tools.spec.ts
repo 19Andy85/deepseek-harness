@@ -27,7 +27,7 @@ describe('registerConsoleTools', () => {
       },
     } as never)
     expect(tools.map(tool => tool.name)).toEqual([
-      'console_task_suggest', 'console_plan_propose', 'console_plan_update_step', 'console_report', 'console_handoff', 'console_task_transition',
+      'console_task_suggest', 'interactive_block', 'console_plan_propose', 'console_plan_update_step', 'console_report', 'console_handoff', 'console_task_transition',
     ])
     const propose = tools.find(tool => tool.name === 'console_plan_propose')
     if (propose === undefined) throw new Error('proposal tool was not registered')

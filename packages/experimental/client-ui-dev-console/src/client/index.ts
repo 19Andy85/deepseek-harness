@@ -28,6 +28,7 @@ import { rememberRailSessionTitle } from './rail-session-title.ts'
 import { TaskProposalCard } from './TaskProposalCard.tsx'
 import { setProposalDecider, setProposalLister } from './proposal-card-actions.ts'
 import { registerChoiceBlock } from './ChoiceBlock.tsx'
+import { InteractiveBlockView } from './InteractiveBlockView.tsx'
 import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
 import { BalanceBadge, type BalanceWallet } from './BalanceBadge.tsx'
 import { RestartAppButton } from './RestartAppButton.tsx'
@@ -444,6 +445,10 @@ function registerUi(ctx: Context): void {
       { name: 'tool.call.toolview', key: 'console_task_suggest', locale: NS },
       TaskProposalCard,
     )), 'project-console: proposal card')
+    ctx.effect(() => ctx.slots.inject('tool.call.toolview', () => ctx.slots.register(
+      { name: 'tool.call.toolview', key: 'interactive_block', locale: NS },
+      InteractiveBlockView,
+    )), 'project-console: generic block')
   } catch (error) {
     console.warn('[project-console] proposal surfaces unavailable:', error)
   }
