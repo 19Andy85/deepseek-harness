@@ -83,6 +83,7 @@ function registerUi(ctx: Context): void {
       ...input.title === undefined ? {} : { title: input.title },
       ...input.goal === undefined ? {} : { goal: input.goal },
       ...input.acceptance === undefined ? {} : { acceptance: input.acceptance },
+      ...input.steps === undefined ? {} : { steps: input.steps },
     })
     if (!result.ok) throw new Error(result.error.message)
     return { status: result.value.status }
@@ -92,6 +93,7 @@ function registerUi(ctx: Context): void {
     return result.ok
       ? result.value.proposals.map(item => ({
         messageId: item.messageId, title: item.proposal.title, goal: item.proposal.goal, acceptance: item.proposal.acceptance,
+        steps: item.proposal.steps,
       }))
       : []
   })
@@ -432,8 +434,8 @@ function registerUi(ctx: Context): void {
     { name: 'tool.call.toolview', key: 'console_task_suggest', locale: NS },
     TaskProposalCard,
   )), 'project-console: proposal card')
-  ctx.effect(() => ctx.slots.inject('conversation.input.dock', () => ctx.slots.register(
-    { name: 'conversation.input.dock', id: 'project-console-proposals', order: 40, locale: NS },
+  ctx.effect(() => ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register(
+    { name: 'conversation.composer.dock', id: 'project-console-proposals', order: 40, locale: NS },
     ProposalDock,
   )), 'project-console: proposal dock')
   ctx.effect(() => ctx.slots.inject('sidebar.workspaces.workspace.menu.item', () => ctx.slots.register({

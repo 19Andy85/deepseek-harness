@@ -356,6 +356,7 @@ export interface DevConsoleDecideProposalRequest {
   readonly title?: string | undefined
   readonly goal?: string | undefined
   readonly acceptance?: string | undefined
+  readonly steps?: readonly DevConsolePlanStepInput[] | undefined
 }
 
 /** Result of a proposal decision. */

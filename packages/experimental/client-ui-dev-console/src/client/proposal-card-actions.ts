@@ -5,6 +5,7 @@ export interface ProposalDecisionInput {
   readonly title?: string | undefined
   readonly goal?: string | undefined
   readonly acceptance?: string | undefined
+  readonly steps?: readonly { readonly title: string; readonly outcome: string }[] | undefined
 }
 
 export interface ProposalDecisionResult {
@@ -18,6 +19,7 @@ export interface PendingProposalRow {
   readonly title: string
   readonly goal: string
   readonly acceptance: string
+  readonly steps: readonly { readonly title: string; readonly outcome: string }[]
 }
 
 type Lister = (sessionId: string) => Promise<readonly PendingProposalRow[]>

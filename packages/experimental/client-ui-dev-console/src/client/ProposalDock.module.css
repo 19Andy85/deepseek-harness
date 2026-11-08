@@ -8,3 +8,4 @@
 .form input, .form textarea { padding: 6px 8px; border: 1px solid var(--dsw-alias-line-secondary, #ddd); border-radius: 6px; background: transparent; color: var(--dsw-alias-label-primary, #111); font: inherit; font-size: 13px; }
 .form textarea { min-height: 48px; resize: vertical; }
 .error { margin: 0; color: var(--dsw-alias-label-error, #b00); font-size: 12px; }
+.stepRow { display: grid; grid-template-columns: 1fr 1fr auto; gap: 4px; }

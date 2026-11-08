@@ -704,7 +704,7 @@ export class SessionTasksController extends TypertRemoteService {
       ...proposal.sourceSessionRef === undefined ? {} : { sourceSessionRef: proposal.sourceSessionRef },
     })
     const plan = await this.devConsoleCreatePlan({
-      briefId: brief.id, title: request.title ?? proposal.title, steps: proposal.steps, role: 'implementer',
+      briefId: brief.id, title: request.title ?? proposal.title, steps: request.steps ?? proposal.steps, role: 'implementer',
     })
     const current = this.busState()
     const decided = { ...proposal, status: 'accepted' as const }
