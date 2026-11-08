@@ -20,7 +20,7 @@ const PROMPT = 'Use console_plan_propose to turn the current task into a durable
 export function registerConsoleTools(ctx: Context): void {
   ctx.systemPrompt.section({
     name: 'tool:console-plan-propose',
-    order: ctx.systemPrompt.getSectionOrder('TOOL_SESSION_TASKS') + 1,
+    order: 2311,
     text: PROMPT,
   })
   ctx.tools.register(defineTool({

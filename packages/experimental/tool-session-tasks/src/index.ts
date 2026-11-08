@@ -51,7 +51,7 @@ export function apply(ctx: Context, config: Config): void {
   const scope = resolveVisibleScope(config)
   ctx.systemPrompt.section({
     name: 'tool:session-tasks',
-    order: ctx.systemPrompt.getSectionOrder('TOOL_SESSION_TASKS'),
+    order: 2310,
     text: PROMPT_TEXT,
   })
 
