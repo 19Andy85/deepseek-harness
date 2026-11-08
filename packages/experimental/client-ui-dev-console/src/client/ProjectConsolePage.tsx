@@ -883,6 +883,7 @@ export function ProjectConsolePage({
                   ? () => sendToSession(railSessionId, t('proposeTaskPrompt'), 'queue')
                   : undefined}
                 actionItems={actionItems}
+                sessionTitle={id => sessionTitles.get(id)}
                 onOpenAction={(item: ActionItem) => {
                   if (item.source === 'message' || item.source === 'plan') return
                   if (item.workspaceId !== undefined && item.workspaceId !== selected) selectWorkspace(item.workspaceId)

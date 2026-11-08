@@ -314,6 +314,42 @@ export interface DevConsoleRevisePlanRequest {
   readonly role: DevConsoleRole
 }
 
+/** Task proposal request from an execution Agent. */
+export interface DevConsoleSuggestTaskRequest {
+  readonly sessionId: string
+  readonly cwd?: string | undefined
+  readonly title: string
+  readonly goal: string
+  readonly acceptance: string
+  readonly steps: readonly DevConsolePlanStepInput[]
+  readonly confidence?: 'high' | 'medium' | 'low' | undefined
+  readonly reason?: string | undefined
+}
+
+/** A pending task proposal returned to the model-facing tool. */
+export interface DevConsoleSuggestTaskValue {
+  readonly messageId: string
+  readonly proposal: import('./dev-console-bus.ts').DevConsoleTaskProposal
+}
+
+/** Maintainer decision on a task proposal. */
+export interface DevConsoleDecideProposalRequest {
+  readonly messageId: string
+  readonly decision: 'accept' | 'dismiss'
+  readonly role: DevConsoleRole
+  readonly title?: string | undefined
+  readonly goal?: string | undefined
+  readonly acceptance?: string | undefined
+}
+
+/** Result of a proposal decision. */
+export interface DevConsoleDecideProposalValue {
+  readonly messageId: string
+  readonly status: 'accepted' | 'dismissed'
+  readonly brief?: DevConsoleBrief | undefined
+  readonly plan?: DevConsolePlan | undefined
+}
+
 /** Proposal written by an execution Agent from its Session. */
 export interface DevConsoleAgentProposalRequest {
   readonly sessionId: string

@@ -38,6 +38,7 @@ export interface TaskDetailViewProps extends TaskDetailInjected {
   readonly onOpenSession?: ((sessionId: string) => void) | undefined
   readonly actionItems?: readonly ActionItem[] | undefined
   readonly onOpenAction?: ((item: ActionItem) => void) | undefined
+  readonly sessionTitle?: ((sessionId: string) => string | undefined) | undefined
   readonly compact?: boolean | undefined
   readonly sessionId?: string | undefined
   readonly sessionRunning?: boolean | undefined
@@ -54,7 +55,7 @@ export interface TaskDetailViewProps extends TaskDetailInjected {
 export function TaskDetailView(props: TaskDetailViewProps) {
   const {
     briefs, plans, messages, approvePlan, sendMessage, messageAction, transitionBrief,
-    actionItems = [], onOpenAction, compact = false, sessionId, sessionRunning = false,
+    actionItems = [], onOpenAction, compact = false, sessionId, sessionRunning = false, sessionTitle,
     sessionLive = true, refreshKey, onPropose, t,
   } = props
   const [briefRows, setBriefRows] = useState<readonly BriefView[]>([])
@@ -193,7 +194,9 @@ export function TaskDetailView(props: TaskDetailViewProps) {
                 </div>
                 <div className={css.headActions}>
                   {selected.sourceSessionRef === undefined ? null : (
-                    <span className={css.meta}>{selected.sourceSessionRef.sessionId}</span>
+                    <span className={css.meta}>
+                      {sessionTitle?.(selected.sourceSessionRef.sessionId) ?? selected.sourceSessionRef.sessionId}
+                    </span>
                   )}
                   {props.onOpenSession === undefined || selected.sourceSessionRef === undefined ? null : (
                     <button type="button" className={css.button} onClick={() => { props.onOpenSession?.(selected.sourceSessionRef?.sessionId ?? '') }}>{t('openSession')}</button>

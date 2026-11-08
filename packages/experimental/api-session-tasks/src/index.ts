@@ -45,6 +45,7 @@ import type {
   DevConsoleAgentsRequest, DevConsoleAgentsValue, DevConsoleAutoConfigRequest, DevConsoleAutoConfigValue,
   DevConsoleSummary, DevConsoleSummaryRequest,
   DevConsoleAgentProposalRequest, DevConsoleAgentProposalValue, DevConsoleApprovePlanRequest, DevConsoleBindRequest,
+  DevConsoleDecideProposalRequest, DevConsoleDecideProposalValue, DevConsoleSuggestTaskRequest, DevConsoleSuggestTaskValue,
   DevConsoleBriefsRequest, DevConsoleBriefsValue, DevConsoleConfigValue,
   DevConsoleProjectsValue,
   DevConsoleDirectiveRequest, DevConsoleDirectiveValue, DevConsoleSessionContextRequest, DevConsoleSessionContextValue,
@@ -618,6 +619,85 @@ export class SessionTasksController extends TypertRemoteService {
   }
 
   /**
+   * Persist a task proposal from an execution Agent without creating a task yet.
+   * @param request - proposal fields and source Session.
+   * @returns the message id and pending proposal.
+   */
+  @Remote('devConsoleSuggestTask')
+  async devConsoleSuggestTask(request: DevConsoleSuggestTaskRequest): Promise<DevConsoleSuggestTaskValue> {
+    const config = loadDevConsoleConfig(this.resolveDevConsoleConfigFile()).config
+    if (config === undefined) throw new RemoteError('gateway/bad-request', 'Dev Console config is invalid', {})
+    const cwd = request.cwd === undefined ? undefined : await realpath(request.cwd).catch(() => request.cwd)
+    let workspaceId: string | undefined
+    for (const project of config.projects) {
+      for (const workspace of project.workspaces) {
+        const root = await realpath(workspace.worktree).catch(() => workspace.worktree)
+        if (cwd !== undefined && (cwd === root || cwd.startsWith(`${root}/`))) { workspaceId = workspace.id; break }
+      }
+      if (workspaceId !== undefined) break
+    }
+    if (workspaceId === undefined) throw new RemoteError('gateway/bad-request', 'Agent cwd does not match a configured workspace', {})
+    const proposal = {
+      title: request.title, goal: request.goal, acceptance: request.acceptance, steps: request.steps,
+      ...request.confidence === undefined ? {} : { confidence: request.confidence },
+      ...request.reason === undefined ? {} : { reason: request.reason },
+      sourceSessionRef: { sessionId: request.sessionId, ...request.cwd === undefined ? {} : { cwd: request.cwd } },
+      status: 'pending' as const,
+    }
+    const message = createMessage({
+      fromRole: 'implementer',
+      toRole: 'maintainer',
+      workspaceId,
+      kind: 'request',
+      subject: `任务提议：${request.title}`,
+      body: request.goal,
+      requiresResponse: true,
+      payload: { proposal },
+    })
+    await this.writeBus({ ...this.busState(), messages: [message, ...this.busState().messages].slice(0, 200) })
+    return { messageId: message.id, proposal }
+  }
+
+  /**
+   * Accept or dismiss a pending task proposal.
+   * @param request - proposal message and maintainer decision.
+   * @returns the decision result and created task/plan when accepted.
+   */
+  @Remote('devConsoleDecideProposal')
+  async devConsoleDecideProposal(request: DevConsoleDecideProposalRequest): Promise<DevConsoleDecideProposalValue> {
+    if (request.role !== 'maintainer') throw new RemoteError('gateway/bad-request', 'only a maintainer may decide a proposal', {})
+    const state = this.busState()
+    const message = state.messages.find(item => item.id === request.messageId)
+    const proposal = message?.payload?.proposal
+    if (message === undefined || proposal === undefined) throw new RemoteError('gateway/bad-request', 'proposal not found', {})
+    if (proposal.status !== 'pending') throw new RemoteError('gateway/bad-request', 'proposal is already decided', {})
+    if (request.decision === 'dismiss') {
+      const decided = { ...proposal, status: 'dismissed' as const }
+      await this.writeBus({ ...state, messages: state.messages.map(item => item.id === message.id
+        ? { ...item, status: 'resolved' as const, payload: { ...item.payload, proposal: decided }, updatedAt: Date.now() }
+        : item) })
+      return { messageId: message.id, status: 'dismissed' }
+    }
+    const brief = await this.devConsoleCreateBrief({
+      workspaceId: message.workspaceId ?? '',
+      title: request.title ?? proposal.title,
+      goal: request.goal ?? proposal.goal,
+      acceptance: request.acceptance ?? proposal.acceptance,
+      authorRole: 'implementer',
+      ...proposal.sourceSessionRef === undefined ? {} : { sourceSessionRef: proposal.sourceSessionRef },
+    })
+    const plan = await this.devConsoleCreatePlan({
+      briefId: brief.id, title: request.title ?? proposal.title, steps: proposal.steps, role: 'implementer',
+    })
+    const current = this.busState()
+    const decided = { ...proposal, status: 'accepted' as const }
+    await this.writeBus({ ...current, messages: current.messages.map(item => item.id === message.id
+      ? { ...item, status: 'resolved' as const, payload: { ...item.payload, proposal: decided }, updatedAt: Date.now() }
+      : item) })
+    return { messageId: message.id, status: 'accepted', brief, plan }
+  }
+
+  /**
    * Create a Brief and its first draft plan from an execution Agent's proposal.
    * @param request - Agent proposal with the calling Session and steps.
    * @returns the created Brief and draft plan.
@@ -724,6 +804,9 @@ export class SessionTasksController extends TypertRemoteService {
     if (plan === undefined) throw new RemoteError('gateway/bad-request', `plan ${request.planId} not found`, {})
     const step = plan.steps.find(item => item.id === request.stepId)
     if (step === undefined) throw new RemoteError('gateway/bad-request', `plan step ${request.stepId} not found`, {})
+    if (request.status === 'done' && (request.evidence === undefined || request.evidence.trim() === '')) {
+      throw new RemoteError('gateway/bad-request', 'a done step requires evidence', {})
+    }
     const updated: DevConsolePlan = {
       ...plan,
       updatedAt: Date.now(),

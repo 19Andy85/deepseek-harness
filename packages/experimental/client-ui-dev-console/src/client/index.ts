@@ -25,6 +25,8 @@ import { type ProjectConsoleInjected } from './ProjectConsolePage.tsx'
 import { ConsoleMainPage, ConsoleRailPage, type RailInjected } from './ConsoleSurface.tsx'
 import { SessionRailMenuItem, type SessionRailMenuInjected } from './SessionRailMenuItem.tsx'
 import { rememberRailSessionTitle } from './rail-session-title.ts'
+import { TaskProposalCard } from './TaskProposalCard.tsx'
+import { setProposalDecider } from './proposal-card-actions.ts'
 import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
 import { BalanceBadge, type BalanceWallet } from './BalanceBadge.tsx'
 import { RestartAppButton } from './RestartAppButton.tsx'
@@ -74,6 +76,16 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
 
 function registerUi(ctx: Context): void {
   const t = ctx.locale.bind(NS)
+  setProposalDecider(async (input) => {
+    const result = await ctx.remote.sessionTasks.devConsoleDecideProposal({
+      messageId: input.messageId, decision: input.decision, role: 'maintainer',
+      ...input.title === undefined ? {} : { title: input.title },
+      ...input.goal === undefined ? {} : { goal: input.goal },
+      ...input.acceptance === undefined ? {} : { acceptance: input.acceptance },
+    })
+    if (!result.ok) throw new Error(result.error.message)
+    return { status: result.value.status }
+  })
   const store = new ProjectConsoleStore({
     listWorkspaces: () => ctx.workspaces.list.getSnapshot().items.map(workspace => ({
       id: workspace.workspaceId, title: workspace.title, path: workspace.path,
@@ -407,6 +419,10 @@ function registerUi(ctx: Context): void {
     id: 'project-console-restart',
     locale: NS,
   }, RestartAppButton)), 'project-console: restart app')
+  ctx.effect(() => ctx.slots.inject('tool.call.toolview', () => ctx.slots.register(
+    { name: 'tool.call.toolview', key: 'console_task_suggest', locale: NS },
+    TaskProposalCard,
+  )), 'project-console: proposal card')
   ctx.effect(() => ctx.slots.inject('sidebar.workspaces.workspace.menu.item', () => ctx.slots.register({
     name: 'sidebar.workspaces.workspace.menu.item',
     id: 'project-console',

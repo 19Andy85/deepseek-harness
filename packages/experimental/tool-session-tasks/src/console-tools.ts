@@ -24,6 +24,61 @@ export function registerConsoleTools(ctx: Context): void {
     text: PROMPT,
   })
   ctx.tools.register(defineTool({
+    name: 'console_task_suggest',
+    description: 'Suggest a task and draft plan for maintainer confirmation without creating it.',
+    parameters: {
+      title: { type: 'string', description: 'Task title.' },
+      goal: { type: 'string', description: 'Why the task exists.' },
+      acceptance: { type: 'string', description: 'What acceptance means.' },
+      steps: {
+        type: 'array',
+        description: 'Plan steps with a title and expected outcome.',
+        items: {
+          type: 'object',
+          properties: {
+            title: { type: 'string', description: 'Step title.' },
+            outcome: { type: 'string', description: 'Expected step outcome.' },
+          },
+          additionalProperties: false,
+        },
+      },
+      confidence: { type: 'string', enum: ['high', 'medium', 'low'], description: 'Confidence that this should become a task.' },
+      reason: { type: 'string', description: 'Why the task should be created now.' },
+    },
+    output: {
+      schema: { type: 'string' },
+      render: (_args, value) => [{ type: 'text', text: value }],
+      presentationMeta: (_args, value) => JSON.parse(value) as never,
+    },
+    isConcurrencySafe: () => false,
+    execute: async (args, exec) => {
+      const agent = exec.agent
+      if (agent === undefined) throw new Error('console_task_suggest requires an agent-bound caller')
+      const input = args as {
+        readonly title?: string
+        readonly goal?: string
+        readonly acceptance?: string
+        readonly steps?: readonly { readonly title?: string; readonly outcome?: string }[]
+        readonly confidence?: 'high' | 'medium' | 'low'
+        readonly reason?: string
+      }
+      const steps = (input.steps ?? []).map(step => ({ title: step.title ?? '', outcome: step.outcome ?? '' }))
+        .filter(step => step.title.trim() !== '' && step.outcome.trim() !== '')
+      if (input.title === undefined || input.goal === undefined || input.acceptance === undefined || steps.length === 0) {
+        throw new Error('console_task_suggest requires title, goal, acceptance, and at least one complete step')
+      }
+      const result = await ctx.sessionTasks.devConsoleSuggestTask({
+        sessionId: agent.session.id,
+        ...agent.session.header.cwd === undefined ? {} : { cwd: agent.session.header.cwd },
+        title: input.title, goal: input.goal, acceptance: input.acceptance, steps,
+        ...input.confidence === undefined ? {} : { confidence: input.confidence },
+        ...input.reason === undefined ? {} : { reason: input.reason },
+      })
+      return JSON.stringify(result)
+    },
+  }))
+
+  ctx.tools.register(defineTool({
     name: 'console_plan_propose',
     description: 'Create a dev-console task and draft plan only on an explicit maintainer request or console directive.',
     parameters: {
@@ -87,7 +142,7 @@ export function registerConsoleTools(ctx: Context): void {
       plan_id: { type: 'string', description: 'Plan id returned by console_plan_propose.' },
       step_id: { type: 'string', description: 'Step id from the plan.' },
       status: { type: 'string', enum: ['todo', 'in_progress', 'blocked', 'done', 'skipped'], description: 'New step status.' },
-      evidence: { type: 'string', description: 'Optional evidence text for this update.' },
+      evidence: { type: 'string', description: 'Evidence text; required when status is done.' },
     },
     output: TEXT_OUTPUT,
     isConcurrencySafe: () => false,

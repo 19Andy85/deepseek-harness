@@ -81,6 +81,20 @@ export interface DevConsoleMessagePayload {
     readonly risks?: string | undefined
     readonly nextSteps?: string | undefined
   } | undefined
+  /** A task proposal awaiting maintainer confirmation. */
+  readonly proposal?: DevConsoleTaskProposal | undefined
+}
+
+/** A task proposal persisted as a message, not yet a task. */
+export interface DevConsoleTaskProposal {
+  readonly title: string
+  readonly goal: string
+  readonly acceptance: string
+  readonly steps: readonly { readonly title: string; readonly outcome: string }[]
+  readonly sourceSessionRef?: DevConsoleSourceSessionRef | undefined
+  readonly confidence?: 'high' | 'medium' | 'low' | undefined
+  readonly reason?: string | undefined
+  readonly status: 'pending' | 'accepted' | 'dismissed'
 }
 
 /** One durable message. */
@@ -165,10 +179,23 @@ const handoffSchema = z.object({
   nextSteps: z.string().optional(),
 }).strict()
 
+const proposalStepSchema = z.object({ title: z.string().min(1), outcome: z.string().min(1) }).strict()
+const proposalSchema = z.object({
+  title: z.string().min(1),
+  goal: z.string().min(1),
+  acceptance: z.string().min(1),
+  steps: z.array(proposalStepSchema).min(1),
+  sourceSessionRef: z.object({ sessionId: z.string().min(1), cwd: z.string().optional() }).strict().optional(),
+  confidence: z.enum(['high', 'medium', 'low']).optional(),
+  reason: z.string().optional(),
+  status: z.enum(['pending', 'accepted', 'dismissed']),
+}).strict()
+
 const payloadSchema = z.object({
   selectedOption: z.string().optional(),
   reason: z.string().optional(),
   handoff: handoffSchema.optional(),
+  proposal: proposalSchema.optional(),
 }).strict()
 
 const assignmentSchema = z.object({
