@@ -11,3 +11,5 @@
 .form input, .form textarea { padding: 6px 8px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 6px; background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); font: inherit; font-size: 13px; }
 .form textarea { min-height: 56px; resize: vertical; }
 .error { margin: 0; color: var(--dsw-alias-label-error); font-size: 12px; }
+
+.stepEdit { display: grid; grid-template-columns: 1fr 1fr auto; gap: 4px; }

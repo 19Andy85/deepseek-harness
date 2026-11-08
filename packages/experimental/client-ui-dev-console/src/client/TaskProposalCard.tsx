@@ -67,12 +67,13 @@ function ProposalBody({ proposal, t }: { readonly proposal: ProposalView; readon
   const [title, setTitle] = useState(proposal.title)
   const [goal, setGoal] = useState(proposal.goal)
   const [acceptance, setAcceptance] = useState(proposal.acceptance)
+  const [steps, setSteps] = useState(proposal.steps)
   const act = (decision: 'accept' | 'dismiss'): void => {
     setBusy(true)
     setError(undefined)
     void decideProposal({
       messageId: proposal.messageId, decision,
-      ...editing ? { title, goal, acceptance } : {},
+      ...editing ? { title, goal, acceptance, steps } : {},
     }).then((value) => { setResult(value.status) }).catch(() => { setError(t('proposalCardFailed')) }).finally(() => { setBusy(false) })
   }
   if (result !== undefined) {
@@ -86,6 +87,20 @@ function ProposalBody({ proposal, t }: { readonly proposal: ProposalView; readon
           <label>{t('proposalCardTitleLabel')}<input value={title} onChange={(event) => { setTitle(event.currentTarget.value) }} /></label>
           <label>{t('proposalCardGoalLabel')}<textarea value={goal} onChange={(event) => { setGoal(event.currentTarget.value) }} /></label>
           <label>{t('proposalCardAcceptanceLabel')}<textarea value={acceptance} onChange={(event) => { setAcceptance(event.currentTarget.value) }} /></label>
+          {steps.map((step, index) => (
+            <div className={css.stepEdit} key={`${index}-${step.title}`}>
+              <input value={step.title} aria-label={t('proposalCardStepTitle')} placeholder={t('proposalCardStepTitle')} onChange={(event) => {
+                const value = event.currentTarget.value
+                setSteps(rows => rows.map((row, rowIndex) => rowIndex === index ? { ...row, title: value } : row))
+              }} />
+              <input value={step.outcome} aria-label={t('proposalCardStepOutcome')} placeholder={t('proposalCardStepOutcome')} onChange={(event) => {
+                const value = event.currentTarget.value
+                setSteps(rows => rows.map((row, rowIndex) => rowIndex === index ? { ...row, outcome: value } : row))
+              }} />
+              <Button disabled={busy} onClick={() => { setSteps(rows => rows.filter((_, rowIndex) => rowIndex !== index)) }}>{t('proposalCardStepRemove')}</Button>
+            </div>
+          ))}
+          <Button disabled={busy} onClick={() => { setSteps(rows => [...rows, { title: '', outcome: '' }]) }}>{t('proposalCardStepAdd')}</Button>
         </div>
       ) : (
         <>
