@@ -37,6 +37,7 @@ export interface ActionItem {
 export function buildSessionActionItems(
   attention: readonly AttentionItem[],
   groups: readonly GlobalInboxGroup[],
+  sessionTitles: ReadonlyMap<string, string> = new Map(),
 ): ActionItem[] {
   const items: ActionItem[] = []
   const seen = new Set<string>()
@@ -60,8 +61,8 @@ export function buildSessionActionItems(
         source: 'session',
         workspaceId: group.workspaceId,
         sessionId: item.sessionId,
-        title: group.title,
-        detail: item.kind,
+        title: sessionTitles.get(item.sessionId) ?? `${group.title} · ${item.sessionId.slice(-8)}`,
+        detail: group.title,
         detailKind: item.kind === 'completed' ? 'completed' : item.kind === 'plan-review' ? 'plan-review' : item.kind === 'approval' ? 'approval' : 'question',
       })
     }

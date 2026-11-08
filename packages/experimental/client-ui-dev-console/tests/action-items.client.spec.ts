@@ -39,9 +39,9 @@ describe('buildSessionActionItems', () => {
       },
     ], [
       { workspaceId: 'b', title: 'Beta', items: [{ workspaceId: 'b', sessionId: 'b1', kind: 'completed' }] },
-    ])
+    ], new Map([['b1', 'Session B']]))
     expect(items.map(item => item.id)).toEqual(['session:a1', 'session:b1'])
-    expect(items[1]).toMatchObject({ title: 'Beta', workspaceId: 'b', detailKind: 'completed' })
+    expect(items[1]).toMatchObject({ title: 'Session B', workspaceId: 'b', detailKind: 'completed' })
   })
 })
 

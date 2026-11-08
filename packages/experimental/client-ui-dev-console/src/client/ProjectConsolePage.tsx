@@ -318,7 +318,8 @@ export function ProjectConsolePage({
   }
   const attention = attentionItems(rows, statusFacts, descriptorOf, failureOf)
   const health = healthCounts(rows, statusFacts, descriptorOf, failureOf)
-  const actionItems = [...buildSessionActionItems(attention, inboxGroups), ...workActionItems]
+  const sessionTitles = new Map(allSessions.map(session => [session.sessionId, session.title ?? session.sessionId]))
+  const actionItems = [...buildSessionActionItems(attention, inboxGroups, sessionTitles), ...workActionItems]
   const autoAttempted = useRef(new Set<string>())
   useEffect(() => {
     if (!autoPropose || surface !== 'rail' || railSessionId === undefined) return
