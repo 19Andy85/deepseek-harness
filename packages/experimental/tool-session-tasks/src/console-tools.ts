@@ -48,7 +48,10 @@ export function registerConsoleTools(ctx: Context): void {
     output: {
       schema: { type: 'string' },
       render: (_args, value) => [{ type: 'text', text: value }],
-      presentationMeta: (_args, value) => ({ ...JSON.parse(value) as Record<string, unknown>, inline: true }) as never,
+      presentationMeta: (_args, value) => {
+        const parsed = JSON.parse(value) as { messageId: string; proposal: unknown }
+        return { ...parsed, inline: true, block: { version: 1, type: 'task-proposal', props: { messageId: parsed.messageId, proposal: parsed.proposal } } } as never
+      },
     },
     isConcurrencySafe: () => false,
     execute: async (args, exec) => {

@@ -18,11 +18,16 @@ export interface BlockRenderContext {
 /** One registered block renderer. */
 export type BlockRenderer = (block: InteractiveBlockSpec, context: BlockRenderContext) => ReactNode
 
-const renderers = new Map<string, BlockRenderer>()
+/** Optional props guard; a failed guard uses the same fallback as an unknown type. */
+export type BlockValidator = (block: InteractiveBlockSpec) => boolean
 
-/** @param type - block type the model may use. @param renderer - component for that type. */
-export function registerInteractiveBlock(type: string, renderer: BlockRenderer): void {
-  renderers.set(type, renderer)
+interface BlockEntry { readonly renderer: BlockRenderer; readonly validate: BlockValidator | undefined }
+
+const renderers = new Map<string, BlockEntry>()
+
+/** @param type - block type. @param renderer - component. @param validate - optional props guard. */
+export function registerInteractiveBlock(type: string, renderer: BlockRenderer, validate?: BlockValidator): void {
+  renderers.set(type, { renderer, validate })
 }
 
 /** @param type - block type to remove from the registry. */
@@ -37,8 +42,8 @@ export function unregisterInteractiveBlock(type: string): void {
  * @returns the registered renderer output, or a literal fallback.
  */
 export function renderInteractiveBlock(block: InteractiveBlockSpec, context: BlockRenderContext): ReactNode {
-  const renderer = renderers.get(block.type)
-  if (renderer !== undefined) return renderer(block, context)
+  const entry = renderers.get(block.type)
+  if (entry !== undefined && (entry.validate === undefined || entry.validate(block))) return entry.renderer(block, context)
   return <pre data-interactive-block-fallback={block.type}>{JSON.stringify(block, null, 2)}</pre>
 }
 

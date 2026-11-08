@@ -4,11 +4,12 @@ import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ToolCallViewProps } from '@deepseek-ai/dsh-client-ui-tool/client'
 import { decideProposal } from './proposal-card-actions.ts'
+import { isInteractiveBlock, registerInteractiveBlock, renderInteractiveBlock } from './block-registry.tsx'
 import css from './TaskProposalCard.module.css'
 
 type TaskProposalCardProps = ToolCallViewProps & PropsLocale<'projectConsole'>
 
-interface ProposalView {
+export interface ProposalView {
   readonly messageId: string
   readonly title: string
   readonly goal: string
@@ -52,14 +53,19 @@ export function TaskProposalCard(props: TaskProposalCardProps) {
   if (props.phase !== 'result') {
     return <div className={css.card}><div className={css.heading}>{t('proposalCardTitle')}</div><p className={css.muted}>{t('proposalCardPreparing')}</p></div>
   }
-  const proposal = proposalOf(props.block.meta)
+  const meta = props.block.meta
+  const block = typeof meta === 'object' && meta !== null ? (meta as Record<string, unknown>)['block'] : undefined
+  if (isInteractiveBlock(block)) {
+    return <>{renderInteractiveBlock(block, { t: props.t as unknown as (key: string) => string })}</>
+  }
+  const proposal = proposalOf(meta)
   if (proposal === undefined) {
     return <div className={css.card}><div className={css.heading}>{t('proposalCardTitle')}</div><p className={css.muted}>{t('proposalCardUnavailable')}</p></div>
   }
   return <ProposalBody proposal={proposal} t={t} />
 }
 
-function ProposalBody({ proposal, t }: { readonly proposal: ProposalView; readonly t: TaskProposalCardProps['t'] }) {
+export function ProposalBody({ proposal, t }: { readonly proposal: ProposalView; readonly t: TaskProposalCardProps['t'] }) {
   const [editing, setEditing] = useState(false)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<'accepted' | 'dismissed' | undefined>(undefined)
@@ -124,3 +130,13 @@ function ProposalBody({ proposal, t }: { readonly proposal: ProposalView; readon
     </div>
   )
 }
+
+
+registerInteractiveBlock('task-proposal', (block, context) => {
+  const props = block.props
+  const proposal = typeof props?.['proposal'] === 'object' && props['proposal'] !== null
+    ? props['proposal'] as ProposalView
+    : undefined
+  if (proposal === undefined) return null
+  return <ProposalBody proposal={proposal} t={context.t as unknown as TaskProposalCardProps['t']} />
+}, block => typeof block.props?.['proposal'] === 'object')

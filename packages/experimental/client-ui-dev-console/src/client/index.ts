@@ -27,6 +27,7 @@ import { SessionRailMenuItem, type SessionRailMenuInjected } from './SessionRail
 import { rememberRailSessionTitle } from './rail-session-title.ts'
 import { TaskProposalCard } from './TaskProposalCard.tsx'
 import { setProposalDecider, setProposalLister } from './proposal-card-actions.ts'
+import { registerChoiceBlock } from './ChoiceBlock.tsx'
 import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
 import { BalanceBadge, type BalanceWallet } from './BalanceBadge.tsx'
 import { RestartAppButton } from './RestartAppButton.tsx'
@@ -76,6 +77,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
 
 function registerUi(ctx: Context): void {
   const t = ctx.locale.bind(NS)
+  registerChoiceBlock()
   setProposalDecider(async (input) => {
     const result = await ctx.remote.sessionTasks.devConsoleDecideProposal({
       messageId: input.messageId, decision: input.decision, role: 'maintainer',
