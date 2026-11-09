@@ -26,7 +26,7 @@ describe('relationGroups', () => {
 
   it('walks visible grandchildren with depth and activity', () => {
     const groups = relationGroups([
-      row('parent', { activity: [{ kind: 'job', label: 'sleep 60' }], relations: { children: [{ sessionId: 'child' }] } }),
+      row('parent', { activity: [{ kind: 'job', items: [{ id: 'job-1', label: 'sleep 60' }] }], relations: { children: [{ sessionId: 'child' }] } }),
       row('child', { activity: [{ kind: 'turn' }], relations: { children: [{ sessionId: 'grand' }] } }),
       row('grand', { title: 'Grand', status: 'running' }),
     ])

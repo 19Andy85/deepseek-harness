@@ -10,12 +10,11 @@ afterEach(cleanup)
 const brief: BriefView = {
   id: 'brief-1', workspaceId: 'workspace-1', title: 'Agent task', goal: 'Ship the bridge',
   acceptance: 'Console shows it', status: 'assigned', authorRole: 'implementer',
-  createdAt: 1, updatedAt: 1,
+  updatedAt: 1,
 }
 const plan: PlanView = {
   id: 'plan-1', briefId: brief.id, workspaceId: brief.workspaceId, title: brief.title,
   version: 1, status: 'draft', steps: [{ id: 'step-1', title: 'Step one', outcome: 'Done', status: 'todo', evidence: [] }],
-  createdBy: 'implementer', createdAt: 1, updatedAt: 1,
 }
 
 function t(key: string): string { return key }
