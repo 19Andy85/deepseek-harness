@@ -198,6 +198,10 @@ export class SessionTasksController extends TypertRemoteService {
   private readonly inspectionCache = new Map<string, { at: number; inspection: import('./dev-console-workspace.ts').WorkspaceInspection }>()
   /** In-flight block actions, keyed by block id, so one block executes one action at a time. */
   private readonly blockActionLocks = new Map<string, Promise<void>>()
+  /** In-memory bus state while one block action runs; committed once at the end. */
+  private blockActionTransaction: DevConsoleBusState | undefined
+  /** Serializes block actions so the transaction slot has one owner. */
+  private blockActionQueue: Promise<void> = Promise.resolve()
   private readonly observed = new Map<string, ObservedActivity>()
   private seenDomain: Domain<typeof sessionTasksSeenDomain> | undefined
   private stateDomain: Domain<typeof devConsoleStateDomain> | undefined
@@ -544,10 +548,14 @@ export class SessionTasksController extends TypertRemoteService {
   }
 
   private busState(): DevConsoleBusState {
-    return this.busDomain?.global.get() ?? EMPTY_DEV_CONSOLE_BUS
+    return this.blockActionTransaction ?? this.busDomain?.global.get() ?? EMPTY_DEV_CONSOLE_BUS
   }
 
   private async writeBus(next: DevConsoleBusState): Promise<void> {
+    if (this.blockActionTransaction !== undefined) {
+      this.blockActionTransaction = next
+      return
+    }
     if (this.busDomain === undefined) throw new RemoteError('session-tasks/seen-unavailable', 'Dev Console bus requires a mounted storage domain', {})
     await this.busDomain.global.set(next)
   }
@@ -776,12 +784,27 @@ export class SessionTasksController extends TypertRemoteService {
     if (request.idempotencyKey.trim() === '') {
       throw new RemoteError('gateway/bad-request', 'a block action requires an idempotency key', {})
     }
+    const execute = async (): Promise<DevConsoleBlockActionValue> => {
+      const initial = this.busState()
+      this.blockActionTransaction = initial
+      try {
+        const value = await executeDevConsoleBlockAction({
+          blocks: () => this.busState().blocks,
+          records: () => this.busState().blockActions,
+          commit: async (next) => { await this.writeBus({ ...this.busState(), ...next }) },
+        }, this.blockActionLocks, request, (block, action) => this.runDevConsoleBlockAction(block, action))
+        const committed = this.blockActionTransaction
+        this.blockActionTransaction = undefined
+        if (committed !== initial) await this.writeBus(committed)
+        return value
+      } finally {
+        this.blockActionTransaction = undefined
+      }
+    }
+    const queued = this.blockActionQueue.then(execute, execute)
+    this.blockActionQueue = queued.then(() => undefined, () => undefined)
     try {
-      return await executeDevConsoleBlockAction({
-        blocks: () => this.busState().blocks,
-        records: () => this.busState().blockActions,
-        commit: async (next) => { await this.writeBus({ ...this.busState(), ...next }) },
-      }, this.blockActionLocks, request, (block, action) => this.runDevConsoleBlockAction(block, action))
+      return await queued
     } catch (error) {
       if (error instanceof DevConsoleBlockActionError) throw blockActionFailure(error)
       throw error
