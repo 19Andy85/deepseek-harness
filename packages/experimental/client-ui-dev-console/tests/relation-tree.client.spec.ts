@@ -17,7 +17,7 @@ describe('relationGroups', () => {
     expect(groups).toHaveLength(1)
     expect(groups[0]?.parent.title).toBe('Parent')
     expect(groups[0]?.children[0]).toMatchObject({ sessionId: 'child', title: 'Child', status: 'running' })
-    expect(groups[0]?.children[1]).toEqual({ sessionId: 'gone' })
+    expect(groups[0]?.children[1]).toMatchObject({ sessionId: 'gone', depth: 1 })
   })
 
   it('skips parents without durable children', () => {
