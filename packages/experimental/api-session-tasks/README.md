@@ -34,6 +34,8 @@ Mount the controller in a Host composition whose browser pages need a live task 
 - Activity entries carry optional `startedAt` and `lastActivityAt`; when a provider does not report them the controller stamps its first sighting and refreshes the change time only when the family's items change. A running Session whose timed activity has not changed within `stallAfterMs` (default 900000, minimum 60000) is reported with `stalled: true`; without timed activity the judgement stays absent rather than guessing.
 - Omit `workspaceId` to read every live session of the Host; running sessions are listed first, then ordered by session id.
 - A follow stream compares the projected row instead of subscribing to individual Host events; a change that flips twice between comparisons is observed as its latest row.
+- `sessionTasks.devConsoleBlockAction({ blockId, actionId, sessionId, idempotencyKey, payload? })` — run one action of a Host-registered inline block. The Host checks that the block exists, belongs to the Session, declares the action, and is still `pending`, then stores the action record (block, action, Session, idempotency key, result, time) and settles the block to `resolved` in the same write. A repeated key returns the stored result with `replayed: true` and never runs the action again, so a double click cannot create a second task or move the status twice.
+- `sessionTasks.devConsoleBlockState({ blockId, sessionId })` — the Host-owned block status (`pending`, `submitted`, `resolved`, `expired`), the accepted action ids, and the last action result, so a reloaded transcript renders the stored status instead of the status recorded when the block was created.
 
 ### Failures and recovery
 
@@ -53,6 +55,7 @@ The controller owns the browser projection only. Aggregation is a pure function 
 - `src/index.ts` — `SessionTasksController`, the `sessionTasks` namespace, the `snapshot` method, the polling `follow` stream, its `followIntervalMs` config, and the observed-timing store behind `startedAt`/`lastActivityAt`/`stalled` (`stallAfterMs`).
 - `src/aggregation.ts` — pure collection, workspace projection, and the two Remote error codes.
 - `src/types.ts` — wire value types, Host ports, and the `RemoteErrorDetailsMap` declarations.
+- `src/dev-console-block.ts` — block records, the Host-owned status machine, the idempotency record, and the executor that re-reads, validates, runs, and commits one action.
 
 ### Operation flow
 
@@ -78,7 +81,8 @@ These limits define when this package is a poor fit or needs special operational
 
 - **Live sessions only** — sessions without a live Agent in this Host are invisible, even when persisted jobs or schedules would report activity for them.
 - **Snapshot only** — the page must re-read after activity changes; a follow stream is deferred until the page needs push updates.
-- **Read-only** — dispatch, interruption, and approval actions belong to a later phase.
+- **Read-only overview** — the overview namespace only reads; task, plan, and inline-block writes come from the Dev Console methods in the same namespace.
+- **Block status is Host-owned** — a browser never writes it, and a client cannot mark a block resolved. Blocks recorded before the action bus carry no block id, so their cards keep the older proposal decision path.
 - **Workspace scope needs a registry** — a scoped read errors rather than falling back to every live session when `ctx.workspaceRegistry` is not mounted.
 - **No page-specific access policy yet** — connections are governed by the existing Remote access controls; per-page grants are deferred.
 

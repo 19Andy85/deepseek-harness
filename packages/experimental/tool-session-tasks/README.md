@@ -38,6 +38,8 @@ Mount this package when an agent should coordinate work that runs in other live 
 - `session_tasks` — list visible sessions with `sessionId`, `cwd`, `status` (`running` or `idle`), and the activity families reported by composed providers (`turn`, `job`, `subagent`, `schedule` in the shipped composition).
 - Pass `session_id` to keep one session, and `include` to keep selected activity families.
 - Running sessions are listed before idle ones, then ordered by session id; an empty overview renders one sentence instead of an empty list.
+- `interactive_block` — render one registered block inline by `type` and `props` and register it with the Host. The Host returns the block id and the accepted action ids; `actions` declares them explicitly, and a `choice` block defaults them to its option labels. A block without a Host registration cannot run actions, so a rendered control never pretends to be interactive.
+- `console_task_suggest` — persist a pending task proposal and the block that carries its confirm/ignore actions without creating a task. The client submits those actions with `devConsoleBlockAction`; accepting still goes through the existing proposal decision, so ignoring or replaying a click never creates a duplicate task.
 
 ### Failures and recovery
 
@@ -54,6 +56,7 @@ Visibility is an explicit policy: the default `same-cwd` scope mirrors the conse
 
 - `src/index.ts` — plugin identity, config schema, prompt section, and the `session_tasks` tool definition.
 - `src/tasks.ts` — live-agent enumeration, visibility authorization, activity aggregation, ordering, and text rendering.
+- `src/console-tools.ts` — the Dev Console tool definitions: task proposal, inline block registration, plan proposal and step updates, reports, handoffs, and Brief transitions.
 
 ### Operation flow
 

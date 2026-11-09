@@ -1,11 +1,40 @@
 /** Model-facing bridge that writes durable Dev Console tasks and plans. */
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { Context } from '@deepseek-ai/cordis'
+import type { SessionTasksController } from '@deepseek-ai/dsh-experimental-api-session-tasks'
 import type {} from '@deepseek-ai/dsh-experimental-api-session-tasks'
 
 const TEXT_OUTPUT = {
   schema: { type: 'string' as const },
   render: (_args: unknown, value: string) => [{ type: 'text' as const, text: value }],
+}
+
+/** Action ids a task-proposal block exposes; the card renders them in this order. */
+const TASK_PROPOSAL_ACTIONS: readonly string[] = ['confirm', 'ignore']
+
+/**
+ * Resolve the Dev Console service at call time.
+ * @param ctx - plugin context.
+ * @returns the Host service that stores blocks, tasks, and plans.
+ * @throws Error when the Host composition mounts no session-task service.
+ */
+function sessionTasksOf(ctx: Context): SessionTasksController {
+  const service = ctx.get('sessionTasks')
+  if (service === undefined) throw new Error('console tools require the sessionTasks service')
+  return service
+}
+
+/**
+ * Derive the action ids one block type defines itself.
+ * @param type - registered block type.
+ * @param props - model-supplied block props.
+ * @returns a choice block's option labels; every other type declares no actions.
+ */
+function defaultBlockActions(type: string, props: Readonly<Record<string, unknown>>): string[] {
+  if (type !== 'choice') return []
+  const options = props['options']
+  if (!Array.isArray(options)) return []
+  return [...new Set(options.filter((option): option is string => typeof option === 'string' && option !== ''))]
 }
 
 const PROMPT = 'Use these console tools only when the maintainer explicitly asks you to create or update a dev-console task, '
@@ -49,8 +78,19 @@ export function registerConsoleTools(ctx: Context): void {
       schema: { type: 'string' },
       render: (_args, value) => [{ type: 'text', text: value }],
       presentationMeta: (_args, value) => {
-        const parsed = JSON.parse(value) as { messageId: string; proposal: unknown }
-        return { ...parsed, inline: true, block: { version: 1, type: 'task-proposal', props: { messageId: parsed.messageId, proposal: parsed.proposal } } } as never
+        const parsed = JSON.parse(value) as { messageId: string; blockId?: string; proposal: unknown }
+        return {
+          ...parsed,
+          inline: true,
+          block: {
+            version: 1,
+            type: 'task-proposal',
+            props: { messageId: parsed.messageId, proposal: parsed.proposal },
+            ...parsed.blockId === undefined ? {} : { blockId: parsed.blockId },
+            actions: TASK_PROPOSAL_ACTIONS,
+            status: 'pending',
+          },
+        } as never
       },
     },
     isConcurrencySafe: () => false,
@@ -70,7 +110,7 @@ export function registerConsoleTools(ctx: Context): void {
       if (input.title === undefined || input.goal === undefined || input.acceptance === undefined || steps.length === 0) {
         throw new Error('console_task_suggest requires title, goal, acceptance, and at least one complete step')
       }
-      const result = await ctx.sessionTasks.devConsoleSuggestTask({
+      const result = await sessionTasksOf(ctx).devConsoleSuggestTask({
         sessionId: agent.session.id,
         ...agent.session.header.cwd === undefined ? {} : { cwd: agent.session.header.cwd },
         title: input.title, goal: input.goal, acceptance: input.acceptance, steps,
@@ -87,6 +127,11 @@ export function registerConsoleTools(ctx: Context): void {
     parameters: {
       type: { type: 'string', description: 'Registered block type.' },
       props: { type: 'object', additionalProperties: true, description: 'Block props.' },
+      actions: {
+        type: 'array',
+        items: { type: 'string' },
+        description: 'Action ids the block accepts; a choice block defaults to its option labels.',
+      },
     },
     output: {
       schema: { type: 'string' },
@@ -97,7 +142,27 @@ export function registerConsoleTools(ctx: Context): void {
       },
     },
     isConcurrencySafe: () => false,
-    execute: async args => JSON.stringify({ version: 1, type: args.type, props: args.props ?? {} }),
+    execute: async (args, exec) => {
+      const agent = exec.agent
+      if (agent === undefined) throw new Error('interactive_block requires an agent-bound caller')
+      const type = (args.type ?? '').trim()
+      if (type === '') throw new Error('interactive_block requires a registered block type')
+      const props = args.props ?? {}
+      const block = await sessionTasksOf(ctx).devConsoleCreateBlock({
+        sessionId: agent.session.id,
+        type,
+        props,
+        actions: args.actions ?? defaultBlockActions(type, props),
+      })
+      return JSON.stringify({
+        version: 1,
+        type: block.type,
+        props: block.props,
+        blockId: block.id,
+        actions: block.actions,
+        status: block.status,
+      })
+    },
   }))
 
   ctx.tools.register(defineTool({
@@ -138,7 +203,7 @@ export function registerConsoleTools(ctx: Context): void {
       if (input.title === undefined || input.goal === undefined || input.acceptance === undefined || steps.length === 0) {
         throw new Error('console_plan_propose requires title, goal, acceptance, and at least one complete step')
       }
-      const result = await ctx.sessionTasks.devConsoleProposeFromAgent({
+      const result = await sessionTasksOf(ctx).devConsoleProposeFromAgent({
         sessionId: agent.session.id,
         ...agent.session.header.cwd === undefined ? {} : { cwd: agent.session.header.cwd },
         title: input.title,
@@ -173,7 +238,7 @@ export function registerConsoleTools(ctx: Context): void {
       if (input.plan_id === undefined || input.step_id === undefined || input.status === undefined) {
         throw new Error('console_plan_update_step requires plan_id, step_id, and status')
       }
-      const plan = await ctx.sessionTasks.devConsoleUpdatePlanStep({
+      const plan = await sessionTasksOf(ctx).devConsoleUpdatePlanStep({
         planId: input.plan_id, stepId: input.step_id, status: input.status, role: 'implementer',
         ...input.evidence === undefined ? {} : { evidence: input.evidence },
       })
@@ -195,7 +260,7 @@ export function registerConsoleTools(ctx: Context): void {
     execute: async (args) => {
       const input = args as { subject?: string; body?: string; brief_id?: string; plan_id?: string }
       if (input.subject === undefined || input.body === undefined) throw new Error('console_report requires subject and body')
-      const message = await ctx.sessionTasks.devConsoleSendMessage({
+      const message = await sessionTasksOf(ctx).devConsoleSendMessage({
         fromRole: 'implementer', toRole: 'maintainer', kind: 'report', subject: input.subject, body: input.body,
         ...input.brief_id === undefined ? {} : { briefId: input.brief_id },
         ...input.plan_id === undefined ? {} : { planId: input.plan_id },
@@ -222,7 +287,7 @@ export function registerConsoleTools(ctx: Context): void {
         || input.summary === undefined || input.tests === undefined || input.tests.length === 0) {
         throw new Error('console_handoff requires brief_id, branch, commit, summary, and tests')
       }
-      const message = await ctx.sessionTasks.devConsoleHandoff({
+      const message = await sessionTasksOf(ctx).devConsoleHandoff({
         briefId: input.brief_id, fromRole: 'implementer', toRole: 'maintainer',
         branch: input.branch, commit: input.commit, summary: input.summary, tests: [...input.tests],
       })
@@ -242,7 +307,7 @@ export function registerConsoleTools(ctx: Context): void {
     execute: async (args) => {
       const input = args as { brief_id?: string; reason?: string }
       if (input.brief_id === undefined) throw new Error('console_task_transition requires brief_id')
-      const brief = await ctx.sessionTasks.devConsoleTransitionBrief({
+      const brief = await sessionTasksOf(ctx).devConsoleTransitionBrief({
         briefId: input.brief_id, to: 'in_review', role: 'implementer',
         ...input.reason === undefined ? {} : { reason: input.reason },
       })

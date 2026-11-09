@@ -38,6 +38,8 @@ kind: "package-reference"
 - `session_tasks`——列出可见会话的 `sessionId`、`cwd`、`status`（`running` 或 `idle`）以及组合中活动提供方报告的活动家族（出厂组合为 `turn`、`job`、`subagent`、`schedule`）。
 - 传 `session_id` 只保留一个会话，传 `include` 只保留指定活动家族。
 - 运行中的会话排在空闲会话之前，其次按会话 id 排序；空总览渲染为一句话而不是空列表。
+- `interactive_block`——按 `type` 与 `props` 在会话内渲染一个已注册块，并在 Host 注册它。Host 返回块 id 与可执行动作 id；`actions` 显式声明这些 id，`choice` 块默认取自身选项标签。没有 Host 注册的块无法执行动作，因此渲染出的控件不会假装可交互。
+- `console_task_suggest`——保存待确认的任务提议，以及承载"确认/忽略"动作的块，但不创建任务。客户端通过 `devConsoleBlockAction` 提交动作；接受仍走既有提议决策，因此忽略或重复点击不会创建重复任务。
 
 ### 失败与恢复
 
@@ -54,6 +56,7 @@ kind: "package-reference"
 
 - `src/index.ts`——插件标识、配置 schema、提示词小节和 `session_tasks` 工具定义。
 - `src/tasks.ts`——活跃智能体枚举、可见性授权、活动聚合、排序与文本渲染。
+- `src/console-tools.ts`——Dev Console 工具定义：任务提议、内联块注册、计划提议与步骤更新、报告、交接与 Brief 流转。
 
 ### 操作流程
 

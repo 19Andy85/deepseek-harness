@@ -7,6 +7,10 @@
 import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { defineDomain } from '@deepseek-ai/dsh-storage-domain'
+import {
+  devConsoleBlockActionRecordSchema, devConsoleBlockSchema,
+  type DevConsoleBlock, type DevConsoleBlockActionRecord,
+} from './dev-console-block.ts'
 
 /** Acting roles recognized by the console. */
 export type DevConsoleRole = 'maintainer' | 'implementer' | 'workspace-reviewer' | 'system'
@@ -160,6 +164,10 @@ export interface DevConsoleBusState {
   readonly briefs: readonly DevConsoleBrief[]
   readonly plans: readonly DevConsolePlan[]
   readonly directives: readonly DevConsoleDirective[]
+  /** Interactive blocks registered by the Host, newest first. */
+  readonly blocks: readonly DevConsoleBlock[]
+  /** Executed block actions kept for idempotent replay, newest first. */
+  readonly blockActions: readonly DevConsoleBlockActionRecord[]
 }
 
 const roleSchema: z.ZodType<DevConsoleRole> = z.union([
@@ -293,6 +301,10 @@ const busStateSchema: z.ZodType<DevConsoleBusState> = z.object({
   briefs: z.array(briefSchema),
   plans: z.array(planSchema).default([]),
   directives: z.array(directiveSchema).default([]),
+  // Added after the first bus release: existing records keep opening because a
+  // missing list defaults to empty instead of failing the strict object.
+  blocks: z.array(devConsoleBlockSchema).default([]),
+  blockActions: z.array(devConsoleBlockActionRecordSchema).default([]),
 }).strict()
 
 /** Storage domain holding messages and Briefs. */
@@ -300,11 +312,16 @@ export const devConsoleBusDomain = defineDomain({
   name: 'experimental_dev_console_bus',
   version: 1,
   tables: {},
-  global: { schema: busStateSchema, initial: { messages: [], briefs: [], plans: [], directives: [] } },
+  global: {
+    schema: busStateSchema,
+    initial: { messages: [], briefs: [], plans: [], directives: [], blocks: [], blockActions: [] },
+  },
 })
 
 /** Empty bus state. */
-export const EMPTY_DEV_CONSOLE_BUS: DevConsoleBusState = { messages: [], briefs: [], plans: [], directives: [] }
+export const EMPTY_DEV_CONSOLE_BUS: DevConsoleBusState = {
+  messages: [], briefs: [], plans: [], directives: [], blocks: [], blockActions: [],
+}
 
 /** Create one outbound message. */
 export function createMessage(input: {

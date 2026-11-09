@@ -15,8 +15,8 @@ import { registerConsoleTools } from './console-tools.ts'
 /** Cordis plugin name used by Loader diagnostics. */
 export const name = 'tool-session-tasks'
 
-/** Capability services required by the model-facing consumer. */
-export const inject = ['tools', 'systemPrompt', 'agents', 'sessionTasks']
+/** Capability services required by the model-facing consumer; the console service is resolved per call. */
+export const inject = ['tools', 'systemPrompt', 'agents']
 
 /** Default visibility scope: the caller plus sessions created in the same working directory. */
 export const DEFAULT_VISIBLE_SCOPE: VisibleScope = 'same-cwd'

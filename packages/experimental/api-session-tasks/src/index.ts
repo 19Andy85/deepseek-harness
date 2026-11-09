@@ -39,6 +39,12 @@ import {
   BRIEF_TRANSITIONS, createMessage, devConsoleBusDomain, EMPTY_DEV_CONSOLE_BUS,
   type DevConsoleBrief, type DevConsoleBusState, type DevConsoleMessage, type DevConsolePlan,
 } from './dev-console-bus.ts'
+import {
+  createDevConsoleBlock, DevConsoleBlockActionError, executeDevConsoleBlockAction,
+  MAX_DEV_CONSOLE_BLOCKS, readDevConsoleBlockState,
+  type DevConsoleBlock, type DevConsoleBlockActionRequest, type DevConsoleBlockActionValue,
+  type DevConsoleBlockStateRequest, type DevConsoleBlockStateValue, type DevConsoleCreateBlockRequest,
+} from './dev-console-block.ts'
 import { inspectWorkspace, openWorkspace } from './dev-console-workspace.ts'
 import type { DevConsoleWorkspaceConfig } from './dev-console-config.ts'
 import type {
@@ -53,7 +59,8 @@ import type {
   DevConsoleCreateBriefRequest, DevConsoleCreatePlanRequest,
   DevConsoleHandoffRequest, DevConsoleHistoryRequest, DevConsoleHistoryValue, DevConsoleInboxRequest, DevConsoleInboxValue,
   DevConsoleMessageActionRequest,
-  DevConsoleMessagesRequest, DevConsoleMessagesValue, DevConsolePlanStepUpdateRequest, DevConsolePlansRequest, DevConsolePlansValue,
+  DevConsoleMessagesRequest, DevConsoleMessagesValue, DevConsolePlanStepInput, DevConsolePlanStepUpdateRequest,
+  DevConsolePlansRequest, DevConsolePlansValue,
   DevConsoleRevisePlanRequest, DevConsoleSendMessageRequest, DevConsoleStateValue,
   DevConsoleTransitionBriefRequest,
   DevConsoleInspectRequest, DevConsoleInspectValue, DevConsoleSaveConfigRequest, DevConsoleSaveConfigValue,
@@ -72,6 +79,10 @@ import type {
 } from './types.ts'
 
 export type * from './types.ts'
+export type {
+  DevConsoleBlock, DevConsoleBlockActionRecord, DevConsoleBlockActionRequest, DevConsoleBlockActionValue,
+  DevConsoleBlockStateRequest, DevConsoleBlockStateValue, DevConsoleBlockStatus, DevConsoleCreateBlockRequest,
+} from './dev-console-block.ts'
 export { collectSessionTasks, followSessionTask, readSessionTasks } from './aggregation.ts'
 
 /** Default polling cadence of one focused session follow stream. */
@@ -82,6 +93,63 @@ const DEFAULT_STALL_AFTER_MS = 900_000
 
 /** Default refresh cadence of the durable derivation relation cache. */
 const DEFAULT_RELATIONS_REFRESH_MS = 5_000
+
+/** Actions a task-proposal block accepts, in the order the card renders them. */
+const TASK_PROPOSAL_ACTIONS: readonly string[] = ['confirm', 'ignore']
+
+/** Map one block-action rejection onto the Remote error the browser reports. */
+function blockActionFailure(error: DevConsoleBlockActionError): RemoteError {
+  return new RemoteError('gateway/bad-request', error.message, {})
+}
+
+/**
+ * Read the optional edit payload of a proposal action.
+ * @param payload - JSON text sent by the card; omitted means no edits.
+ * @returns the edited fields, absent when the payload does not carry them.
+ * @throws RemoteError when the payload is not the documented JSON object.
+ */
+function proposalEditsOf(payload: string | undefined): {
+  readonly title?: string
+  readonly goal?: string
+  readonly acceptance?: string
+  readonly steps?: readonly DevConsolePlanStepInput[]
+} {
+  if (payload === undefined || payload.trim() === '') return {}
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(payload)
+  } catch {
+    throw new RemoteError('gateway/bad-request', 'block action payload must be JSON', {})
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new RemoteError('gateway/bad-request', 'block action payload must be a JSON object', {})
+  }
+  const record = parsed as Record<string, unknown>
+  const edits: { title?: string; goal?: string; acceptance?: string; steps?: readonly DevConsolePlanStepInput[] } = {}
+  for (const key of ['title', 'goal', 'acceptance'] as const) {
+    const value = record[key]
+    if (value === undefined) continue
+    if (typeof value !== 'string') {
+      throw new RemoteError('gateway/bad-request', `block action payload field ${key} must be a string`, {})
+    }
+    edits[key] = value
+  }
+  const steps = record['steps']
+  if (steps !== undefined) {
+    if (!Array.isArray(steps)) throw new RemoteError('gateway/bad-request', 'block action payload steps must be an array', {})
+    edits.steps = steps.map((step) => {
+      if (typeof step !== 'object' || step === null || Array.isArray(step)) {
+        throw new RemoteError('gateway/bad-request', 'block action payload steps must be objects', {})
+      }
+      const row = step as Record<string, unknown>
+      if (typeof row['title'] !== 'string' || typeof row['outcome'] !== 'string') {
+        throw new RemoteError('gateway/bad-request', 'block action payload steps require a title and an outcome', {})
+      }
+      return { title: row['title'], outcome: row['outcome'] }
+    })
+  }
+  return edits
+}
 
 function directivesForSession(
   state: DevConsoleBusState,
@@ -128,6 +196,8 @@ export class SessionTasksController extends TypertRemoteService {
   private readonly relationsRefreshMs: number
   private readonly devConsoleConfigFile: string
   private readonly inspectionCache = new Map<string, { at: number; inspection: import('./dev-console-workspace.ts').WorkspaceInspection }>()
+  /** In-flight block actions, keyed by block id, so one block executes one action at a time. */
+  private readonly blockActionLocks = new Map<string, Promise<void>>()
   private readonly observed = new Map<string, ObservedActivity>()
   private seenDomain: Domain<typeof sessionTasksSeenDomain> | undefined
   private stateDomain: Domain<typeof devConsoleStateDomain> | undefined
@@ -659,8 +729,112 @@ export class SessionTasksController extends TypertRemoteService {
       requiresResponse: true,
       payload: { proposal },
     })
-    await this.writeBus({ ...this.busState(), messages: [message, ...this.busState().messages].slice(0, 200) })
-    return { messageId: message.id, proposal }
+    // The block is the client's action surface for this proposal; it stores only
+    // the message id so the pending proposal keeps one authoritative copy.
+    const block = createDevConsoleBlock({
+      sessionId: request.sessionId,
+      type: 'task-proposal',
+      props: { messageId: message.id },
+      actions: TASK_PROPOSAL_ACTIONS,
+    }, Date.now())
+    const state = this.busState()
+    await this.writeBus({
+      ...state,
+      messages: [message, ...state.messages].slice(0, 200),
+      blocks: [block, ...state.blocks].slice(0, MAX_DEV_CONSOLE_BLOCKS),
+    })
+    return { messageId: message.id, blockId: block.id, proposal }
+  }
+
+  /**
+   * Register one interactive block for a Session. The model-facing
+   * `interactive_block` tool calls this before returning the block it presents;
+   * a browser never registers a block.
+   * @param request - Session, block type, props, and accepted action ids.
+   * @returns the pending block the client addresses in later action requests.
+   */
+  async devConsoleCreateBlock(request: DevConsoleCreateBlockRequest): Promise<DevConsoleBlock> {
+    const sessionId = request.sessionId.trim()
+    const type = request.type.trim()
+    if (sessionId === '' || type === '') {
+      throw new RemoteError('gateway/bad-request', 'a block requires a Session id and a type', {})
+    }
+    const actions = [...new Set((request.actions ?? []).map(action => action.trim()).filter(action => action !== ''))]
+    const state = this.busState()
+    const block = createDevConsoleBlock({ sessionId, type, props: request.props, actions }, Date.now())
+    await this.writeBus({ ...state, blocks: [block, ...state.blocks].slice(0, MAX_DEV_CONSOLE_BLOCKS) })
+    return block
+  }
+
+  /**
+   * Execute one block action once per idempotency key.
+   * @param request - block, action, owning Session, and the caller-minted key.
+   * @returns the resulting block status and action value, or the stored replay.
+   */
+  @Remote('devConsoleBlockAction')
+  async devConsoleBlockAction(request: DevConsoleBlockActionRequest): Promise<DevConsoleBlockActionValue> {
+    if (request.idempotencyKey.trim() === '') {
+      throw new RemoteError('gateway/bad-request', 'a block action requires an idempotency key', {})
+    }
+    try {
+      return await executeDevConsoleBlockAction({
+        blocks: () => this.busState().blocks,
+        records: () => this.busState().blockActions,
+        commit: async (next) => { await this.writeBus({ ...this.busState(), ...next }) },
+      }, this.blockActionLocks, request, (block, action) => this.runDevConsoleBlockAction(block, action))
+    } catch (error) {
+      if (error instanceof DevConsoleBlockActionError) throw blockActionFailure(error)
+      throw error
+    }
+  }
+
+  /**
+   * Read the Host-owned status of one block, so a reloaded client renders the
+   * status the Host stored rather than the status recorded in the transcript.
+   * @param request - block to read and the Session that owns it.
+   * @returns current status, accepted actions, and the last action value.
+   */
+  @Remote('devConsoleBlockState')
+  async devConsoleBlockState(request: DevConsoleBlockStateRequest): Promise<DevConsoleBlockStateValue> {
+    const state = this.busState()
+    try {
+      return readDevConsoleBlockState(state.blocks, state.blockActions, request)
+    } catch (error) {
+      if (error instanceof DevConsoleBlockActionError) throw blockActionFailure(error)
+      throw error
+    }
+  }
+
+  /** Run the action the block type owns and return its stored value as JSON text. */
+  private async runDevConsoleBlockAction(block: DevConsoleBlock, request: DevConsoleBlockActionRequest): Promise<string> {
+    if (block.type !== 'task-proposal') return JSON.stringify({ actionId: request.actionId })
+    if (request.actionId !== 'confirm' && request.actionId !== 'ignore') {
+      throw new RemoteError('gateway/bad-request', `task proposal block ${block.id} does not run action ${request.actionId}`, {})
+    }
+    const messageId = block.props['messageId']
+    if (typeof messageId !== 'string' || messageId === '') {
+      throw new RemoteError('gateway/bad-request', `task proposal block ${block.id} has no proposal message`, {})
+    }
+    const existing = this.busState().messages.find(item => item.id === messageId)?.payload?.proposal
+    const wanted = request.actionId === 'confirm' ? 'accepted' : 'dismissed'
+    if (existing?.status === wanted) {
+      return JSON.stringify({ messageId, status: wanted })
+    }
+    if (existing !== undefined && existing.status !== 'pending') {
+      throw new RemoteError('gateway/bad-request', `proposal ${messageId} is already ${existing.status}`, {})
+    }
+    const decision = await this.devConsoleDecideProposal({
+      messageId,
+      decision: request.actionId === 'confirm' ? 'accept' : 'dismiss',
+      role: 'maintainer',
+      ...proposalEditsOf(request.payload),
+    })
+    return JSON.stringify({
+      messageId: decision.messageId,
+      status: decision.status,
+      ...decision.brief === undefined ? {} : { briefId: decision.brief.id },
+      ...decision.plan === undefined ? {} : { planId: decision.plan.id },
+    })
   }
 
   /**
@@ -989,10 +1163,9 @@ export class SessionTasksController extends TypertRemoteService {
       history: [...brief.history, { at: Date.now(), from: brief.status, to: 'in_review', role: request.fromRole }],
     }
     await this.writeBus({
+      ...state,
       messages: [message, ...state.messages].slice(0, 200),
       briefs: state.briefs.map(item => item.id === updatedBrief.id ? updatedBrief : item),
-      plans: state.plans,
-      directives: state.directives,
     })
     return message
   }

@@ -329,6 +329,8 @@ export interface DevConsoleSuggestTaskRequest {
 /** A pending task proposal returned to the model-facing tool. */
 export interface DevConsoleSuggestTaskValue {
   readonly messageId: string
+  /** Host-registered interactive block that carries the proposal actions. */
+  readonly blockId: string
   readonly proposal: import('./dev-console-bus.ts').DevConsoleTaskProposal
 }
 

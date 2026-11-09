@@ -34,6 +34,8 @@ kind: "package-reference"
 - 活动条目可带可选的 `startedAt` 与 `lastActivityAt`；提供方未提供时，控制器以首次观察到的时间打点，并只在条目集合变化时刷新变化时间。运行中的会话若带时间的活动超过 `stallAfterMs`（默认 900000，最小 60000）没有变化，会带 `stalled: true`；没有带时间的活动时不做猜测。
 - 省略 `workspaceId` 时读取本 Host 的全部活跃会话；运行中的会话排在前面，其次按会话 id 排序。
 - 跟随流通过比较投影行而不是订阅单个 Host 事件实现；两次比较之间翻转两次的变化只会观察到最新行。
+- `sessionTasks.devConsoleBlockAction({ blockId, actionId, sessionId, idempotencyKey, payload? })`——执行一个由 Host 注册的内联块动作。Host 校验块存在、属于该会话、声明了该动作且仍是 `pending`，随后在同一次写入中保存动作记录（块、动作、会话、幂等键、结果、时间）并把块置为 `resolved`。相同幂等键重复提交返回已存结果（`replayed: true`），不会再次执行，因此重复点击不会创建第二个任务，也不会二次修改状态。
+- `sessionTasks.devConsoleBlockState({ blockId, sessionId })`——由 Host 拥有的块状态（`pending`、`submitted`、`resolved`、`expired`）、可执行动作 id 与最近一次动作结果，使刷新后的会话记录渲染 Host 存储的状态，而不是块创建时的状态。
 
 ### 失败与恢复
 
@@ -53,6 +55,7 @@ kind: "package-reference"
 - `src/index.ts`——`SessionTasksController`、`sessionTasks` 命名空间、`snapshot` 方法、轮询式 `follow` 流及其 `followIntervalMs` 配置。
 - `src/aggregation.ts`——纯聚合、工作区投影与两个 Remote 错误码。
 - `src/types.ts`——线上值类型、Host 端口与 `RemoteErrorDetailsMap` 声明。
+- `src/dev-console-block.ts`——块记录、Host 拥有的状态机、幂等记录，以及"重新读取、校验、执行、提交"的单次动作执行器。
 
 ### 操作流程
 
@@ -81,7 +84,8 @@ kind: "package-reference"
 
 - **仅活跃会话**——本 Host 中没有活跃智能体的会话不可见，即使持久化的任务或定时器会为它报告活动。
 - **仅快照**——活动变化后页面必须重新读取；跟随流推迟到页面需要推送更新时再实现。
-- **只读**——派发、中断与审批动作属于后续阶段。
+- **总览只读**——总览命名空间只读；任务、计划与内联块写入由同一命名空间中的 Dev Console 方法承担。
+- **块状态由 Host 拥有**——浏览器从不写入；客户端不能自行把块标记为已解决。动作总线之前记录的块没有块 id，其卡片沿用更早的提议决策路径。
 - **工作区范围需要注册表**——未挂载 `ctx.workspaceRegistry` 时，按工作区读取会报错，而不是回退到全部活跃会话。
 - **暂无页面级访问策略**——连接受既有 Remote 访问控制约束；页面级授权推迟。
 
