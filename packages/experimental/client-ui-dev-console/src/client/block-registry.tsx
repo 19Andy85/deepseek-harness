@@ -2,17 +2,26 @@
 import type { ReactNode } from 'react'
 import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-tool/client'
+import type { BlockStatus } from './block-actions.ts'
 
 /** One block the model may reference by registered type. */
 export interface InteractiveBlockSpec {
   readonly version: 1
   readonly type: string
   readonly props?: Readonly<Record<string, unknown>> | undefined
+  /** Host-registered identity; absent on blocks recorded before the action bus. */
+  readonly blockId?: string | undefined
+  /** Action ids the Host registered for this block. */
+  readonly actions?: readonly string[] | undefined
+  /** Status recorded when the Host created the block; the live status is read from the Host. */
+  readonly status?: BlockStatus | undefined
 }
 
 /** Renderer context shared by registered block types. */
 export interface BlockRenderContext {
   readonly t: (key: string) => string
+  /** Session that owns the block; its actions are valid only within it. */
+  readonly sessionId?: string | undefined
 }
 
 /** One registered block renderer. */
@@ -38,7 +47,7 @@ export function unregisterInteractiveBlock(type: string): void {
 /**
  * Render a block by type, degrading unknown types to a bounded text representation.
  * @param block - parsed model output.
- * @param context - locale and future action context.
+ * @param context - locale, owning Session, and action bridge.
  * @returns the registered renderer output, or a literal fallback.
  */
 export function renderInteractiveBlock(block: InteractiveBlockSpec, context: BlockRenderContext): ReactNode {

@@ -8,5 +8,7 @@ export function InteractiveBlockView(props: ToolCallViewProps & PropsLocale<'pro
   if (props.phase !== 'result') return null
   const meta = props.block.meta
   const block = typeof meta === 'object' && meta !== null ? (meta as Record<string, unknown>)['block'] : undefined
-  return isInteractiveBlock(block) ? <>{renderInteractiveBlock(block, { t: props.t as unknown as (key: string) => string })}</> : null
+  return isInteractiveBlock(block)
+    ? <>{renderInteractiveBlock(block, { t: props.t as unknown as (key: string) => string, sessionId: String(props.sessionId) })}</>
+    : null
 }

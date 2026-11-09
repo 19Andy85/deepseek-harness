@@ -27,6 +27,7 @@ import { SessionRailMenuItem, type SessionRailMenuInjected } from './SessionRail
 import { rememberRailSessionTitle } from './rail-session-title.ts'
 import { TaskProposalCard } from './TaskProposalCard.tsx'
 import { setProposalDecider, setProposalLister } from './proposal-card-actions.ts'
+import { setBlockActionDispatcher, setBlockStateReader } from './block-actions.ts'
 import { registerChoiceBlock } from './ChoiceBlock.tsx'
 import { InteractiveBlockView } from './InteractiveBlockView.tsx'
 import { ProjectConsolePanelIcon } from './ProjectConsolePanelIcon.tsx'
@@ -89,6 +90,19 @@ function registerUi(ctx: Context): void {
     })
     if (!result.ok) throw new Error(result.error.message)
     return { status: result.value.status }
+  })
+  setBlockActionDispatcher(async (input) => {
+    const result = await ctx.remote.sessionTasks.devConsoleBlockAction({
+      blockId: input.blockId, actionId: input.actionId, sessionId: input.sessionId, idempotencyKey: input.idempotencyKey,
+      ...input.payload === undefined ? {} : { payload: input.payload },
+    })
+    if (!result.ok) throw new Error(result.error.message)
+    return result.value
+  })
+  setBlockStateReader(async (input) => {
+    const result = await ctx.remote.sessionTasks.devConsoleBlockState({ blockId: input.blockId, sessionId: input.sessionId })
+    if (!result.ok) throw new Error(result.error.message)
+    return result.value
   })
   setProposalLister(async (sessionId) => {
     const result = await ctx.remote.sessionTasks.devConsolePendingProposals({ sessionId })

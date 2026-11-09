@@ -4,7 +4,8 @@ import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ToolCallViewProps } from '@deepseek-ai/dsh-client-ui-tool/client'
 import { decideProposal } from './proposal-card-actions.ts'
-import { isInteractiveBlock, registerInteractiveBlock, renderInteractiveBlock } from './block-registry.tsx'
+import { isInteractiveBlock, registerInteractiveBlock, renderInteractiveBlock, type InteractiveBlockSpec } from './block-registry.tsx'
+import { resultStatus, useBlockAction } from './block-actions.ts'
 import css from './TaskProposalCard.module.css'
 
 type TaskProposalCardProps = ToolCallViewProps & PropsLocale<'projectConsole'>
@@ -56,7 +57,7 @@ export function TaskProposalCard(props: TaskProposalCardProps) {
   const meta = props.block.meta
   const block = typeof meta === 'object' && meta !== null ? (meta as Record<string, unknown>)['block'] : undefined
   if (isInteractiveBlock(block)) {
-    return <>{renderInteractiveBlock(block, { t: props.t as unknown as (key: string) => string })}</>
+    return <>{renderInteractiveBlock(block, { t: props.t as unknown as (key: string) => string, sessionId: String(props.sessionId) })}</>
   }
   const proposal = proposalOf(meta)
   if (proposal === undefined) {
@@ -65,25 +66,45 @@ export function TaskProposalCard(props: TaskProposalCardProps) {
   return <ProposalBody proposal={proposal} t={t} />
 }
 
-export function ProposalBody({ proposal, t }: { readonly proposal: ProposalView; readonly t: TaskProposalCardProps['t'] }) {
+/** Proposal card body; the block carries the Host action surface once one was registered. */
+export function ProposalBody(props: {
+  readonly proposal: ProposalView
+  readonly t: TaskProposalCardProps['t']
+  readonly block?: InteractiveBlockSpec | undefined
+  readonly sessionId?: string | undefined
+}) {
+  const { proposal, t, block, sessionId } = props
   const [editing, setEditing] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [result, setResult] = useState<'accepted' | 'dismissed' | undefined>(undefined)
+  const [legacyBusy, setLegacyBusy] = useState(false)
+  const [legacyDecision, setLegacyDecision] = useState<'accepted' | 'dismissed' | undefined>(undefined)
   const [error, setError] = useState<string | undefined>(undefined)
   const [title, setTitle] = useState(proposal.title)
   const [goal, setGoal] = useState(proposal.goal)
   const [acceptance, setAcceptance] = useState(proposal.acceptance)
   const [steps, setSteps] = useState(proposal.steps)
-  const act = (decision: 'accept' | 'dismiss'): void => {
-    setBusy(true)
+  const handle = useBlockAction(block ?? {}, sessionId)
+  const hostStatus = resultStatus(handle.result)
+  const decision = hostStatus === 'accepted' || hostStatus === 'dismissed' ? hostStatus : legacyDecision
+  const busy = block?.blockId === undefined ? legacyBusy : handle.busy
+  const actionable = block?.blockId === undefined || handle.status === 'pending'
+  const act = (choice: 'accept' | 'dismiss'): void => {
     setError(undefined)
-    void decideProposal({
-      messageId: proposal.messageId, decision,
-      ...editing ? { title, goal, acceptance, steps } : {},
-    }).then((value) => { setResult(value.status) }).catch(() => { setError(t('proposalCardFailed')) }).finally(() => { setBusy(false) })
+    const edits = editing ? { title, goal, acceptance, steps } : {}
+    if (block?.blockId === undefined) {
+      // A block recorded before the action bus keeps deciding through the proposal Remote.
+      setLegacyBusy(true)
+      void decideProposal({ messageId: proposal.messageId, decision: choice, ...edits })
+        .then((value) => { setLegacyDecision(value.status) })
+        .catch(() => { setError(t('proposalCardFailed')) })
+        .finally(() => { setLegacyBusy(false) })
+      return
+    }
+    void handle.act(choice === 'accept' ? 'confirm' : 'ignore', JSON.stringify(edits)).catch(() => {
+      setError(t('proposalCardFailed'))
+    })
   }
-  if (result !== undefined) {
-    return <div className={css.card}><div className={css.heading}>{result === 'accepted' ? t('proposalCardAccepted') : t('proposalCardDismissed')}</div></div>
+  if (decision !== undefined) {
+    return <div className={css.card}><div className={css.heading}>{decision === 'accepted' ? t('proposalCardAccepted') : t('proposalCardDismissed')}</div></div>
   }
   return (
     <div className={css.card}>
@@ -94,7 +115,7 @@ export function ProposalBody({ proposal, t }: { readonly proposal: ProposalView;
           <label>{t('proposalCardGoalLabel')}<textarea value={goal} onChange={(event) => { setGoal(event.currentTarget.value) }} /></label>
           <label>{t('proposalCardAcceptanceLabel')}<textarea value={acceptance} onChange={(event) => { setAcceptance(event.currentTarget.value) }} /></label>
           {steps.map((step, index) => (
-            <div className={css.stepEdit} key={`${index}-${step.title}`}>
+            <div className={css.stepEdit} key={index}>
               <input value={step.title} aria-label={t('proposalCardStepTitle')} placeholder={t('proposalCardStepTitle')} onChange={(event) => {
                 const value = event.currentTarget.value
                 setSteps(rows => rows.map((row, rowIndex) => rowIndex === index ? { ...row, title: value } : row))
@@ -123,9 +144,9 @@ export function ProposalBody({ proposal, t }: { readonly proposal: ProposalView;
       {proposal.reason === undefined ? null : <p className={css.muted}>{proposal.reason}</p>}
       {error === undefined ? null : <p className={css.error}>{error}</p>}
       <div className={css.actions}>
-        <Button variant="primary" disabled={busy} onClick={() => { act('accept') }}>{editing ? t('proposalCardSave') : t('proposalCardConfirm')}</Button>
-        <Button disabled={busy} onClick={() => { if (editing) { setEditing(false) } else { setEditing(true) } }}>{editing ? t('proposalCardCancelEdit') : t('proposalCardEdit')}</Button>
-        <Button disabled={busy} onClick={() => { act('dismiss') }}>{t('proposalCardIgnore')}</Button>
+        <Button variant="primary" disabled={busy || !actionable} onClick={() => { act('accept') }}>{editing ? t('proposalCardSave') : t('proposalCardConfirm')}</Button>
+        <Button disabled={busy || !actionable} onClick={() => { if (editing) { setEditing(false) } else { setEditing(true) } }}>{editing ? t('proposalCardCancelEdit') : t('proposalCardEdit')}</Button>
+        <Button disabled={busy || !actionable} onClick={() => { act('dismiss') }}>{t('proposalCardIgnore')}</Button>
       </div>
     </div>
   )
@@ -138,5 +159,12 @@ registerInteractiveBlock('task-proposal', (block, context) => {
     ? props['proposal'] as ProposalView
     : undefined
   if (proposal === undefined) return null
-  return <ProposalBody proposal={proposal} t={context.t as unknown as TaskProposalCardProps['t']} />
+  return (
+    <ProposalBody
+      proposal={proposal}
+      t={context.t as unknown as TaskProposalCardProps['t']}
+      block={block}
+      sessionId={context.sessionId}
+    />
+  )
 }, block => typeof block.props?.['proposal'] === 'object')

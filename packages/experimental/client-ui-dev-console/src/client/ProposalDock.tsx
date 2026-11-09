@@ -69,7 +69,7 @@ export function ProposalDock(props: ProposalDockProps) {
               <textarea value={goal} aria-label={t('proposalCardGoalLabel')} onChange={(event) => { setGoal(event.currentTarget.value) }} />
               <textarea value={acceptance} aria-label={t('proposalCardAcceptanceLabel')} onChange={(event) => { setAcceptance(event.currentTarget.value) }} />
               {steps.map((step, index) => (
-                <div className={css.stepRow} key={`${index}-${step.title}`}>
+                <div className={css.stepRow} key={index}>
                   <input value={step.title} aria-label={t('proposalCardStepTitle')} placeholder={t('proposalCardStepTitle')} onChange={(event) => {
                     const value = event.currentTarget.value
                     setSteps(rows => rows.map((row, rowIndex) => rowIndex === index ? { ...row, title: value } : row))

@@ -62,6 +62,7 @@ Mount the page in a Web composition that also mounts a Host controller serving t
 - Re-read automatically after a session status or activity event, coalescing bursts into one read; **Refresh** reads on demand.
 - While a session is focused, its row comes from the follow stream, a **Since you started watching** timeline lists observed status and activity changes with clock times and durations, and the same **Interrupt**, **Reply in this session**, and **Open session** actions stay available; the Needs you section stays visible above the focus card.
 - The previous visit is remembered per Workspace in local storage, and when the Host mounts its storage domain the console prefers the durable acknowledged baseline (`changes`/`lastSeenAt` from `snapshot`) and acknowledges on hide and dispose, so **New** markers stay consistent across devices; without the storage domain it falls back to the local baseline.
+- **Inline block actions**: a proposal card or choice block rendered in the transcript sends every button through one bridge to the Host's block action Remote, with one idempotency key per gesture; the card shows the status and decision the Host stored, including after a reload, and never marks a block resolved on its own. A block recorded before the action bus keeps the earlier proposal decision path.
 - A failed read keeps the last rows visible and shows a compact retry notice; the full error state appears only when no rows were ever read.
 
 ### Failures and recovery
