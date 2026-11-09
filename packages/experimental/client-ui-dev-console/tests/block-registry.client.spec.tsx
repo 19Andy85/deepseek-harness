@@ -23,6 +23,8 @@ describe('interactive block registry', () => {
   it('rejects malformed specs', () => {
     expect(isInteractiveBlock({ version: 1, type: 'text' })).toBe(true)
     expect(isInteractiveBlock({ version: 2, type: 'text' })).toBe(false)
+    const future: InteractiveBlockSpec = { version: 2 as 1, type: 'text' }
+    expect(renderInteractiveBlock(future, { t: key => key })).toBeTruthy()
     expect(isInteractiveBlock({ type: 'text' })).toBe(false)
   })
 })

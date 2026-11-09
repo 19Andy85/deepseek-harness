@@ -4,6 +4,9 @@ import type { PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type {} from '@deepseek-ai/dsh-client-ui-tool/client'
 import type { BlockStatus } from './block-actions.ts'
 
+/** Contract version supported by this client. */
+export const INTERACTIVE_BLOCK_VERSION = 1
+
 /** One block the model may reference by registered type. */
 export interface InteractiveBlockSpec {
   readonly version: 1
@@ -51,7 +54,7 @@ export function unregisterInteractiveBlock(type: string): void {
  * @returns the registered renderer output, or a literal fallback.
  */
 export function renderInteractiveBlock(block: InteractiveBlockSpec, context: BlockRenderContext): ReactNode {
-  const entry = renderers.get(block.type)
+  const entry = block.version === INTERACTIVE_BLOCK_VERSION ? renderers.get(block.type) : undefined
   if (entry !== undefined && (entry.validate === undefined || entry.validate(block))) return entry.renderer(block, context)
   return <pre data-interactive-block-fallback={block.type}>{JSON.stringify(block, null, 2)}</pre>
 }
@@ -60,7 +63,7 @@ export function renderInteractiveBlock(block: InteractiveBlockSpec, context: Blo
 export function isInteractiveBlock(value: unknown): value is InteractiveBlockSpec {
   if (typeof value !== 'object' || value === null) return false
   const candidate = value as Record<string, unknown>
-  return candidate['version'] === 1 && typeof candidate['type'] === 'string'
+  return candidate['version'] === INTERACTIVE_BLOCK_VERSION && typeof candidate['type'] === 'string'
 }
 
 /** Keep the slot prop import type-only without exposing the registry through props. */
