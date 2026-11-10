@@ -155,6 +155,27 @@ describe('ToolCallTree', () => {
     ])
   })
 
+  it('promotes only sub-calls whose presentation meta opts in', () => {
+    const compact = root('compact', { name: 'grep', argsRaw: '{"pattern":"x"}' })
+    const promoted = { ...root('promoted', { name: 'theme_studio_generate', argsRaw: '{}' }), meta: { promote: true } }
+    const malformed = { ...root('malformed', { name: 'read', argsRaw: '{}' }), meta: { promote: 'yes' } }
+    const block = {
+      ...root('parent', { name: 'run_code', argsRaw: '{"code":"return 1"}' }),
+      subCalls: [compact, promoted, malformed],
+    }
+    const view = render(<ToolCallTree {...props(block)} />)
+    const parent = view.container.querySelector('[data-chat-call-id="parent"]')!
+    // Compact and malformed children keep the nested form inside the parent row.
+    expect(parent.querySelector('[data-subcalls] [data-chat-call-id="compact"]')).not.toBeNull()
+    expect(parent.querySelector('[data-subcalls] [data-chat-call-id="malformed"]')).not.toBeNull()
+    // The opted-in child renders as its own row after the parent, outside the parent row.
+    const promotedRows = view.container.querySelectorAll('[data-promoted-subcalls]')
+    expect(promotedRows).toHaveLength(1)
+    expect(promotedRows[0]?.previousElementSibling).toBe(parent)
+    expect(promotedRows[0]?.querySelector('[data-chat-call-id="promoted"]')).not.toBeNull()
+    expect(parent.querySelector('[data-chat-call-id="promoted"]')).toBeNull()
+  })
+
   it('omits Inspect from tool owners when the target view is unavailable', () => {
     const owners: ToolCallOwnerProps[] = []
     render(<ToolCallTree {...props(root('a', null), undefined, owners)} inspectCall={undefined} />)

@@ -1,0 +1,22 @@
+# Bilingual-pair consistency record for 2026-11-11-ptc-subcall-promotion.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-11-11-ptc-subcall-promotion.md
+/agent-note-opt-in-promotion-of-nested-ptc-cards:
+  en: b1126a416e9f9ffe
+  zh: e4855e837d00e75f
+/agent-note-opt-in-promotion-of-nested-ptc-cards/problem:
+  en: dc6ea2879e05e3ad
+  zh: 06271f9a3230264f
+/agent-note-opt-in-promotion-of-nested-ptc-cards/decision:
+  en: 2d1805123390c769
+  zh: b345be538cdef412
+/agent-note-opt-in-promotion-of-nested-ptc-cards/alternatives-considered:
+  en: 89466612b36bb289
+  zh: 50a80c62a4335b13
+/agent-note-opt-in-promotion-of-nested-ptc-cards/consequences:
+  en: 84a5db2099a1b08e
+  zh: 5c11c196be5b562e
+/agent-note-opt-in-promotion-of-nested-ptc-cards/consequences/required-verification:
+  en: 659e48677202e59e
+  zh: 19773d999989dda0

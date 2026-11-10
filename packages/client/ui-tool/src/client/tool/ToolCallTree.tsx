@@ -16,6 +16,31 @@ function callName(call: ToolCallPhaseProps): string {
   return call.phase === 'result' ? call.block.call?.name ?? '' : call.block.name
 }
 
+/**
+ * Whether one nested sub-call asks for its own top-level card. Tools opt in
+ * through their replayable presentation metadata (`meta.promote === true`), so
+ * promotion stays a tool-owned decision rather than a UI name table; every other
+ * sub-call keeps the compact nested form.
+ * @param block - settled or running nested call.
+ * @returns true when the call should render as a sibling row.
+ */
+function isPromotable(block: ToolCallBlock): boolean {
+  if (!('kind' in block)) return false
+  const meta = block.meta
+  return meta !== null && typeof meta === 'object' && (meta as { promote?: unknown }).promote === true
+}
+
+/** Split nested calls into promoted rows and compact nested rows, in dispatch order. */
+function partitionSubCalls(block: ToolCallBlock): { promoted: readonly ToolCallBlock[]; compact: readonly ToolCallBlock[] } {
+  const promoted: ToolCallBlock[] = []
+  const compact: ToolCallBlock[] = []
+  for (const child of block.subCalls) {
+    if (isPromotable(child)) promoted.push(child)
+    else compact.push(child)
+  }
+  return { promoted: promoted, compact: compact }
+}
+
 /** One atomic call dispatched through the Tool-owned keyed slot. */
 const ToolCall = memo(function ToolCall({
   renderSlot, callId, toolName, call, openFile, cwd, home, inspectCall, loadImage, useDisclosure, t, children,
@@ -65,23 +90,47 @@ const ToolCallBranch = memo(function ToolCallBranch({
   home?: string | undefined
 }) {
   const call = useMemo(() => toolCallPhase(block), [block])
+  const nested = useMemo(
+    () => call.phase === 'preparing' ? { promoted: [], compact: [] } : partitionSubCalls(call.block),
+    [call],
+  )
   return (
-    <ToolCall
-      renderSlot={renderSlot}
-      callId={call.block.callId}
-      toolName={callName(call)}
-      call={call}
-      openFile={openFile}
-      cwd={cwd}
-      home={home}
-      inspectCall={inspectCall}
-      useDisclosure={useDisclosure}
-      loadImage={loadImage}
-      t={t}
-    >
-      {call.phase !== 'preparing' && call.block.subCalls.length > 0 ? (
-        <div className={css.subCalls} data-subcalls>
-          {call.block.subCalls.map(child => (
+    <>
+      <ToolCall
+        renderSlot={renderSlot}
+        callId={call.block.callId}
+        toolName={callName(call)}
+        call={call}
+        openFile={openFile}
+        cwd={cwd}
+        home={home}
+        inspectCall={inspectCall}
+        useDisclosure={useDisclosure}
+        loadImage={loadImage}
+        t={t}
+      >
+        {nested.compact.length > 0 ? (
+          <div className={css.subCalls} data-subcalls>
+            {nested.compact.map(child => (
+              <ToolCallBranch
+                key={child.callId}
+                renderSlot={renderSlot}
+                block={child}
+                cwd={cwd}
+                home={home}
+                openFile={openFile}
+                inspectCall={inspectCall}
+                useDisclosure={useDisclosure}
+                loadImage={loadImage}
+                t={t}
+              />
+            ))}
+          </div>
+        ) : null}
+      </ToolCall>
+      {nested.promoted.length > 0 ? (
+        <div className={css.promotedSubCalls} data-promoted-subcalls>
+          {nested.promoted.map(child => (
             <ToolCallBranch
               key={child.callId}
               renderSlot={renderSlot}
@@ -97,7 +146,7 @@ const ToolCallBranch = memo(function ToolCallBranch({
           ))}
         </div>
       ) : null}
-    </ToolCall>
+    </>
   )
 })
 

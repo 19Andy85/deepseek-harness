@@ -22,7 +22,7 @@ Host presenter 与 Client keyed renderer 分担展示会形成对同一事件的
 
 ## Decision
 
-下述展示对等要求不包含已独立批准的[嵌套 terminal 卡片修复](../../../../packages/client/ui-tool/README.zh.md)、[记录结果的工具详情](../../../../packages/client/ui-tool/README.zh.md)和[后台 Shell 命令展示](../bug-fix/2026-10-10-background-shell-command-display.zh.md)；其他展示与所有权约束全部保留。
+下述展示对等要求不包含已独立批准的[嵌套 terminal 卡片修复](../../../../packages/client/ui-tool/README.zh.md)、[记录结果的工具详情](../../../../packages/client/ui-tool/README.zh.md)和[后台 Shell 命令展示](../bug-fix/2026-10-10-background-shell-command-display.zh.md)；其他展示与所有权约束全部保留。 [嵌套 PTC 卡片的按需提升](2026-11-11-ptc-subcall-promotion.zh.md) 另外以持久元数据布局例外取代下文的 PTC dispatch 富卡片禁止条款。
 
 Session Remote journal 只下发原始、已验证、可持久化的 Session event。`session.page` 和 `session.follow` 不解析工具参数，不查询 Tools registry，不恢复 presenter scope，不执行 `presentCall`／`presentResult`，也不构造或克隆任何 tool view。
 
@@ -51,7 +51,7 @@ Host 的 `ToolDefinition.presentCall`、`ToolDefinition.presentResult`、`ToolCa
 | 保留 | Session 日志格式、Remote journal 生命周期与 Conversation identity/topology |
 | 保留 | 现有 keyed slot、Generic fallback、Chat、Details 与 Trajectory 结构 |
 | 禁止 | 新 Client presenter service、平行 registry 或 wire renderer id |
-| 禁止 | 新卡片、视觉改版、交互改版或 PTC dispatch rich-card 增强，[嵌套 terminal 卡片例外](../../../../packages/client/ui-tool/README.zh.md)、[记录结果的工具详情](../../../../packages/client/ui-tool/README.zh.md)和[后台 Shell 命令展示](../bug-fix/2026-10-10-background-shell-command-display.zh.md)除外 |
+| 禁止 | 新卡片、视觉改版、交互改版或 PTC dispatch rich-card 增强，[嵌套 terminal 卡片例外](../../../../packages/client/ui-tool/README.zh.md)、[记录结果的工具详情](../../../../packages/client/ui-tool/README.zh.md)、[后台 Shell 命令展示](../bug-fix/2026-10-10-background-shell-command-display.zh.md)和[嵌套 PTC 卡片的按需提升](2026-11-11-ptc-subcall-promotion.zh.md)除外 |
 | 禁止 | 为兼容保留双写、版本协商或旧 `view` 字段 |
 
 ## 术语
